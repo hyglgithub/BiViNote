@@ -112,7 +112,6 @@
     if (!screenshot) return;
 
     const video = window.BiViNote.subtitle?.getVideoElement();
-    const item = s.chapters[index];
 
     const overlay = document.createElement('div');
     overlay.className = 'bn-preview-overlay';
@@ -134,23 +133,9 @@
     `;
 
     const imgEl = overlay.querySelector('.bn-preview-img');
-    let longPressTimer = null;
-    let longPressInterval = null;
-
-    function startLongPress(act) {
-      doFrameAction(act);
-      longPressTimer = setTimeout(() => {
-        longPressInterval = setInterval(() => doFrameAction(act), 100);
-      }, 500);
-    }
-
-    function stopLongPress() {
-      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-      if (longPressInterval) { clearInterval(longPressInterval); longPressInterval = null; }
-    }
 
     async function doFrameAction(act) {
-      if (!video || !item) return;
+      if (!video) return;
       const step = s.settings.frameStep || 0.2;
       if (act === 'prev') {
         video.currentTime = Math.max(0, video.currentTime - step);
@@ -169,7 +154,6 @@
     overlay.addEventListener('click', async (e) => {
       const act = e.target.dataset?.act;
       if (act === 'close' || e.target === overlay) {
-        stopLongPress();
         overlay.remove();
         return;
       }
@@ -182,13 +166,6 @@
         const ok = await window.BiViNote.capture.copyToClipboard(currentBlob);
         window.BiViNote.panel.showToast(ok ? '已复制到剪贴板' : '复制失败');
       }
-    });
-
-    // 长按支持
-    overlay.querySelectorAll('[data-act="prev"], [data-act="next"]').forEach(btn => {
-      btn.addEventListener('mousedown', (e) => { e.preventDefault(); startLongPress(btn.dataset.act); });
-      btn.addEventListener('mouseup', stopLongPress);
-      btn.addEventListener('mouseleave', stopLongPress);
     });
 
     document.body.appendChild(overlay);

@@ -86,8 +86,13 @@
     const chapters = s.chapters || [];
     if (chapters.length > 0) {
       lines.push('## 章节', '');
-      chapters.forEach(ch => {
+      chapters.forEach((ch, idx) => {
+        const snapKey = -idx - 1;
+        const snap = s.screenshots.get(snapKey);
         lines.push(`- \`${formatCompactTime(ch.from)}\` ${ch.title}`);
+        if (snap) {
+          lines.push(`  ![章节截图](screenshots/chapter-${idx + 1}.png)`);
+        }
       });
       lines.push('');
     }
@@ -173,7 +178,13 @@
       zip.file('note.md', md);
 
       for (const [index, { blob }] of s.screenshots) {
-        const filename = `screenshots/${index + 1}.png`;
+        let filename;
+        if (index < 0) {
+          // 章节截图：key = -chapterIndex - 1
+          filename = `screenshots/chapter-${-index}.png`;
+        } else {
+          filename = `screenshots/${index + 1}.png`;
+        }
         zip.file(filename, blob);
       }
 

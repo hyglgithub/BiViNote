@@ -125,8 +125,12 @@
         return;
       }
 
-      // 加载首选字幕
-      const preferred = s.subtitles[0];
+      // 优先选择上次使用的字幕语言，否则选第一个
+      let preferred = s.subtitles[0];
+      if (s.selectedSubtitleLang) {
+        const found = s.subtitles.find(t => t.lan === s.selectedSubtitleLang);
+        if (found) preferred = found;
+      }
       await loadSubtitle(preferred.subtitleUrl, preferred.lan);
 
       panel.showToast('字幕获取成功');
@@ -386,20 +390,6 @@
     `;
 
     const imgEl = overlay.querySelector('.bn-preview-img');
-    let longPressTimer = null;
-    let longPressInterval = null;
-
-    function startLongPress(act) {
-      doFrameAction(act);
-      longPressTimer = setTimeout(() => {
-        longPressInterval = setInterval(() => doFrameAction(act), 100);
-      }, 500);
-    }
-
-    function stopLongPress() {
-      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-      if (longPressInterval) { clearInterval(longPressInterval); longPressInterval = null; }
-    }
 
     async function doFrameAction(act) {
       if (!video) return;
@@ -421,7 +411,6 @@
     overlay.addEventListener('click', async (e) => {
       const act = e.target.dataset?.act;
       if (act === 'close' || e.target === overlay) {
-        stopLongPress();
         overlay.remove();
         return;
       }
@@ -434,13 +423,6 @@
         const ok = await window.BiViNote.capture.copyToClipboard(currentBlob);
         window.BiViNote.panel.showToast(ok ? '已复制到剪贴板' : '复制失败');
       }
-    });
-
-    // 长按支持
-    overlay.querySelectorAll('[data-act="prev"], [data-act="next"]').forEach(btn => {
-      btn.addEventListener('mousedown', (e) => { e.preventDefault(); startLongPress(btn.dataset.act); });
-      btn.addEventListener('mouseup', stopLongPress);
-      btn.addEventListener('mouseleave', stopLongPress);
     });
 
     document.body.appendChild(overlay);
