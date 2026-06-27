@@ -24,7 +24,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(err => sendResponse({ ok: false, error: err.message }));
     return true;
   }
+
+  if (message.type === 'update-icon') {
+    setIconState(message.hasSubtitles);
+    sendResponse({ ok: true });
+    return false;
+  }
 });
+
+/**
+ * 根据字幕可用状态切换图标
+ */
+function setIconState(hasSubtitles) {
+  const suffix = hasSubtitles ? '' : '-dim';
+  chrome.action.setIcon({
+    path: {
+      16: `icons/icon-16${suffix}.png`,
+      32: `icons/icon-32${suffix}.png`,
+      48: `icons/icon-48${suffix}.png`,
+      128: `icons/icon-128${suffix}.png`
+    }
+  }).catch(() => {});
+}
+
+// 默认暗色图标
+setIconState(false);
 
 // 扩展图标点击 → 切换面板
 chrome.action.onClicked.addListener((tab) => {
