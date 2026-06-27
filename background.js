@@ -63,40 +63,75 @@ async function fetchVideoMeta(bvid) {
 
 /**
  * 获取字幕列表和章节
+ * 完全遵循 Bilibili-Obsidian-Clipper 的双源策略：
+ * 1. 主源：player/wbi/v2?aid=xxx&cid=xxx (用 aid 作为主标识)
+ * 2. 回退：player/v2?bvid=xxx&cid=xxx
  */
 async function fetchSubtitleList(bvid, cid, aid = '') {
+  const requests = buildSubtitleInfoRequests({ bvid, cid, aid });
+
+  for (const request of requests) {
+    try {
+      const payload = await fetchJson(request.url);
+      if (payload.code !== 0) {
+        console.warn(`[BiViNote] ${request.source} failed:`, payload?.message);
+        continue;
+      }
+      const data = payload.data || {};
+      const subtitles = normalizeSubtitleTracks(
+        (data.subtitle?.subtitles || []).map(item => ({
+          id: item?.id === undefined || item?.id === null ? '' : String(item.id),
+          lan: item?.lan || '',
+          lanDoc: item?.lan_doc || '',
+          subtitleUrl: normalizeSubtitleUrl(item?.subtitle_url || ''),
+          source: request.source
+        })).filter(item => item.subtitleUrl)
+      );
+
+      const chapters = normalizeChapters(
+        (data.view_points || []).map(item => ({
+          title: String(item?.content || item?.title || item?.label || '').trim(),
+          from: normalizeChapterTime(item?.from ?? item?.start ?? item?.start_time),
+          to: normalizeChapterTime(item?.to ?? item?.end ?? item?.end_time)
+        }))
+      );
+
+      return { subtitles, chapters };
+    } catch (err) {
+      console.warn(`[BiViNote] ${request.source} error:`, err.message);
+      continue;
+    }
+  }
+
+  // 所有源都失败
+  return { subtitles: [], chapters: [] };
+}
+
+/**
+ * 构建字幕 API 请求列表（双源策略）
+ */
+function buildSubtitleInfoRequests({ bvid, cid, aid }) {
   const safeBvid = encodeURIComponent(String(bvid || ''));
   const safeCid = encodeURIComponent(String(cid || ''));
   const safeAid = encodeURIComponent(String(aid || ''));
+  const requests = [];
 
-  // 优先 player-v2
-  const url = `https://api.bilibili.com/x/player/v2?bvid=${safeBvid}&cid=${safeCid}` +
-    (aid ? `&aid=${safeAid}` : '');
-
-  const payload = await fetchJson(url);
-  if (payload.code !== 0) {
-    throw new Error(payload?.message || '无法获取字幕列表');
+  // 主源：player/wbi/v2 用 aid 作为主标识
+  if (aid) {
+    requests.push({
+      source: 'player-wbi-v2',
+      url: `https://api.bilibili.com/x/player/wbi/v2?aid=${safeAid}&cid=${safeCid}&bvid=${safeBvid}`
+    });
   }
 
-  const data = payload.data || {};
-  const subtitles = normalizeSubtitleTracks(
-    (data.subtitle?.subtitles || []).map(item => ({
-      id: item?.id === undefined || item?.id === null ? '' : String(item.id),
-      lan: item?.lan || '',
-      lanDoc: item?.lan_doc || '',
-      subtitleUrl: normalizeSubtitleUrl(item?.subtitle_url || '')
-    })).filter(item => item.subtitleUrl)
-  );
+  // 回退：player/v2 用 bvid 作为主标识
+  requests.push({
+    source: 'player-v2',
+    url: `https://api.bilibili.com/x/player/v2?bvid=${safeBvid}&cid=${safeCid}` +
+      (aid ? `&aid=${safeAid}` : '')
+  });
 
-  const chapters = normalizeChapters(
-    (data.view_points || []).map(item => ({
-      title: String(item?.content || item?.title || item?.label || '').trim(),
-      from: normalizeChapterTime(item?.from ?? item?.start ?? item?.start_time),
-      to: normalizeChapterTime(item?.to ?? item?.end ?? item?.end_time)
-    }))
-  );
-
-  return { subtitles, chapters };
+  return requests;
 }
 
 /**
