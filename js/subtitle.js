@@ -67,23 +67,58 @@
     return null;
   }
 
+  // ── 提取分P索引 ──
+
+  function extractPageIndex(url) {
+    try {
+      const page = Number(new URL(url).searchParams.get('p') || '1');
+      return Number.isFinite(page) && page > 0 ? page : 1;
+    } catch {
+      return 1;
+    }
+  }
+
+  // ── 从 pages 数组中按索引选页 ──
+
+  function pickPageFromPages(pages, pageIndex) {
+    const safePages = Array.isArray(pages) ? pages : [];
+    // 按数组下标
+    const byIndex = safePages[pageIndex - 1];
+    if (byIndex?.cid) return byIndex;
+    // 按 page 字段
+    const byNo = safePages.find(item => Number(item.page) === pageIndex);
+    if (byNo?.cid) return byNo;
+    return null;
+  }
+
   // ── 刷新（主流程） ──
 
   async function refresh() {
     const s = window.BiViNote.state;
     const panel = window.BiViNote.panel;
 
-    s.bvid = extractBvid(location.href);
-    if (!s.bvid) {
+    const newBvid = extractBvid(location.href);
+    if (!newBvid) {
       panel.showToast('当前页面不是 B 站视频页');
       return;
     }
+
+    // BVID 变化时重置旧状态，防止残留数据
+    if (newBvid !== s.bvid) {
+      s.reset();
+    }
+    s.bvid = newBvid;
+
+    // 每次刷新递增 runId，取消过期请求
+    const runId = ++s.fetchRunId;
 
     panel.showToast('正在获取字幕...');
 
     try {
       // 获取视频元信息
       const meta = await fetchVideoMeta(s.bvid);
+      if (runId !== s.fetchRunId) return; // 请求已过期
+
       s.aid = meta.aid || '';
       s.title = meta.title || '';
       s.author = meta.author || '';
@@ -91,9 +126,10 @@
       s.description = meta.description || '';
       s.videoDuration = meta.defaultDuration || 0;
 
-      // 获取第一个分P的 cid
-      const firstPage = meta.pages?.[0];
-      s.cid = firstPage?.cid || meta.defaultCid || '';
+      // 用 URL 中的 ?p= 参数选择正确的分P，获取对应 CID
+      const pageIndex = extractPageIndex(location.href);
+      const currentPage = pickPageFromPages(meta.pages, pageIndex);
+      s.cid = currentPage?.cid || meta.defaultCid || meta.pages?.[0]?.cid || '';
 
       if (!s.cid) {
         panel.showToast('无法获取视频 CID');
@@ -102,6 +138,8 @@
 
       // 获取字幕列表和章节
       const bundle = await fetchSubtitleList(s.bvid, s.cid, s.aid);
+      if (runId !== s.fetchRunId) return; // 请求已过期
+
       s.subtitles = bundle.subtitles || [];
       s.chapters = bundle.chapters || [];
 
@@ -133,8 +171,10 @@
       }
       await loadSubtitle(preferred.subtitleUrl, preferred.lan);
 
+      if (runId !== s.fetchRunId) return; // 请求已过期
       panel.showToast('字幕获取成功');
     } catch (err) {
+      if (runId !== s.fetchRunId) return; // 请求已过期
       console.error('[BiViNote] refresh error:', err);
       panel.showToast('获取失败：' + err.message);
     }
@@ -145,15 +185,18 @@
   async function loadSubtitle(url, lang) {
     const s = window.BiViNote.state;
     const panel = window.BiViNote.panel;
+    const runId = s.fetchRunId;
 
     try {
       const body = await fetchSubtitleBody(url);
+      if (runId !== s.fetchRunId) return; // 请求已过期
       s.subtitleBody = body;
       s.selectedSubtitleUrl = url;
       s.selectedSubtitleLang = lang || '';
       renderSubtitleList();
       startSync();
     } catch (err) {
+      if (runId !== s.fetchRunId) return;
       console.error('[BiViNote] loadSubtitle error:', err);
       panel.showToast('字幕加载失败：' + err.message);
     }
