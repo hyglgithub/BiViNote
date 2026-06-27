@@ -26,9 +26,10 @@
 
     container.innerHTML = items.map(item => {
       const checked = s.videoInfoChecked[item.key] ? 'checked' : '';
+      const displayValue = escapeHtml(item.value).replace(/\n/g, '<br>');
       return `<div class="bn-info-item">
         <input type="checkbox" data-key="${item.key}" ${checked}>
-        <span><strong>${item.label}：</strong>${escapeHtml(item.value)}</span>
+        <span><strong>${item.label}：</strong>${displayValue}</span>
       </div>`;
     }).join('');
 

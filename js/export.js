@@ -81,11 +81,6 @@
       lines.push(`# ${s.title}`, '');
     }
 
-    // 简介
-    if (s.videoInfoChecked.description && s.description) {
-      lines.push('## 简介', '', s.description, '');
-    }
-
     // 章节
     const chapters = s.chapters || [];
     if (chapters.length > 0) {
