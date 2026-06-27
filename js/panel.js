@@ -48,9 +48,9 @@
     });
     headerEl.appendChild(tabGroup);
 
-    arrowEl = document.createElement('span');
+    arrowEl = document.createElement('button');
     arrowEl.className = 'bn-arrow';
-    arrowEl.textContent = '⌃';
+    arrowEl.title = '折叠/展开';
     arrowEl.addEventListener('click', toggleCollapse);
     headerEl.appendChild(arrowEl);
 
@@ -283,7 +283,7 @@
     s.collapsed = !s.collapsed;
     panelEl.classList.toggle('bn-collapsed', s.collapsed);
     mainWrapEl.classList.toggle('bn-hide', s.collapsed);
-    arrowEl.textContent = s.collapsed ? '⌄' : '⌃';
+    arrowEl.classList.toggle('bn-collapsed', s.collapsed);
   }
 
   // ── 拖动 ──

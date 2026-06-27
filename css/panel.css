@@ -124,14 +124,36 @@
 .bn-arrow {
   margin-left: auto;
   cursor: pointer;
-  font-size: 16px;
-  padding: 2px 6px;
-  color: var(--bn-text-sub);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
 }
 
-.bn-arrow:hover {
-  color: var(--bn-text);
+.bn-arrow::before {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-left: 2px solid var(--bn-text-sub);
+  border-top: 2px solid var(--bn-text-sub);
+  transform: rotate(45deg);
+  transition: transform 0.2s;
+  margin-top: 4px;
+}
+
+.bn-arrow:hover::before {
+  border-color: var(--bn-text);
+}
+
+.bn-arrow.bn-collapsed::before {
+  transform: rotate(-135deg);
+  margin-top: -4px;
 }
 
 /* Main content */
