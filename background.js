@@ -1,7 +1,75 @@
 /**
  * BiViNote Background Script (Service Worker)
- * 代理 Bilibili API 请求，处理 CORS
+ * 代理 Bilibili API 请求，处理 CORS，管理图标状态
  */
+
+// ── 图标状态管理 ──
+
+function isVideoPage(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.includes('bilibili.com') &&
+      (parsed.pathname.startsWith('/video/') || parsed.pathname.startsWith('/list/'));
+  } catch {
+    return false;
+  }
+}
+
+function updateIconForTab(tabId, url) {
+  const enabled = isVideoPage(url || '');
+  if (enabled) {
+    chrome.action.setIcon({
+      tabId,
+      path: {
+        16: 'icons/icon-16.png',
+        32: 'icons/icon-32.png',
+        48: 'icons/icon-48.png',
+        128: 'icons/icon-128.png'
+      }
+    }).catch(() => {});
+    chrome.action.setTitle({ tabId, title: 'BiViNote - 点击打开' }).catch(() => {});
+  } else {
+    chrome.action.setIcon({
+      tabId,
+      path: {
+        16: 'icons/icon-16-disabled.png',
+        32: 'icons/icon-32-disabled.png',
+        48: 'icons/icon-48-disabled.png',
+        128: 'icons/icon-128-disabled.png'
+      }
+    }).catch(() => {});
+    chrome.action.setTitle({ tabId, title: 'BiViNote - 仅在B站视频页可用' }).catch(() => {});
+  }
+}
+
+// 监听标签页 URL 变化
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url || changeInfo.status === 'complete') {
+    updateIconForTab(tabId, tab.url);
+  }
+});
+
+// 监听标签页切换
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    updateIconForTab(tabId, tab.url);
+  } catch {}
+});
+
+// 扩展安装/更新时，刷新所有标签页图标
+chrome.runtime.onInstalled.addListener(async () => {
+  try {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      if (tab.id && tab.url) {
+        updateIconForTab(tab.id, tab.url);
+      }
+    }
+  } catch {}
+});
+
+// ── 消息监听 ──
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'fetch-video-meta') {
@@ -24,31 +92,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(err => sendResponse({ ok: false, error: err.message }));
     return true;
   }
-
-  if (message.type === 'update-icon') {
-    setIconState(message.hasSubtitles);
-    sendResponse({ ok: true });
-    return false;
-  }
 });
-
-/**
- * 根据字幕可用状态切换图标
- */
-function setIconState(hasSubtitles) {
-  const suffix = hasSubtitles ? '' : '-dim';
-  chrome.action.setIcon({
-    path: {
-      16: `icons/icon-16${suffix}.png`,
-      32: `icons/icon-32${suffix}.png`,
-      48: `icons/icon-48${suffix}.png`,
-      128: `icons/icon-128${suffix}.png`
-    }
-  }).catch(() => {});
-}
-
-// 默认暗色图标
-setIconState(false);
 
 // 扩展图标点击 → 切换面板
 chrome.action.onClicked.addListener((tab) => {

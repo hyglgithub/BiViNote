@@ -41,8 +41,6 @@
   function onRouteChange() {
     // 重置状态
     BN.state.reset();
-    // 图标恢复为暗色
-    chrome.runtime.sendMessage({ type: 'update-icon', hasSubtitles: false }).catch(() => {});
     // 如果面板可见，提示用户点击刷新
     if (BN.state.panelVisible) {
       BN.panel.showToast('视频已切换，请点击刷新');

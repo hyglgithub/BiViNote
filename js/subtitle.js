@@ -27,10 +27,6 @@
     });
   }
 
-  function updateIcon(hasSubtitles) {
-    chrome.runtime.sendMessage({ type: 'update-icon', hasSubtitles }).catch(() => {});
-  }
-
   // ── 获取视频元信息 ──
 
   async function fetchVideoMeta(bvid) {
@@ -163,7 +159,6 @@
       if (s.subtitles.length === 0) {
         s.subtitleBody = [];
         renderSubtitleList();
-        updateIcon(false);
         panel.showToast('当前视频无字幕');
         return;
       }
@@ -177,11 +172,9 @@
       await loadSubtitle(preferred.subtitleUrl, preferred.lan);
 
       if (runId !== s.fetchRunId) return; // 请求已过期
-      updateIcon(true);
       panel.showToast('字幕获取成功');
     } catch (err) {
       if (runId !== s.fetchRunId) return; // 请求已过期
-      updateIcon(false);
       console.error('[BiViNote] refresh error:', err);
       panel.showToast('获取失败：' + err.message);
     }

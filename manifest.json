@@ -3,7 +3,7 @@
   "name": "BiViNote",
   "version": "1.0.0",
   "description": "B站视频字幕笔记工具 - 截图+字幕+Markdown",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "host_permissions": [
     "https://api.bilibili.com/*",
     "https://*.bilibili.com/*"
