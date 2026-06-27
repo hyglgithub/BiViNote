@@ -20,7 +20,7 @@
       { key: 'author', label: '作者', value: s.author || '-' },
       { key: 'date', label: '日期', value: s.uploadDate || '-' },
       { key: 'duration', label: '时长', value: formatDuration(duration) },
-      { key: 'url', label: '网络地址', value: cleanVideoUrl() },
+      { key: 'url', label: '地址', value: cleanVideoUrl().replace(/\/$/, '') },
       { key: 'description', label: '简介', value: s.description || '-' }
     ];
 

@@ -59,7 +59,8 @@
     if (s.videoInfoChecked.date) frontLines.push(`date: "${yamlEscape(s.uploadDate)}"`);
     if (s.videoInfoChecked.url) {
       const cleanUrl = location.href.match(/(https?:\/\/www\.bilibili\.com\/video\/BV[\w]+\/?)/);
-      frontLines.push(`url: "${yamlEscape(cleanUrl ? cleanUrl[1] : location.href)}"`);
+      const url = (cleanUrl ? cleanUrl[1] : location.href).replace(/\/$/, '');
+      frontLines.push(`url: "${yamlEscape(url)}"`);
     }
     if (s.videoInfoChecked.duration) {
       const video = window.BiViNote.subtitle?.getVideoElement();
