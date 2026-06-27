@@ -418,7 +418,7 @@
 
     // 目标位置：距滚动容器顶部约 3 行高度
     const rowHeight = target.offsetHeight || 40;
-    const offset = rowHeight * 2.5;
+    const offset = rowHeight * 4.5;
     const targetTop = target.offsetTop - offset;
 
     scrollWrap.scrollTo({
