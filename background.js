@@ -99,10 +99,16 @@ async function fetchSubtitleList(bvid, cid, aid = '') {
 
 /**
  * 获取字幕正文
+ * CDN 域名 (hdslb.com) 响应头为 Access-Control-Allow-Origin: *
+ * 不能带 credentials，否则 CORS 报错
  */
 async function fetchSubtitleBody(url) {
   const normalizedUrl = normalizeSubtitleUrl(url);
-  const resp = await fetch(normalizedUrl, { credentials: 'include', cache: 'no-store' });
+  const isCdn = normalizedUrl.includes('hdslb.com');
+  const resp = await fetch(normalizedUrl, {
+    credentials: isCdn ? 'omit' : 'include',
+    cache: 'no-store'
+  });
   if (!resp.ok) {
     throw new Error(`字幕请求失败：${resp.status}`);
   }
