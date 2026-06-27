@@ -38,14 +38,12 @@
   });
   urlObserver.observe(document.body, { childList: true, subtree: true });
 
-  async function onRouteChange() {
+  function onRouteChange() {
     // 重置状态
     BN.state.reset();
-    // 如果面板可见，自动刷新字幕
+    // 如果面板可见，提示用户点击刷新
     if (BN.state.panelVisible) {
-      // 等待页面加载完成后再刷新
-      await new Promise(r => setTimeout(r, 1500));
-      if (BN.subtitle) BN.subtitle.refresh();
+      BN.panel.showToast('视频已切换，请点击刷新');
     }
   }
 

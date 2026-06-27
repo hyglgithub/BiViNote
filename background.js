@@ -160,6 +160,17 @@ function subtitlePriority(item) {
 }
 
 /**
+ * 提取 URL 的稳定部分（去掉 auth_key 等动态参数）
+ */
+function urlPathKey(url) {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return String(url || '').split('?')[0];
+  }
+}
+
+/**
  * 按语言优先级排序字幕轨道，保证每次顺序一致
  */
 function normalizeSubtitleTracks(subtitles) {
@@ -176,7 +187,8 @@ function normalizeSubtitleTracks(subtitles) {
     const idB = Number.parseInt(String(b.id || '0'), 10);
     if (Number.isFinite(idA) && Number.isFinite(idB) && idA !== idB) return idA - idB;
 
-    return String(a.subtitleUrl).localeCompare(String(b.subtitleUrl));
+    // 用 URL path 比较，忽略 auth_key 等动态查询参数
+    return urlPathKey(a.subtitleUrl).localeCompare(urlPathKey(b.subtitleUrl));
   });
 }
 
