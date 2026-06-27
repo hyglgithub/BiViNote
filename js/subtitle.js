@@ -317,6 +317,9 @@
 
   // ── 字幕高亮同步 ──
 
+  let lastActiveIndex = -1;
+  let manualScrollPauseUntil = 0;
+
   function startSync() {
     stopSync();
     const video = getVideoElement();
@@ -328,15 +331,26 @@
 
       const currentTime = video.currentTime;
       const activeIndex = findActiveIndex(currentTime);
-      updateHighlight(activeIndex);
 
+      // 高亮始终生效（不受 autoScroll 影响）
+      if (activeIndex !== lastActiveIndex) {
+        updateHighlight(activeIndex);
+        lastActiveIndex = activeIndex;
+      }
+
+      // 自动滚动：仅在开启且用户未手动滚动时生效
       if (s.settings.autoScroll && activeIndex >= 0) {
-        scrollToItem(activeIndex);
+        if (Date.now() > manualScrollPauseUntil) {
+          scrollToItem(activeIndex);
+        }
       }
     };
 
     video.addEventListener('timeupdate', onTimeUpdate);
     syncTimer = { video, handler: onTimeUpdate };
+
+    // 监听用户手动滚动，暂停自动滚动
+    setupManualScrollDetection();
   }
 
   function stopSync() {
@@ -344,6 +358,23 @@
       syncTimer.video.removeEventListener('timeupdate', syncTimer.handler);
       syncTimer = null;
     }
+    lastActiveIndex = -1;
+  }
+
+  function setupManualScrollDetection() {
+    const scrollWrap = window.BiViNote.panel.getScrollWrap();
+    if (!scrollWrap) return;
+
+    let scrollHandler = null;
+    scrollHandler = () => {
+      // 如果当前不在自动滚动的暂停期内，说明是用户手动滚动
+      if (Date.now() > manualScrollPauseUntil) {
+        // 暂停自动滚动 3 秒
+        manualScrollPauseUntil = Date.now() + 3000;
+      }
+    };
+    scrollWrap.addEventListener('wheel', scrollHandler, { passive: true });
+    scrollWrap.addEventListener('touchmove', scrollHandler, { passive: true });
   }
 
   function findActiveIndex(currentTime) {

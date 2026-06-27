@@ -343,9 +343,10 @@
     window.BiViNote.state.panelVisible = true;
     loadSettingsToUI();
     applyDisplaySettings();
-    // 自动加载字幕（如果还没有字幕数据）
+    // 自动加载字幕：无数据或 URL 变化时刷新
     const s = window.BiViNote.state;
-    if (!s.bvid && window.BiViNote.subtitle) {
+    const currentBvid = window.BiViNote.subtitle?.extractBvid(location.href) || '';
+    if (window.BiViNote.subtitle && (!s.bvid || s.bvid !== currentBvid)) {
       window.BiViNote.subtitle.refresh();
     }
   }
