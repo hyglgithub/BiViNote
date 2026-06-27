@@ -4,16 +4,19 @@
 [![GitHub release](https://img.shields.io/github/v/release/hyglgithub/BiViNote?style=flat-square&label=version)](https://github.com/hyglgithub/BiViNote/releases)
 [![License](https://img.shields.io/github/license/hyglgithub/BiViNote?style=flat-square)](LICENSE)
 
-读取 B 站视频字幕，截取视频帧画面，生成带有截图的 Markdown 笔记。
+在 B 站视频页抓取字幕、截取视频帧画面，生成带有截图的 Markdown 笔记。
 
 ## 功能
 
 - 📝 **字幕抓取** — 自动获取 B 站视频字幕，支持多语言切换
-- 📷 **视频截图** — 为字幕添加视频帧截图，支持上一帧/下一帧微调
+- 📷 **视频截图** — 为字幕/章节添加视频帧截图，支持上一帧/下一帧微调
 - 📋 **章节支持** — 展示视频章节，按章节分段导出
 - 📄 **多格式导出** — SRT 字幕、Markdown 笔记（含截图时打包 ZIP）
+- 🔄 **自动刷新** — 视频切换时自动获取新字幕
+- 🎯 **字幕同步** — 播放时高亮当前字幕，支持自动滚动
 - 🌙 **夜间模式** — 日/夜两套配色全局切换
 - ⚙️ **自定义设置** — 字体大小、行高、帧步长、自动滚动等
+- 🖼️ **图标状态** — 视频页图标正常显示，非视频页图标变暗
 
 ## 功能演示
 
@@ -42,19 +45,19 @@ git clone https://github.com/hyglgithub/BiViNote.git
 
 ## 使用方法
 
-1. 打开 B 站视频页
-2. 点击浏览器工具栏上的 BiViNote 图标打开面板
-3. 点击「刷新」获取字幕
-4. 为需要的字幕添加截屏
+1. 打开 B 站视频页（支持 `/video/BV*` 和 `/list/*` 页面）
+2. 点击浏览器工具栏上的 BiViNote 图标打开面板（图标正常表示可用）
+3. 面板自动获取当前视频字幕
+4. 为需要的字幕/章节添加截屏
 5. 点击「下载（.md）」导出笔记
 
 ### 面板功能
 
 | 标签页 | 功能 |
 |--------|------|
-| 字幕 | 字幕列表、添加截屏、复制、跳转 |
+| 字幕 | 字幕列表、添加截屏、复制、跳转、高亮同步 |
 | 章节 | 章节列表、添加截屏、复制、跳转 |
-| 视频信息 | 勾选需要写入笔记的视频属性 |
+| 视频信息 | 勾选需要写入笔记的视频属性（标题/作者/日期/时长/地址/简介） |
 | 设置 | 字幕语言、字体大小、行高、帧步长、自动滚动、夜间模式 |
 
 ### 底部按钮
@@ -65,6 +68,13 @@ git clone https://github.com/hyglgithub/BiViNote.git
 | 复制 | 复制全部字幕文本到剪贴板 |
 | 导出（.srt） | 下载 SRT 格式字幕文件 |
 | 下载（.md） | 下载 Markdown 笔记（含截图时打包 ZIP） |
+
+### 截图功能
+
+- 点击字幕/章节行的「截屏」按钮，自动跳转到对应时间点并截取当前帧
+- 点击缩略图可预览大图，支持上一帧/下一帧微调
+- 预览弹窗支持：下载截图、复制到剪贴板
+- 点击「取消截屏」可移除已添加的截图
 
 ### 导出格式
 
@@ -99,7 +109,7 @@ note.zip
 ├── note.md
 └── screenshots/
     ├── 1.png
-    ├── 2.png
+    ├── chapter-1.png
     └── ...
 ```
 
@@ -108,23 +118,32 @@ note.zip
 ```
 BiViNote/
 ├── manifest.json      # 扩展配置 (Manifest V3)
-├── background.js      # Service Worker - API 代理
-├── content.js         # 入口脚本
+├── background.js      # Service Worker - API 代理、图标状态管理
+├── content.js         # 入口脚本 - 面板注入、路由监听
 ├── js/
-│   ├── state.js       # 状态管理
-│   ├── panel.js       # 面板 UI
-│   ├── subtitle.js    # 字幕模块
-│   ├── chapter.js     # 章节模块
-│   ├── video-info.js  # 视频信息
-│   ├── capture.js     # 截图模块
-│   ├── export.js      # 导出模块
-│   └── settings.js    # 设置模块
+│   ├── state.js       # 全局状态管理
+│   ├── panel.js       # 面板 UI - 标签页、折叠、拖动、设置
+│   ├── subtitle.js    # 字幕 - 获取、渲染、高亮同步、跳转
+│   ├── chapter.js     # 章节 - 获取、渲染、跳转
+│   ├── video-info.js  # 视频信息展示
+│   ├── capture.js     # 截图 - OffscreenCanvas、保存、剪贴板
+│   ├── export.js      # 导出 - SRT、Markdown、ZIP
+│   └── settings.js    # 设置 - chrome.storage.local 持久化
 ├── css/
-│   └── panel.css      # 面板样式
+│   └── panel.css      # 面板样式（含暗色主题）
 ├── libs/
 │   └── jszip.min.js   # ZIP 打包库
-└── icons/             # 扩展图标
+└── icons/             # 扩展图标（正常 + 变暗状态）
 ```
+
+## 技术要点
+
+- **Manifest V3** Chrome 扩展
+- **双源 API 策略**：优先 `player/wbi/v2`（aid），回退 `player/v2`（bvid）
+- **字幕轨道排序**：按语言优先级稳定排序（中文 > 英文 > 其他）
+- **SPA 路由监听**：MutationObserver 检测 URL 变化，自动刷新
+- **CORS 处理**：CDN 域名使用 `credentials: 'omit'`
+- **图标状态**：根据页面类型动态切换正常/变暗图标
 
 ## 兼容性
 
