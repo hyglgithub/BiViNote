@@ -79,12 +79,14 @@ async function fetchSubtitleList(bvid, cid, aid = '') {
   }
 
   const data = payload.data || {};
-  const subtitles = (data.subtitle?.subtitles || []).map(item => ({
-    id: item?.id === undefined || item?.id === null ? '' : String(item.id),
-    lan: item?.lan || '',
-    lanDoc: item?.lan_doc || '',
-    subtitleUrl: normalizeSubtitleUrl(item?.subtitle_url || '')
-  })).filter(item => item.subtitleUrl);
+  const subtitles = normalizeSubtitleTracks(
+    (data.subtitle?.subtitles || []).map(item => ({
+      id: item?.id === undefined || item?.id === null ? '' : String(item.id),
+      lan: item?.lan || '',
+      lanDoc: item?.lan_doc || '',
+      subtitleUrl: normalizeSubtitleUrl(item?.subtitle_url || '')
+    })).filter(item => item.subtitleUrl)
+  );
 
   const chapters = normalizeChapters(
     (data.view_points || []).map(item => ({
@@ -135,6 +137,47 @@ function normalizeSubtitleUrl(url) {
   if (url.startsWith('//')) return `https:${url}`;
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   return `https://${url.replace(/^\/+/, '')}`;
+}
+
+/**
+ * 字幕语言优先级（数值越小越优先）
+ * 中文 > 英文 > 其他
+ */
+function subtitlePriority(item) {
+  const lan = String(item?.lan || '').toLowerCase();
+  const label = String(item?.lanDoc || '').toLowerCase();
+
+  if (lan === 'zh-cn' || lan === 'zh-hans') return 0;
+  if (lan === 'zh') return 1;
+  if (lan.includes('zh')) return 2;
+  if (label.includes('中文')) return 3;
+
+  if (lan === 'en' || lan === 'en-us' || lan === 'en-gb') return 10;
+  if (lan.includes('en')) return 11;
+  if (label.includes('英文') || label.includes('英语') || label.includes('english')) return 12;
+
+  return 50;
+}
+
+/**
+ * 按语言优先级排序字幕轨道，保证每次顺序一致
+ */
+function normalizeSubtitleTracks(subtitles) {
+  return [...(subtitles || [])].sort((a, b) => {
+    const p = subtitlePriority(a) - subtitlePriority(b);
+    if (p !== 0) return p;
+
+    const lanA = String(a.lanDoc || a.lan || '').toLowerCase();
+    const lanB = String(b.lanDoc || b.lan || '').toLowerCase();
+    if (lanA < lanB) return -1;
+    if (lanA > lanB) return 1;
+
+    const idA = Number.parseInt(String(a.id || '0'), 10);
+    const idB = Number.parseInt(String(b.id || '0'), 10);
+    if (Number.isFinite(idA) && Number.isFinite(idB) && idA !== idB) return idA - idB;
+
+    return String(a.subtitleUrl).localeCompare(String(b.subtitleUrl));
+  });
 }
 
 /**
