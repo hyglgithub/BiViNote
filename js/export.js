@@ -57,7 +57,10 @@
     if (s.videoInfoChecked.title) frontLines.push(`title: "${yamlEscape(s.title)}"`);
     if (s.videoInfoChecked.author) frontLines.push(`author: "${yamlEscape(s.author)}"`);
     if (s.videoInfoChecked.date) frontLines.push(`date: "${yamlEscape(s.uploadDate)}"`);
-    if (s.videoInfoChecked.url) frontLines.push(`url: "${yamlEscape(location.href)}"`);
+    if (s.videoInfoChecked.url) {
+      const cleanUrl = location.href.match(/(https?:\/\/www\.bilibili\.com\/video\/BV[\w]+\/?)/);
+      frontLines.push(`url: "${yamlEscape(cleanUrl ? cleanUrl[1] : location.href)}"`);
+    }
     if (s.videoInfoChecked.duration) {
       const video = window.BiViNote.subtitle?.getVideoElement();
       const dur = video?.duration || s.videoDuration || 0;

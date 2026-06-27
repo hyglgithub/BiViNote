@@ -20,7 +20,7 @@
       { key: 'author', label: '作者', value: s.author || '-' },
       { key: 'date', label: '日期', value: s.uploadDate || '-' },
       { key: 'duration', label: '时长', value: formatDuration(duration) },
-      { key: 'url', label: '网络地址', value: location.href },
+      { key: 'url', label: '网络地址', value: cleanVideoUrl() },
       { key: 'description', label: '简介', value: s.description || '-' }
     ];
 
@@ -39,6 +39,11 @@
         window.BiViNote.settings.save();
       });
     });
+  }
+
+  function cleanVideoUrl() {
+    const match = location.href.match(/(https?:\/\/www\.bilibili\.com\/video\/BV[\w]+\/?)/);
+    return match ? match[1] : location.href;
   }
 
   function formatDuration(seconds) {
