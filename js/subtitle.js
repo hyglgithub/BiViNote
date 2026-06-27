@@ -410,12 +410,21 @@
 
   function scrollToItem(index) {
     const container = document.getElementById('bn-subtitle-list');
-    if (!container) return;
+    const scrollWrap = window.BiViNote.panel.getScrollWrap();
+    if (!container || !scrollWrap) return;
     const rows = container.querySelectorAll('.bn-row, .bn-row-img');
     const target = rows[index];
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    if (!target) return;
+
+    // 目标位置：距滚动容器顶部约 3 行高度
+    const rowHeight = target.offsetHeight || 40;
+    const offset = rowHeight * 2.5;
+    const targetTop = target.offsetTop - offset;
+
+    scrollWrap.scrollTo({
+      top: Math.max(0, targetTop),
+      behavior: 'smooth'
+    });
   }
 
   // ── 复制单条字幕 ──
