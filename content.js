@@ -39,11 +39,20 @@
   urlObserver.observe(document.body, { childList: true, subtree: true });
 
   function onRouteChange() {
+    const oldBvid = BN.state.bvid;
     // 重置状态
     BN.state.reset();
-    // 如果面板可见，提示用户点击刷新
-    if (BN.state.panelVisible) {
-      BN.panel.showToast('视频已切换，请点击刷新');
+    // 如果面板可见且 BVID 变化，自动刷新
+    if (BN.state.panelVisible && BN.subtitle) {
+      const newBvid = BN.subtitle.extractBvid(location.href);
+      if (newBvid && newBvid !== oldBvid) {
+        // 等待页面加载后再刷新
+        setTimeout(() => {
+          if (BN.state.panelVisible) {
+            BN.subtitle.refresh();
+          }
+        }, 1000);
+      }
     }
   }
 
