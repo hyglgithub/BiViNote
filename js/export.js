@@ -107,28 +107,29 @@
       lines.push('## 字幕', '');
 
       if (chapters.length > 0) {
-        // 按章节分段
+        // 按章节分段（用索引数组避免 O(n²) indexOf）
         const usedIndexes = new Set();
         chapters.forEach((ch, idx) => {
           const start = ch.from;
           const next = chapters[idx + 1];
           const end = next ? next.from : Infinity;
 
-          const sectionItems = body.filter((item, i) => {
-            if (item.from < start || item.from >= end) return false;
-            usedIndexes.add(i);
-            return true;
+          const sectionEntries = [];
+          body.forEach((item, i) => {
+            if (item.from >= start && item.from < end) {
+              sectionEntries.push({ item, index: i });
+              usedIndexes.add(i);
+            }
           });
 
-          if (sectionItems.length === 0) return;
+          if (sectionEntries.length === 0) return;
 
           lines.push(`### ${ch.title}`, '');
-          sectionItems.forEach((item, i) => {
-            const globalIndex = body.indexOf(item);
-            const snap = s.screenshots.get(globalIndex);
+          sectionEntries.forEach(({ item, index }) => {
+            const snap = s.screenshots.get(index);
             lines.push(`\`${formatCompactTime(item.from)}\` ${item.content}`);
             if (snap) {
-              lines.push(`![截图](screenshots/${globalIndex + 1}.png)`);
+              lines.push(`![截图](screenshots/${index + 1}.png)`);
             }
           });
           lines.push('');
@@ -138,12 +139,12 @@
         const remaining = body.filter((_, i) => !usedIndexes.has(i));
         if (remaining.length > 0) {
           lines.push('### 其他片段', '');
-          remaining.forEach(item => {
-            const globalIndex = body.indexOf(item);
-            const snap = s.screenshots.get(globalIndex);
+          remaining.forEach((item) => {
+            const index = body.indexOf(item);
+            const snap = s.screenshots.get(index);
             lines.push(`\`${formatCompactTime(item.from)}\` ${item.content}`);
             if (snap) {
-              lines.push(`![截图](screenshots/${globalIndex + 1}.png)`);
+              lines.push(`![截图](screenshots/${index + 1}.png)`);
             }
           });
           lines.push('');

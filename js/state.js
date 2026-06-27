@@ -74,6 +74,8 @@ window.BiViNote.state.reset = function () {
   s.selectedSubtitleId = '';
   s.subtitleBody = [];
   s.chapters = [];
+  // 递增 runId，取消所有进行中的请求
+  s.fetchRunId++;
   // 释放截图 Blob URL
   for (const [, val] of s.screenshots) {
     if (val.url) URL.revokeObjectURL(val.url);

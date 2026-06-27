@@ -7,12 +7,20 @@
 
   window.BiViNote = window.BiViNote || {};
 
+  let chapterListenerAttached = false;
+
   function render() {
     const s = window.BiViNote.state;
     const container = document.getElementById('bn-chapter-list');
     if (!container) return;
 
     container.innerHTML = '';
+
+    // 只绑定一次事件委托
+    if (!chapterListenerAttached) {
+      container.addEventListener('click', onChapterClick);
+      chapterListenerAttached = true;
+    }
 
     if (!s.chapters || s.chapters.length === 0) {
       container.innerHTML = '<div class="bn-empty">当前视频无章节</div>';
@@ -30,7 +38,7 @@
         el.className = 'bn-row-img';
         el.innerHTML = `
           <img class="bn-snap-thumb" src="${screenshot.url}" alt="截屏" data-index="${index}">
-          <div class="text-wrap">
+          <div class="bn-text-wrap">
             <div class="bn-time-text">${formatTime(item.from)}</div>
             <div class="bn-sub-text">${escapeHtml(item.title)}</div>
           </div>
@@ -59,9 +67,6 @@
 
       container.appendChild(el);
     });
-
-    // 事件委托
-    container.addEventListener('click', onChapterClick);
   }
 
   function onChapterClick(e) {
@@ -133,22 +138,28 @@
     `;
 
     const imgEl = overlay.querySelector('.bn-preview-img');
+    let frameActionBusy = false;
 
     async function doFrameAction(act) {
-      if (!video) return;
-      const step = s.settings.frameStep || 0.2;
-      if (act === 'prev') {
-        video.currentTime = Math.max(0, video.currentTime - step);
-      } else {
-        video.currentTime = Math.min(video.duration, video.currentTime + step);
+      if (!video || frameActionBusy) return;
+      frameActionBusy = true;
+      try {
+        const step = s.settings.frameStep || 0.2;
+        if (act === 'prev') {
+          video.currentTime = Math.max(0, video.currentTime - step);
+        } else {
+          video.currentTime = Math.min(video.duration, video.currentTime + step);
+        }
+        await new Promise(r => video.addEventListener('seeked', r, { once: true }));
+        const newBlob = await window.BiViNote.capture.captureFrame(video);
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        currentUrl = URL.createObjectURL(newBlob);
+        currentBlob = newBlob;
+        imgEl.src = currentUrl;
+        s.screenshots.set(snapKey, { blob: currentBlob, url: currentUrl });
+      } finally {
+        frameActionBusy = false;
       }
-      await new Promise(r => video.addEventListener('seeked', r, { once: true }));
-      const newBlob = await window.BiViNote.capture.captureFrame(video);
-      if (currentUrl) URL.revokeObjectURL(currentUrl);
-      currentUrl = URL.createObjectURL(newBlob);
-      currentBlob = newBlob;
-      imgEl.src = currentUrl;
-      s.screenshots.set(snapKey, { blob: currentBlob, url: currentUrl });
     }
 
     overlay.addEventListener('click', async (e) => {
@@ -158,7 +169,7 @@
         return;
       }
       if (act === 'prev' || act === 'next') {
-        doFrameAction(act);
+        await doFrameAction(act);
       } else if (act === 'download') {
         window.BiViNote.capture.saveToFile(currentBlob, `chapter-${index + 1}.png`);
         window.BiViNote.panel.showToast('截图已保存');

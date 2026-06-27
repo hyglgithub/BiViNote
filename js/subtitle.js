@@ -211,12 +211,20 @@
 
   // ── 渲染字幕列表 ──
 
+  let subtitleListenerAttached = false;
+
   function renderSubtitleList() {
     const s = window.BiViNote.state;
     const container = document.getElementById('bn-subtitle-list');
     if (!container) return;
 
     container.innerHTML = '';
+
+    // 只绑定一次事件委托
+    if (!subtitleListenerAttached) {
+      container.addEventListener('click', onSubtitleClick);
+      subtitleListenerAttached = true;
+    }
 
     if (!s.subtitleBody || s.subtitleBody.length === 0) {
       container.innerHTML = '<div class="bn-empty">暂无字幕</div>';
@@ -235,7 +243,7 @@
         el.dataset.index = index;
         el.innerHTML = `
           <img class="bn-snap-thumb" src="${screenshot.url}" alt="截屏" data-index="${index}">
-          <div class="text-wrap">
+          <div class="bn-text-wrap">
             <div class="bn-time-text">${formatTime(item.from)}</div>
             <div class="bn-sub-text">${escapeHtml(text)}</div>
           </div>
@@ -265,9 +273,6 @@
 
       container.appendChild(el);
     });
-
-    // 事件委托
-    container.addEventListener('click', onSubtitleClick);
   }
 
   // ── 字幕列表点击事件 ──
@@ -319,6 +324,7 @@
 
   let lastActiveIndex = -1;
   let manualScrollPauseUntil = 0;
+  let scrollHandlers = null;
 
   function startSync() {
     stopSync();
@@ -358,6 +364,12 @@
       syncTimer.video.removeEventListener('timeupdate', syncTimer.handler);
       syncTimer = null;
     }
+    // 清理滚动监听
+    if (scrollHandlers) {
+      scrollHandlers.el.removeEventListener('wheel', scrollHandlers.wheel);
+      scrollHandlers.el.removeEventListener('touchmove', scrollHandlers.touch);
+      scrollHandlers = null;
+    }
     lastActiveIndex = -1;
   }
 
@@ -365,16 +377,14 @@
     const scrollWrap = window.BiViNote.panel.getScrollWrap();
     if (!scrollWrap) return;
 
-    let scrollHandler = null;
-    scrollHandler = () => {
-      // 如果当前不在自动滚动的暂停期内，说明是用户手动滚动
+    const handler = () => {
       if (Date.now() > manualScrollPauseUntil) {
-        // 暂停自动滚动 3 秒
         manualScrollPauseUntil = Date.now() + 3000;
       }
     };
-    scrollWrap.addEventListener('wheel', scrollHandler, { passive: true });
-    scrollWrap.addEventListener('touchmove', scrollHandler, { passive: true });
+    scrollWrap.addEventListener('wheel', handler, { passive: true });
+    scrollWrap.addEventListener('touchmove', handler, { passive: true });
+    scrollHandlers = { el: scrollWrap, wheel: handler, touch: handler };
   }
 
   function findActiveIndex(currentTime) {
@@ -464,22 +474,28 @@
     `;
 
     const imgEl = overlay.querySelector('.bn-preview-img');
+    let frameActionBusy = false;
 
     async function doFrameAction(act) {
-      if (!video) return;
-      const step = s.settings.frameStep || 0.2;
-      if (act === 'prev') {
-        video.currentTime = Math.max(0, video.currentTime - step);
-      } else {
-        video.currentTime = Math.min(video.duration, video.currentTime + step);
+      if (!video || frameActionBusy) return;
+      frameActionBusy = true;
+      try {
+        const step = s.settings.frameStep || 0.2;
+        if (act === 'prev') {
+          video.currentTime = Math.max(0, video.currentTime - step);
+        } else {
+          video.currentTime = Math.min(video.duration, video.currentTime + step);
+        }
+        await new Promise(r => video.addEventListener('seeked', r, { once: true }));
+        const newBlob = await window.BiViNote.capture.captureFrame(video);
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        currentUrl = URL.createObjectURL(newBlob);
+        currentBlob = newBlob;
+        imgEl.src = currentUrl;
+        s.screenshots.set(index, { blob: currentBlob, url: currentUrl });
+      } finally {
+        frameActionBusy = false;
       }
-      await new Promise(r => video.addEventListener('seeked', r, { once: true }));
-      const newBlob = await window.BiViNote.capture.captureFrame(video);
-      if (currentUrl) URL.revokeObjectURL(currentUrl);
-      currentUrl = URL.createObjectURL(newBlob);
-      currentBlob = newBlob;
-      imgEl.src = currentUrl;
-      s.screenshots.set(index, { blob: currentBlob, url: currentUrl });
     }
 
     overlay.addEventListener('click', async (e) => {
@@ -489,7 +505,7 @@
         return;
       }
       if (act === 'prev' || act === 'next') {
-        doFrameAction(act);
+        await doFrameAction(act);
       } else if (act === 'download') {
         window.BiViNote.capture.saveToFile(currentBlob, `subtitle-${index + 1}.png`);
         window.BiViNote.panel.showToast('截图已保存');

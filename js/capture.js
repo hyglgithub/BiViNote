@@ -11,6 +11,9 @@
    * 截取当前视频帧
    */
   async function captureFrame(video) {
+    if (!video.videoWidth || !video.videoHeight) {
+      throw new Error('视频未加载，无法截取');
+    }
     const canvas = new OffscreenCanvas(video.videoWidth, video.videoHeight);
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
@@ -123,7 +126,8 @@
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    // 延迟释放，确保下载完成
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 
   /**
