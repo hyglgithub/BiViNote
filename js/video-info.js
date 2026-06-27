@@ -36,6 +36,7 @@
     container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       cb.addEventListener('change', () => {
         s.videoInfoChecked[cb.dataset.key] = cb.checked;
+        window.BiViNote.settings.save();
       });
     });
   }

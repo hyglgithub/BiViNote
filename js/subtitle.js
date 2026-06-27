@@ -336,8 +336,7 @@
     const s = window.BiViNote.state;
     const item = s.subtitleBody[index];
     if (!item) return;
-    const text = `${formatTime(item.from)} ${item.content}`;
-    navigator.clipboard.writeText(text).then(() => {
+    navigator.clipboard.writeText(item.content).then(() => {
       window.BiViNote.panel.showToast('已复制');
     });
   }
@@ -351,7 +350,7 @@
       return;
     }
     const text = s.subtitleBody
-      .map(item => `${formatTime(item.from)} ${item.content}`)
+      .map(item => item.content)
       .join('\n');
     navigator.clipboard.writeText(text).then(() => {
       window.BiViNote.panel.showToast('已复制全部字幕');
@@ -366,7 +365,6 @@
     if (!screenshot) return;
 
     const video = getVideoElement();
-    const body = s.subtitleBody[index];
 
     const overlay = document.createElement('div');
     overlay.className = 'bn-preview-overlay';
@@ -380,38 +378,69 @@
         <div class="bn-preview-btns">
           <button data-act="prev">上一帧</button>
           <button data-act="next">下一帧</button>
+          <button data-act="download">下载截图</button>
+          <button data-act="clipboard">复制到剪贴板</button>
           <button data-act="close">关闭</button>
         </div>
       </div>
     `;
 
     const imgEl = overlay.querySelector('.bn-preview-img');
+    let longPressTimer = null;
+    let longPressInterval = null;
+
+    function startLongPress(act) {
+      doFrameAction(act);
+      longPressTimer = setTimeout(() => {
+        longPressInterval = setInterval(() => doFrameAction(act), 100);
+      }, 500);
+    }
+
+    function stopLongPress() {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+      if (longPressInterval) { clearInterval(longPressInterval); longPressInterval = null; }
+    }
+
+    async function doFrameAction(act) {
+      if (!video) return;
+      const step = s.settings.frameStep || 0.2;
+      if (act === 'prev') {
+        video.currentTime = Math.max(0, video.currentTime - step);
+      } else {
+        video.currentTime = Math.min(video.duration, video.currentTime + step);
+      }
+      await new Promise(r => video.addEventListener('seeked', r, { once: true }));
+      const newBlob = await window.BiViNote.capture.captureFrame(video);
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      currentUrl = URL.createObjectURL(newBlob);
+      currentBlob = newBlob;
+      imgEl.src = currentUrl;
+      s.screenshots.set(index, { blob: currentBlob, url: currentUrl });
+    }
 
     overlay.addEventListener('click', async (e) => {
       const act = e.target.dataset?.act;
       if (act === 'close' || e.target === overlay) {
+        stopLongPress();
         overlay.remove();
         return;
       }
-      if (!video || !body) return;
-
       if (act === 'prev' || act === 'next') {
-        const step = window.BiViNote.state.settings.frameStep || 0.2;
-        if (act === 'prev') {
-          video.currentTime = Math.max(0, video.currentTime - step);
-        } else {
-          video.currentTime = Math.min(video.duration, video.currentTime + step);
-        }
-        await new Promise(r => video.addEventListener('seeked', r, { once: true }));
-        const newBlob = await window.BiViNote.capture.captureFrame(video);
-        if (currentUrl) URL.revokeObjectURL(currentUrl);
-        currentUrl = URL.createObjectURL(newBlob);
-        currentBlob = newBlob;
-        imgEl.src = currentUrl;
-
-        // 更新截图数据
-        s.screenshots.set(index, { blob: currentBlob, url: currentUrl });
+        doFrameAction(act);
+      } else if (act === 'download') {
+        window.BiViNote.capture.saveToFile(currentBlob, `subtitle-${index + 1}.png`);
+        window.BiViNote.panel.showToast('截图已保存');
+      } else if (act === 'clipboard') {
+        const ok = await window.BiViNote.capture.copyToClipboard(currentBlob);
+        window.BiViNote.panel.showToast(ok ? '已复制到剪贴板' : '复制失败');
       }
+    });
+
+    // 长按支持
+    overlay.querySelectorAll('[data-act="prev"], [data-act="next"]').forEach(btn => {
+      btn.addEventListener('mousedown', (e) => { e.preventDefault(); startLongPress(btn.dataset.act); });
+      btn.addEventListener('mouseup', stopLongPress);
+      btn.addEventListener('mouseleave', stopLongPress);
     });
 
     document.body.appendChild(overlay);

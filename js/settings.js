@@ -16,9 +16,18 @@
     subtitleLang: ''
   };
 
+  const DEFAULT_CHECKED = {
+    title: true,
+    author: true,
+    date: false,
+    duration: false,
+    url: false,
+    description: false
+  };
+
   async function load() {
     return new Promise(resolve => {
-      chrome.storage.local.get(['bivinote_settings'], result => {
+      chrome.storage.local.get(['bivinote_settings', 'bivinote_videoInfoChecked'], result => {
         if (chrome.runtime.lastError) {
           console.warn('[BiViNote] Storage load error:', chrome.runtime.lastError);
           resolve({ ...DEFAULTS });
@@ -26,6 +35,10 @@
         }
         const saved = result.bivinote_settings || {};
         Object.assign(window.BiViNote.state.settings, { ...DEFAULTS, ...saved });
+
+        const savedChecked = result.bivinote_videoInfoChecked || {};
+        Object.assign(window.BiViNote.state.videoInfoChecked, { ...DEFAULT_CHECKED, ...savedChecked });
+
         resolve(window.BiViNote.state.settings);
       });
     });
@@ -34,7 +47,11 @@
   async function save() {
     return new Promise(resolve => {
       const settings = window.BiViNote.state.settings;
-      chrome.storage.local.set({ bivinote_settings: { ...settings } }, () => {
+      const checked = window.BiViNote.state.videoInfoChecked;
+      chrome.storage.local.set({
+        bivinote_settings: { ...settings },
+        bivinote_videoInfoChecked: { ...checked }
+      }, () => {
         if (chrome.runtime.lastError) {
           console.warn('[BiViNote] Storage save error:', chrome.runtime.lastError);
         }
@@ -45,6 +62,7 @@
 
   function resetDefaults() {
     Object.assign(window.BiViNote.state.settings, { ...DEFAULTS });
+    Object.assign(window.BiViNote.state.videoInfoChecked, { ...DEFAULT_CHECKED });
     save();
   }
 

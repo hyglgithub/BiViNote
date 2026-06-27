@@ -17,7 +17,7 @@
 
   const TAB_DEFS = [
     { id: 'subtitle', label: '字幕', footer: true },
-    { id: 'chapter', label: '章节', footer: true },
+    { id: 'chapter', label: '章节', footer: false },
     { id: 'video', label: '视频信息', footer: false },
     { id: 'setting', label: '设置', footer: false }
   ];
@@ -204,6 +204,12 @@
         window.BiViNote.settings.resetDefaults();
         loadSettingsToUI();
         applyDisplaySettings();
+        // 同步暗色模式到面板
+        panelEl.setAttribute('data-bn-theme', '');
+        // 重新渲染视频信息页（恢复默认勾选）
+        if (window.BiViNote.videoInfo) {
+          window.BiViNote.videoInfo.render();
+        }
         showToast('已恢复默认设置');
       });
     }
@@ -247,8 +253,8 @@
     const s = window.BiViNote.state.settings;
     const sizeMap = { small: '12px', default: '13px', medium: '14px', large: '15px' };
     const lineMap = { narrow: '1.4', standard: '1.5', wide: '1.8' };
-    panelEl.style.fontSize = sizeMap[s.fontSize] || '13px';
-    panelEl.style.lineHeight = lineMap[s.lineHeight] || '1.5';
+    panelEl.style.setProperty('--bn-font-size', sizeMap[s.fontSize] || '13px');
+    panelEl.style.setProperty('--bn-line-height', lineMap[s.lineHeight] || '1.5');
   }
 
   // ── 标签页切换 ──
@@ -336,6 +342,12 @@
     panelEl.classList.remove('bn-hidden');
     window.BiViNote.state.panelVisible = true;
     loadSettingsToUI();
+    applyDisplaySettings();
+    // 自动加载字幕（如果还没有字幕数据）
+    const s = window.BiViNote.state;
+    if (!s.bvid && window.BiViNote.subtitle) {
+      window.BiViNote.subtitle.refresh();
+    }
   }
 
   function hide() {

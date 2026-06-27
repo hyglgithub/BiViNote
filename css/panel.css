@@ -42,6 +42,8 @@
 
 /* 面板容器 */
 .bn-panel {
+  --bn-font-size: 13px;
+  --bn-line-height: 1.5;
   position: fixed;
   top: 100px;
   right: 20px;
@@ -54,8 +56,8 @@
   background: var(--bn-card);
   color: var(--bn-text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--bn-font-size);
+  line-height: var(--bn-line-height);
   z-index: 2147483647;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   border-radius: 8px;
@@ -73,7 +75,8 @@
 }
 
 .bn-panel.bn-collapsed {
-  height: 36px;
+  height: 40px;
+  overflow: hidden;
 }
 
 /* Header */
@@ -86,6 +89,8 @@
   flex-shrink: 0;
   cursor: default;
   user-select: none;
+  min-height: 40px;
+  height: 40px;
 }
 
 .bn-tab-group {
