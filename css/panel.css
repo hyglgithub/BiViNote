@@ -75,7 +75,7 @@
 }
 
 .bn-panel.bn-collapsed {
-  height: auto;
+  height: 42px;
   overflow: hidden;
 }
 
