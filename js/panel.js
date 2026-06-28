@@ -621,6 +621,7 @@
     switchTab,
     updateSubtitleSelect,
     showToast,
+    renderPrompt,
     getPanelEl: () => panelEl,
     getScrollWrap: () => panelEl?.querySelector('.bn-scroll'),
     loadSettingsToUI
