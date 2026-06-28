@@ -83,14 +83,16 @@
 
     // 章节
     const chapters = s.chapters || [];
+    const chTs = s.videoInfoChecked.chapterTimestamp;
     if (chapters.length > 0) {
       lines.push('## 章节', '');
       chapters.forEach((ch, idx) => {
         const snapKey = -idx - 1;
         const snap = s.screenshots.get(snapKey);
-        lines.push(`- \`${formatCompactTime(ch.from)}\` ${ch.title}`);
+        const prefix = chTs ? `- \`${formatCompactTime(ch.from)}\` ` : '- ';
+        lines.push(`${prefix}${ch.title}`);
         if (snap) {
-          lines.push(`  ![章节截图](screenshots/chapter-${idx + 1}.png)`);
+          lines.push(`  ![章节截图](assets/chapter-${idx + 1}.png)`);
         }
       });
       lines.push('');
@@ -98,11 +100,12 @@
 
     // 字幕
     const body = s.subtitleBody || [];
+    const subTs = s.videoInfoChecked.subtitleTimestamp;
     if (body.length > 0) {
       lines.push('## 字幕', '');
 
       if (chapters.length > 0) {
-        // 按章节分段（用索引数组避免 O(n²) indexOf）
+        // 按章节分段
         const usedIndexes = new Set();
         chapters.forEach((ch, idx) => {
           const start = ch.from;
@@ -122,9 +125,10 @@
           lines.push(`### ${ch.title}`, '');
           sectionEntries.forEach(({ item, index }) => {
             const snap = s.screenshots.get(index);
-            lines.push(`\`${formatCompactTime(item.from)}\` ${item.content}`);
+            const prefix = subTs ? `\`${formatCompactTime(item.from)}\` ` : '';
+            lines.push(`${prefix}${item.content}`);
             if (snap) {
-              lines.push(`![截图](screenshots/${index + 1}.png)`);
+              lines.push(`![截图](assets/${index + 1}.png)`);
             }
           });
           lines.push('');
@@ -137,9 +141,10 @@
           remaining.forEach((item) => {
             const index = body.indexOf(item);
             const snap = s.screenshots.get(index);
-            lines.push(`\`${formatCompactTime(item.from)}\` ${item.content}`);
+            const prefix = subTs ? `\`${formatCompactTime(item.from)}\` ` : '';
+            lines.push(`${prefix}${item.content}`);
             if (snap) {
-              lines.push(`![截图](screenshots/${index + 1}.png)`);
+              lines.push(`![截图](assets/${index + 1}.png)`);
             }
           });
           lines.push('');
@@ -148,9 +153,10 @@
         // 无章节，直接列出
         body.forEach((item, i) => {
           const snap = s.screenshots.get(i);
-          lines.push(`\`${formatCompactTime(item.from)}\` ${item.content}`);
+          const prefix = subTs ? `\`${formatCompactTime(item.from)}\` ` : '';
+          lines.push(`${prefix}${item.content}`);
           if (snap) {
-            lines.push(`![截图](screenshots/${i + 1}.png)`);
+            lines.push(`![截图](assets/${i + 1}.png)`);
           }
         });
         lines.push('');
@@ -180,10 +186,9 @@
       for (const [index, { blob }] of s.screenshots) {
         let filename;
         if (index < 0) {
-          // 章节截图：key = -chapterIndex - 1
-          filename = `screenshots/chapter-${-index}.png`;
+          filename = `assets/chapter-${-index}.png`;
         } else {
-          filename = `screenshots/${index + 1}.png`;
+          filename = `assets/${index + 1}.png`;
         }
         zip.file(filename, blob);
       }

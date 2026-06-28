@@ -19,7 +19,8 @@
     { id: 'subtitle', label: '字幕', footer: true },
     { id: 'chapter', label: '章节', footer: false },
     { id: 'video', label: '视频信息', footer: false },
-    { id: 'setting', label: '设置', footer: false }
+    { id: 'setting', label: '设置', footer: false },
+    { id: 'prompt', label: '提示词', footer: false }
   ];
 
   // ── 创建面板 ──
@@ -78,6 +79,8 @@
         view.innerHTML = '<div id="bn-video-info"></div>';
       } else if (def.id === 'setting') {
         view.innerHTML = buildSettingHTML();
+      } else if (def.id === 'prompt') {
+        view.innerHTML = buildPromptHTML();
       }
       scrollWrap.appendChild(view);
       views[def.id] = view;
@@ -107,6 +110,109 @@
 
     // 应用字体和行高设置
     applyDisplaySettings();
+  }
+
+  // ── 提示词模板 ──
+
+  const DEFAULT_PROMPT_NO_IMAGE = `你是一个视频笔记整理助手。将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
+
+输入文件：
+
+\`\`\`text
+{download_dir}/{title}.md
+\`\`\`
+
+说明：
+
+* {download_dir} 为用户设置的下载目录
+* {title} 为浏览器获取的视频标题
+* 文档可能包含 Frontmatter、章节信息、字幕内容、时间戳
+
+输出文件：
+
+\`\`\`text
+{download_dir}/{title}.md
+\`\`\`
+
+直接覆盖原文件内容。
+
+要求：
+
+1. 删除口语化内容（如：好的、然后、兄弟、这里呢等）
+2. 删除重复内容和无意义过渡语句
+3. 合并逐句字幕，不保留时间戳
+4. 按原始章节结构整理；若无章节则按内容自然分段
+5. 将相邻字幕整理为简洁、连贯的知识点，不要逐句输出
+6. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、大小写错误，请结合上下文修正，并统一技术术语写法
+7. 保留技术名词、工具名、框架名、产品名，不要省略
+8. 若存在 Frontmatter，完整保留
+9. 不要总结、解释、扩展，禁止添加原文不存在的内容`;
+
+  const DEFAULT_PROMPT_WITH_IMAGE = `你是一个视频笔记整理助手。将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
+
+输入文件：
+
+\`\`\`text
+{download_dir}/{title}/
+├── note.md
+└── assets/
+    ├── 1.png
+    ├── chapter-1.png
+    └── ...
+\`\`\`
+
+说明：
+
+* {download_dir} 为用户设置的下载目录
+* {title} 为浏览器获取的视频标题（外层文件夹名）
+* note.md 为固定文件名，存放字幕内容
+* assets/ 目录存放截图文件
+* Markdown 使用 ![截图](assets/xx.png) 引用图片
+* 图片默认属于其所在位置附近的字幕内容或章节内容
+
+输出文件：
+
+\`\`\`text
+{download_dir}/{title}/
+├── note.md
+└── assets/
+\`\`\`
+
+要求：
+
+1. 只修改 note.md 内容，不得修改 assets/ 中的图片文件
+2. 删除口语化内容（如：好的、然后、兄弟、这里呢等）
+3. 删除重复内容和无意义过渡语句
+4. 合并逐句字幕，不保留时间戳
+5. 按原始章节结构整理；若无章节则按内容自然分段
+6. 将相邻字幕整理为简洁、连贯的知识点，不要逐句输出
+7. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、大小写错误，请结合上下文修正，并统一技术术语写法
+8. 保留技术名词、工具名、框架名、产品名，不要省略
+9. 图片必须保留；保持图片与当前位置内容的对应关系，不要删除、移动或重新排序图片
+10. 若存在 Frontmatter，完整保留
+11. 不要总结、解释、扩展，禁止添加原文不存在的内容`;
+
+  // ── 提示词页 HTML ──
+
+  function buildPromptHTML() {
+    return `
+      <div class="bn-setting-label">下载目录</div>
+      <input type="text" class="bn-input" id="bn-download-dir" placeholder="例如：C:/Users/xxx/Downloads" style="width:calc(100% - 24px);margin:0 12px;padding:4px 8px;font-size:12px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-btn-border);border-radius:3px;">
+      <div class="bn-setting-label">无截图提示词（纯 MD）</div>
+      <div class="bn-prompt-actions">
+        <button id="bn-prompt-copy-noimg">复制</button>
+        <button id="bn-prompt-edit-noimg">修改</button>
+        <button id="bn-prompt-reset-noimg">恢复默认</button>
+      </div>
+      <textarea class="bn-textarea" id="bn-prompt-noimg" readonly style="width:calc(100% - 24px);margin:0 12px;height:120px;padding:4px 8px;font-size:11px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-btn-border);border-radius:3px;resize:vertical;font-family:monospace;"></textarea>
+      <div class="bn-setting-label">有截图提示词（ZIP）</div>
+      <div class="bn-prompt-actions">
+        <button id="bn-prompt-copy-img">复制</button>
+        <button id="bn-prompt-edit-img">修改</button>
+        <button id="bn-prompt-reset-img">恢复默认</button>
+      </div>
+      <textarea class="bn-textarea" id="bn-prompt-img" readonly style="width:calc(100% - 24px);margin:0 12px 12px;height:120px;padding:4px 8px;font-size:11px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-btn-border);border-radius:3px;resize:vertical;font-family:monospace;"></textarea>
+    `;
   }
 
   // ── 设置页 HTML ──
@@ -225,6 +331,116 @@
         }
       });
     }
+
+    // 提示词页事件
+    bindPromptEvents();
+  }
+
+  // ── 提示词页事件 ──
+
+  function bindPromptEvents() {
+    const s = window.BiViNote.state.settings;
+
+    // 下载目录
+    const dirInput = panelEl.querySelector('#bn-download-dir');
+    if (dirInput) {
+      dirInput.value = s.downloadDir || '';
+      dirInput.addEventListener('change', () => {
+        s.downloadDir = dirInput.value.trim();
+        window.BiViNote.settings.save();
+        renderPrompts();
+      });
+    }
+
+    // 渲染提示词
+    renderPrompts();
+
+    // 复制按钮
+    const copyNoimg = panelEl.querySelector('#bn-prompt-copy-noimg');
+    const copyImg = panelEl.querySelector('#bn-prompt-copy-img');
+    if (copyNoimg) copyNoimg.addEventListener('click', () => copyPrompt('noimg'));
+    if (copyImg) copyImg.addEventListener('click', () => copyPrompt('img'));
+
+    // 修改按钮
+    const editNoimg = panelEl.querySelector('#bn-prompt-edit-noimg');
+    const editImg = panelEl.querySelector('#bn-prompt-edit-img');
+    if (editNoimg) editNoimg.addEventListener('click', () => togglePromptEdit('noimg'));
+    if (editImg) editImg.addEventListener('click', () => togglePromptEdit('img'));
+
+    // 恢复默认按钮
+    const resetNoimg = panelEl.querySelector('#bn-prompt-reset-noimg');
+    const resetImg = panelEl.querySelector('#bn-prompt-reset-img');
+    if (resetNoimg) resetNoimg.addEventListener('click', () => resetPrompt('noimg'));
+    if (resetImg) resetImg.addEventListener('click', () => resetPrompt('img'));
+  }
+
+  function fillPromptVars(template) {
+    const s = window.BiViNote.state;
+    const dir = s.settings.downloadDir || '{download_dir}';
+    const title = s.title || '{title}';
+    return template.replace(/\{download_dir\}/g, dir).replace(/\{title\}/g, title);
+  }
+
+  function renderPrompts() {
+    const s = window.BiViNote.state.settings;
+    const noimgEl = panelEl.querySelector('#bn-prompt-noimg');
+    const imgEl = panelEl.querySelector('#bn-prompt-img');
+    if (noimgEl) noimgEl.value = fillPromptVars(s.promptNoImage || DEFAULT_PROMPT_NO_IMAGE);
+    if (imgEl) imgEl.value = fillPromptVars(s.promptWithImage || DEFAULT_PROMPT_WITH_IMAGE);
+  }
+
+  function copyPrompt(type) {
+    const el = panelEl.querySelector(type === 'noimg' ? '#bn-prompt-noimg' : '#bn-prompt-img');
+    if (!el) return;
+    navigator.clipboard.writeText(el.value).then(() => {
+      showToast('已复制提示词');
+    });
+  }
+
+  function togglePromptEdit(type) {
+    const el = panelEl.querySelector(type === 'noimg' ? '#bn-prompt-noimg' : '#bn-prompt-img');
+    const btn = panelEl.querySelector(type === 'noimg' ? '#bn-prompt-edit-noimg' : '#bn-prompt-edit-img');
+    if (!el || !btn) return;
+
+    if (el.readOnly) {
+      el.readOnly = false;
+      el.style.borderColor = 'var(--bn-accent)';
+      btn.textContent = '保存';
+    } else {
+      el.readOnly = true;
+      el.style.borderColor = '';
+      btn.textContent = '修改';
+      // 保存时反向填充变量
+      const s = window.BiViNote.state.settings;
+      const dir = s.downloadDir || '{download_dir}';
+      const title = window.BiViNote.state.title || '{title}';
+      let raw = el.value;
+      if (dir !== '{download_dir}') raw = raw.replace(new RegExp(escapeRegex(dir), 'g'), '{download_dir}');
+      if (title !== '{title}') raw = raw.replace(new RegExp(escapeRegex(title), 'g'), '{title}');
+      if (type === 'noimg') {
+        s.promptNoImage = raw;
+      } else {
+        s.promptWithImage = raw;
+      }
+      window.BiViNote.settings.save();
+      showToast('提示词已保存');
+    }
+  }
+
+  function resetPrompt(type) {
+    const s = window.BiViNote.state.settings;
+    if (type === 'noimg') {
+      s.promptNoImage = DEFAULT_PROMPT_NO_IMAGE;
+    } else {
+      s.promptWithImage = DEFAULT_PROMPT_WITH_IMAGE;
+    }
+    window.BiViNote.settings.save();
+    renderPrompts();
+    showToast('已恢复默认提示词');
+  }
+
+  function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   // ── 加载设置到 UI ──

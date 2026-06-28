@@ -13,7 +13,10 @@
     frameStep: 0.2,
     autoScroll: true,
     darkMode: false,
-    subtitleLang: ''
+    subtitleLang: '',
+    downloadDir: '',
+    promptNoImage: '',
+    promptWithImage: ''
   };
 
   const DEFAULT_CHECKED = {
@@ -22,7 +25,9 @@
     date: false,
     duration: false,
     url: false,
-    description: false
+    description: false,
+    chapterTimestamp: false,
+    subtitleTimestamp: false
   };
 
   async function load() {

@@ -431,6 +431,27 @@
   left: 18px;
 }
 
+/* 提示词操作按钮 */
+.bn-prompt-actions {
+  display: flex;
+  gap: 6px;
+  padding: 4px 12px;
+}
+
+.bn-prompt-actions button {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--bn-btn-border);
+  background: var(--bn-btn-bg);
+  cursor: pointer;
+  color: var(--bn-text);
+  border-radius: 3px;
+}
+
+.bn-prompt-actions button:hover {
+  background: var(--bn-tab-active);
+}
+
 /* 下拉选择 */
 .bn-select {
   width: calc(100% - 24px);

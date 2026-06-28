@@ -31,7 +31,16 @@
         <input type="checkbox" data-key="${item.key}" ${checked}>
         <span><strong>${item.label}：</strong>${displayValue}</span>
       </div>`;
-    }).join('');
+    }).join('') + `
+      <div class="bn-info-item">
+        <input type="checkbox" data-key="chapterTimestamp" ${s.videoInfoChecked.chapterTimestamp ? 'checked' : ''}>
+        <span><strong>章节时间戳</strong></span>
+      </div>
+      <div class="bn-info-item">
+        <input type="checkbox" data-key="subtitleTimestamp" ${s.videoInfoChecked.subtitleTimestamp ? 'checked' : ''}>
+        <span><strong>字幕时间戳</strong></span>
+      </div>
+    `;
 
     // 绑定复选框事件
     container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
