@@ -122,12 +122,6 @@
 {download_dir}\\{title}.md
 \`\`\`
 
-说明：
-
-* {download_dir} 为用户设置的下载目录
-* {title} 为浏览器获取的视频标题
-* 文档可能包含 Frontmatter、章节信息、字幕内容、时间戳
-
 输出文件：
 
 \`\`\`text
@@ -160,15 +154,6 @@
     ├── chapter-1.png
     └── ...
 \`\`\`
-
-说明：
-
-* {download_dir} 为用户设置的下载目录
-* {title} 为浏览器获取的视频标题（外层文件夹名）
-* note.md 为固定文件名，存放字幕内容
-* assets/ 目录存放截图文件
-* Markdown 使用 ![截图](assets/xx.png) 引用图片
-* 图片默认属于其所在位置附近的字幕内容或章节内容
 
 输出文件：
 
@@ -204,7 +189,8 @@
         <button id="bn-prompt-edit">修改</button>
         <button id="bn-prompt-reset">恢复默认</button>
       </div>
-      <textarea class="bn-textarea" id="bn-prompt-text" readonly style="width:calc(100% - 24px);margin:0 12px 12px;height:240px;padding:4px 8px;font-size:11px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-btn-border);border-radius:3px;resize:vertical;font-family:monospace;"></textarea>
+      <pre id="bn-prompt-display" style="width:calc(100% - 24px);margin:0 12px 12px;padding:8px;font-size:11px;background:var(--bn-header-bg);border:1px solid var(--bn-btn-border);border-radius:3px;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto;font-family:monospace;line-height:1.5;user-select:text;"></pre>
+      <textarea class="bn-textarea" id="bn-prompt-text" style="display:none;width:calc(100% - 24px);margin:0 12px 12px;height:240px;padding:4px 8px;font-size:11px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-accent);border-radius:3px;resize:vertical;font-family:monospace;"></textarea>
     `;
   }
 
@@ -359,39 +345,39 @@
     // 复制按钮
     const copyBtn = panelEl.querySelector('#bn-prompt-copy');
     if (copyBtn) copyBtn.addEventListener('click', () => {
-      const el = panelEl.querySelector('#bn-prompt-text');
-      if (!el) return;
-      navigator.clipboard.writeText(el.value).then(() => showToast('已复制提示词'));
+      const displayEl = panelEl.querySelector('#bn-prompt-display');
+      if (displayEl) navigator.clipboard.writeText(displayEl.textContent).then(() => showToast('已复制提示词'));
     });
 
     // 修改按钮
     const editBtn = panelEl.querySelector('#bn-prompt-edit');
     if (editBtn) editBtn.addEventListener('click', () => {
-      const el = panelEl.querySelector('#bn-prompt-text');
-      if (!el) return;
+      const displayEl = panelEl.querySelector('#bn-prompt-display');
+      const textareaEl = panelEl.querySelector('#bn-prompt-text');
+      if (!displayEl || !textareaEl) return;
 
-      if (el.readOnly) {
-        // 进入编辑模式：显示原始模板（带占位符）
-        el.readOnly = false;
-        el.style.borderColor = 'var(--bn-accent)';
-        editBtn.textContent = '保存';
+      if (textareaEl.style.display === 'none') {
+        // 进入编辑模式：隐藏展示区，显示编辑框（原始模板）
         const type = getPromptType();
         const raw = type === 'img'
           ? (s.promptWithImage || DEFAULT_PROMPT_WITH_IMAGE)
           : (s.promptNoImage || DEFAULT_PROMPT_NO_IMAGE);
-        el.value = raw;
+        textareaEl.value = raw;
+        displayEl.style.display = 'none';
+        textareaEl.style.display = 'block';
+        editBtn.textContent = '保存';
       } else {
-        // 保存
-        el.readOnly = true;
-        el.style.borderColor = '';
-        editBtn.textContent = '修改';
+        // 保存：隐藏编辑框，显示展示区
         const type = getPromptType();
         if (type === 'img') {
-          s.promptWithImage = el.value;
+          s.promptWithImage = textareaEl.value;
         } else {
-          s.promptNoImage = el.value;
+          s.promptNoImage = textareaEl.value;
         }
         window.BiViNote.settings.save();
+        textareaEl.style.display = 'none';
+        displayEl.style.display = '';
+        editBtn.textContent = '修改';
         renderPrompt();
         showToast('提示词已保存');
       }
@@ -428,8 +414,8 @@
     const title = s.title || '{title}';
     const filled = template.replace(/\{download_dir\}/g, dir).replace(/\{title\}/g, title);
 
-    const el = panelEl.querySelector('#bn-prompt-text');
-    if (el) el.value = filled;
+    const displayEl = panelEl.querySelector('#bn-prompt-display');
+    if (displayEl) displayEl.textContent = filled;
   }
 
   // ── 加载设置到 UI ──
