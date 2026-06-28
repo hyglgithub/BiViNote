@@ -157,7 +157,7 @@
   function buildPromptHTML() {
     return `
       <div class="bn-setting-label">路径前缀</div>
-      <input type="text" id="bn-download-dir" class="bn-select" placeholder="不填则保留占位符，如填 E:\\Temp">
+      <input type="text" id="bn-download-dir" class="bn-select" placeholder="不填则保留占位符，如填 C:\\Users\\xxx\\Downloads">
       <div class="bn-setting-label" id="bn-prompt-label">提示词</div>
       <div class="bn-prompt-actions">
         <button id="bn-prompt-copy">复制</button>
