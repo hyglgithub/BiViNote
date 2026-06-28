@@ -156,16 +156,16 @@
 
   function buildPromptHTML() {
     return `
-      <div class="bn-setting-label">下载目录</div>
-      <input type="text" class="bn-input" id="bn-download-dir" placeholder="例如：C:\\Users\\xxx\\Downloads" style="width:calc(100% - 24px);margin:0 12px;padding:4px 8px;font-size:12px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-btn-border);border-radius:3px;">
+      <div class="bn-setting-label">路径前缀</div>
+      <input type="text" id="bn-download-dir" class="bn-select" placeholder="不填则保留占位符，如填 E:\\Temp">
       <div class="bn-setting-label" id="bn-prompt-label">提示词</div>
       <div class="bn-prompt-actions">
         <button id="bn-prompt-copy">复制</button>
         <button id="bn-prompt-edit">修改</button>
         <button id="bn-prompt-reset">恢复默认</button>
       </div>
-      <pre id="bn-prompt-display" style="width:calc(100% - 24px);margin:0 12px 12px;padding:8px;font-size:11px;background:var(--bn-header-bg);border:1px solid var(--bn-btn-border);border-radius:3px;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto;font-family:monospace;line-height:1.5;user-select:text;"></pre>
-      <textarea class="bn-textarea" id="bn-prompt-text" style="display:none;width:calc(100% - 24px);margin:0 12px 12px;height:240px;padding:4px 8px;font-size:11px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-accent);border-radius:3px;resize:vertical;font-family:monospace;"></textarea>
+      <pre id="bn-prompt-display" class="bn-prompt-pre"></pre>
+      <textarea class="bn-prompt-textarea" id="bn-prompt-text"></textarea>
     `;
   }
 

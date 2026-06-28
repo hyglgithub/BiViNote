@@ -452,6 +452,39 @@
   background: var(--bn-tab-active);
 }
 
+.bn-prompt-pre {
+  width: calc(100% - 24px);
+  margin: 0 12px 12px;
+  padding: 8px;
+  font-size: 11px;
+  background: var(--bn-header-bg);
+  border: 1px solid var(--bn-btn-border);
+  border-radius: 3px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: monospace;
+  line-height: 1.5;
+  user-select: text;
+  color: var(--bn-text);
+}
+
+.bn-prompt-textarea {
+  display: none;
+  width: calc(100% - 24px);
+  margin: 0 12px 12px;
+  height: 240px;
+  padding: 8px;
+  font-size: 11px;
+  background: var(--bn-card);
+  color: var(--bn-text);
+  border: 1px solid var(--bn-accent);
+  border-radius: 3px;
+  resize: vertical;
+  font-family: monospace;
+}
+
 /* 下拉选择 */
 .bn-select {
   width: calc(100% - 24px);
