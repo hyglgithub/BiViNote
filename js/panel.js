@@ -119,7 +119,7 @@
 输入文件：
 
 \`\`\`text
-{download_dir}/{title}.md
+{download_dir}\\{title}.md
 \`\`\`
 
 说明：
@@ -131,7 +131,7 @@
 输出文件：
 
 \`\`\`text
-{download_dir}/{title}.md
+{download_dir}\\{title}.md
 \`\`\`
 
 直接覆盖原文件内容。
@@ -153,7 +153,7 @@
 输入文件：
 
 \`\`\`text
-{download_dir}/{title}/
+{download_dir}\\{title}\\
 ├── note.md
 └── assets/
     ├── 1.png
@@ -173,7 +173,7 @@
 输出文件：
 
 \`\`\`text
-{download_dir}/{title}/
+{download_dir}\\{title}\\
 ├── note.md
 └── assets/
 \`\`\`
@@ -197,21 +197,14 @@
   function buildPromptHTML() {
     return `
       <div class="bn-setting-label">下载目录</div>
-      <input type="text" class="bn-input" id="bn-download-dir" placeholder="例如：C:/Users/xxx/Downloads" style="width:calc(100% - 24px);margin:0 12px;padding:4px 8px;font-size:12px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-btn-border);border-radius:3px;">
-      <div class="bn-setting-label">无截图提示词（纯 MD）</div>
+      <input type="text" class="bn-input" id="bn-download-dir" placeholder="例如：C:\\Users\\xxx\\Downloads" style="width:calc(100% - 24px);margin:0 12px;padding:4px 8px;font-size:12px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-btn-border);border-radius:3px;">
+      <div class="bn-setting-label" id="bn-prompt-label">提示词</div>
       <div class="bn-prompt-actions">
-        <button id="bn-prompt-copy-noimg">复制</button>
-        <button id="bn-prompt-edit-noimg">修改</button>
-        <button id="bn-prompt-reset-noimg">恢复默认</button>
+        <button id="bn-prompt-copy">复制</button>
+        <button id="bn-prompt-edit">修改</button>
+        <button id="bn-prompt-reset">恢复默认</button>
       </div>
-      <textarea class="bn-textarea" id="bn-prompt-noimg" readonly style="width:calc(100% - 24px);margin:0 12px;height:120px;padding:4px 8px;font-size:11px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-btn-border);border-radius:3px;resize:vertical;font-family:monospace;"></textarea>
-      <div class="bn-setting-label">有截图提示词（ZIP）</div>
-      <div class="bn-prompt-actions">
-        <button id="bn-prompt-copy-img">复制</button>
-        <button id="bn-prompt-edit-img">修改</button>
-        <button id="bn-prompt-reset-img">恢复默认</button>
-      </div>
-      <textarea class="bn-textarea" id="bn-prompt-img" readonly style="width:calc(100% - 24px);margin:0 12px 12px;height:120px;padding:4px 8px;font-size:11px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-btn-border);border-radius:3px;resize:vertical;font-family:monospace;"></textarea>
+      <textarea class="bn-textarea" id="bn-prompt-text" readonly style="width:calc(100% - 24px);margin:0 12px 12px;height:240px;padding:4px 8px;font-size:11px;background:var(--bn-card);color:var(--bn-text);border:1px solid var(--bn-btn-border);border-radius:3px;resize:vertical;font-family:monospace;"></textarea>
     `;
   }
 
@@ -338,6 +331,14 @@
 
   // ── 提示词页事件 ──
 
+  function hasScreenshots() {
+    return window.BiViNote.state.screenshots.size > 0;
+  }
+
+  function getPromptType() {
+    return hasScreenshots() ? 'img' : 'noimg';
+  }
+
   function bindPromptEvents() {
     const s = window.BiViNote.state.settings;
 
@@ -348,99 +349,87 @@
       dirInput.addEventListener('change', () => {
         s.downloadDir = dirInput.value.trim();
         window.BiViNote.settings.save();
-        renderPrompts();
+        renderPrompt();
       });
     }
 
     // 渲染提示词
-    renderPrompts();
+    renderPrompt();
 
     // 复制按钮
-    const copyNoimg = panelEl.querySelector('#bn-prompt-copy-noimg');
-    const copyImg = panelEl.querySelector('#bn-prompt-copy-img');
-    if (copyNoimg) copyNoimg.addEventListener('click', () => copyPrompt('noimg'));
-    if (copyImg) copyImg.addEventListener('click', () => copyPrompt('img'));
+    const copyBtn = panelEl.querySelector('#bn-prompt-copy');
+    if (copyBtn) copyBtn.addEventListener('click', () => {
+      const el = panelEl.querySelector('#bn-prompt-text');
+      if (!el) return;
+      navigator.clipboard.writeText(el.value).then(() => showToast('已复制提示词'));
+    });
 
     // 修改按钮
-    const editNoimg = panelEl.querySelector('#bn-prompt-edit-noimg');
-    const editImg = panelEl.querySelector('#bn-prompt-edit-img');
-    if (editNoimg) editNoimg.addEventListener('click', () => togglePromptEdit('noimg'));
-    if (editImg) editImg.addEventListener('click', () => togglePromptEdit('img'));
+    const editBtn = panelEl.querySelector('#bn-prompt-edit');
+    if (editBtn) editBtn.addEventListener('click', () => {
+      const el = panelEl.querySelector('#bn-prompt-text');
+      if (!el) return;
+
+      if (el.readOnly) {
+        // 进入编辑模式：显示原始模板（带占位符）
+        el.readOnly = false;
+        el.style.borderColor = 'var(--bn-accent)';
+        editBtn.textContent = '保存';
+        const type = getPromptType();
+        const raw = type === 'img'
+          ? (s.promptWithImage || DEFAULT_PROMPT_WITH_IMAGE)
+          : (s.promptNoImage || DEFAULT_PROMPT_NO_IMAGE);
+        el.value = raw;
+      } else {
+        // 保存
+        el.readOnly = true;
+        el.style.borderColor = '';
+        editBtn.textContent = '修改';
+        const type = getPromptType();
+        if (type === 'img') {
+          s.promptWithImage = el.value;
+        } else {
+          s.promptNoImage = el.value;
+        }
+        window.BiViNote.settings.save();
+        renderPrompt();
+        showToast('提示词已保存');
+      }
+    });
 
     // 恢复默认按钮
-    const resetNoimg = panelEl.querySelector('#bn-prompt-reset-noimg');
-    const resetImg = panelEl.querySelector('#bn-prompt-reset-img');
-    if (resetNoimg) resetNoimg.addEventListener('click', () => resetPrompt('noimg'));
-    if (resetImg) resetImg.addEventListener('click', () => resetPrompt('img'));
-  }
-
-  function fillPromptVars(template) {
-    const s = window.BiViNote.state;
-    const dir = s.settings.downloadDir || '{download_dir}';
-    const title = s.title || '{title}';
-    return template.replace(/\{download_dir\}/g, dir).replace(/\{title\}/g, title);
-  }
-
-  function renderPrompts() {
-    const s = window.BiViNote.state.settings;
-    const noimgEl = panelEl.querySelector('#bn-prompt-noimg');
-    const imgEl = panelEl.querySelector('#bn-prompt-img');
-    if (noimgEl) noimgEl.value = fillPromptVars(s.promptNoImage || DEFAULT_PROMPT_NO_IMAGE);
-    if (imgEl) imgEl.value = fillPromptVars(s.promptWithImage || DEFAULT_PROMPT_WITH_IMAGE);
-  }
-
-  function copyPrompt(type) {
-    const el = panelEl.querySelector(type === 'noimg' ? '#bn-prompt-noimg' : '#bn-prompt-img');
-    if (!el) return;
-    navigator.clipboard.writeText(el.value).then(() => {
-      showToast('已复制提示词');
+    const resetBtn = panelEl.querySelector('#bn-prompt-reset');
+    if (resetBtn) resetBtn.addEventListener('click', () => {
+      const type = getPromptType();
+      if (type === 'img') {
+        s.promptWithImage = DEFAULT_PROMPT_WITH_IMAGE;
+      } else {
+        s.promptNoImage = DEFAULT_PROMPT_NO_IMAGE;
+      }
+      window.BiViNote.settings.save();
+      renderPrompt();
+      showToast('已恢复默认提示词');
     });
   }
 
-  function togglePromptEdit(type) {
-    const el = panelEl.querySelector(type === 'noimg' ? '#bn-prompt-noimg' : '#bn-prompt-img');
-    const btn = panelEl.querySelector(type === 'noimg' ? '#bn-prompt-edit-noimg' : '#bn-prompt-edit-img');
-    if (!el || !btn) return;
+  function renderPrompt() {
+    const s = window.BiViNote.state;
+    const type = getPromptType();
+    const template = type === 'img'
+      ? (s.settings.promptWithImage || DEFAULT_PROMPT_WITH_IMAGE)
+      : (s.settings.promptNoImage || DEFAULT_PROMPT_NO_IMAGE);
 
-    if (el.readOnly) {
-      el.readOnly = false;
-      el.style.borderColor = 'var(--bn-accent)';
-      btn.textContent = '保存';
-    } else {
-      el.readOnly = true;
-      el.style.borderColor = '';
-      btn.textContent = '修改';
-      // 保存时反向填充变量
-      const s = window.BiViNote.state.settings;
-      const dir = s.downloadDir || '{download_dir}';
-      const title = window.BiViNote.state.title || '{title}';
-      let raw = el.value;
-      if (dir !== '{download_dir}') raw = raw.replace(new RegExp(escapeRegex(dir), 'g'), '{download_dir}');
-      if (title !== '{title}') raw = raw.replace(new RegExp(escapeRegex(title), 'g'), '{title}');
-      if (type === 'noimg') {
-        s.promptNoImage = raw;
-      } else {
-        s.promptWithImage = raw;
-      }
-      window.BiViNote.settings.save();
-      showToast('提示词已保存');
-    }
-  }
+    // 更新标签
+    const label = panelEl.querySelector('#bn-prompt-label');
+    if (label) label.textContent = type === 'img' ? '提示词（有截图）' : '提示词（无截图）';
 
-  function resetPrompt(type) {
-    const s = window.BiViNote.state.settings;
-    if (type === 'noimg') {
-      s.promptNoImage = DEFAULT_PROMPT_NO_IMAGE;
-    } else {
-      s.promptWithImage = DEFAULT_PROMPT_WITH_IMAGE;
-    }
-    window.BiViNote.settings.save();
-    renderPrompts();
-    showToast('已恢复默认提示词');
-  }
+    // 填充变量并显示
+    const dir = s.settings.downloadDir || '{download_dir}';
+    const title = s.title || '{title}';
+    const filled = template.replace(/\{download_dir\}/g, dir).replace(/\{title\}/g, title);
 
-  function escapeRegex(str) {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const el = panelEl.querySelector('#bn-prompt-text');
+    if (el) el.value = filled;
   }
 
   // ── 加载设置到 UI ──
