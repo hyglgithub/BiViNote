@@ -115,23 +115,10 @@
   // ── 提示词模板 ──
 
   const DEFAULT_PROMPT_NO_IMAGE = `你是一个视频笔记整理助手。将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
-
-输入文件：
-
-\`\`\`text
-{download_dir}\\{title}.md
-\`\`\`
-
-输出文件：
-
-\`\`\`text
-{download_dir}\\{title}.md
-\`\`\`
-
+输入文件：{download_dir}\\{title}.md
+输出文件：{download_dir}\\{title}.md
 直接覆盖原文件内容。
-
 要求：
-
 1. 删除口语化内容（如：好的、然后、兄弟、这里呢等）
 2. 删除重复内容和无意义过渡语句
 3. 合并逐句字幕，不保留时间戳
@@ -143,28 +130,18 @@
 9. 不要总结、解释、扩展，禁止添加原文不存在的内容`;
 
   const DEFAULT_PROMPT_WITH_IMAGE = `你是一个视频笔记整理助手。将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
-
 输入文件：
-
-\`\`\`text
 {download_dir}\\{title}\\
 ├── note.md
 └── assets/
     ├── 1.png
     ├── chapter-1.png
     └── ...
-\`\`\`
-
 输出文件：
-
-\`\`\`text
 {download_dir}\\{title}\\
 ├── note.md
 └── assets/
-\`\`\`
-
 要求：
-
 1. 只修改 note.md 内容，不得修改 assets/ 中的图片文件
 2. 删除口语化内容（如：好的、然后、兄弟、这里呢等）
 3. 删除重复内容和无意义过渡语句
