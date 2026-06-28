@@ -19,8 +19,8 @@
     { id: 'subtitle', label: '字幕', footer: true },
     { id: 'chapter', label: '章节', footer: false },
     { id: 'video', label: '视频信息', footer: false },
-    { id: 'setting', label: '设置', footer: false },
-    { id: 'prompt', label: '提示词', footer: false }
+    { id: 'prompt', label: '提示词', footer: false },
+    { id: 'setting', label: '设置', footer: false }
   ];
 
   // ── 创建面板 ──
