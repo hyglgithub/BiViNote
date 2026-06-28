@@ -465,6 +465,7 @@
 
     const overlay = document.createElement('div');
     overlay.className = 'bn-preview-overlay';
+    overlay.setAttribute('data-bn-theme', window.BiViNote.state.settings.darkMode ? 'dark' : '');
 
     let currentUrl = screenshot.url;
     let currentBlob = screenshot.blob;
