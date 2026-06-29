@@ -68,6 +68,7 @@
     overlayEl.setAttribute('data-bn-theme', window.BiViNote.state.settings.darkMode ? 'dark' : '');
 
     overlayEl.innerHTML = `
+      <button class="bn-crop-close-btn" title="关闭 (Esc)">✕</button>
       <div class="bn-crop-canvas-wrap">
         <canvas class="bn-crop-canvas"></canvas>
         <div class="bn-crop-frame" style="display:none;">
@@ -88,7 +89,6 @@
           <button data-act="crop">裁剪</button>
           <button data-act="download">下载</button>
           <button data-act="clipboard">复制</button>
-          <button data-act="close">关闭</button>
         </div>
         <div class="bn-crop-btns-crop" style="display:none;">
           <select class="bn-crop-ratio">
@@ -109,20 +109,13 @@
 
     // 事件绑定
     overlayEl.querySelector('.bn-crop-controls').addEventListener('click', onControlClick);
+    overlayEl.querySelector('.bn-crop-close-btn').addEventListener('click', close);
     canvasEl.addEventListener('wheel', onWheel, { passive: false });
     canvasEl.addEventListener('mousedown', onCanvasMouseDown);
     document.addEventListener('mousemove', onDocMouseMove);
     document.addEventListener('mouseup', onDocMouseUp);
     document.addEventListener('keydown', onKeyDown);
     cropFrameEl.addEventListener('mousedown', onCropMouseDown);
-
-    // 点击黑色背景关闭（非裁剪模式下）
-    overlayEl.addEventListener('click', (e) => {
-      if (cropMode) return;
-      if (e.target === overlayEl || e.target.classList.contains('bn-crop-canvas-wrap')) {
-        close();
-      }
-    });
 
     // 裁剪比例
     overlayEl.querySelector('.bn-crop-ratio').addEventListener('change', (e) => {
