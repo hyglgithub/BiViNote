@@ -249,10 +249,30 @@
     return { x: (wrapW - w) / 2, y: (wrapH - h) / 2, w, h };
   }
 
-  // 获取图片边界（选区限制用）
+  // 获取图片当前实际边界（包含矩阵变换后的偏移和缩放）
   function getImageBounds() {
-    const d = getImageDisplayRect();
-    return { left: d.x, top: d.y, right: d.x + d.w, bottom: d.y + d.h };
+    if (!canvasWrapEl || !imgNatW) return { left: 0, top: 0, right: 0, bottom: 0 };
+    const wrapW = canvasWrapEl.clientWidth;
+    const wrapH = canvasWrapEl.clientHeight;
+    const ml = parseFloat(imgEl.style.marginLeft) || 0;
+    const mt = parseFloat(imgEl.style.marginTop) || 0;
+    const [a, b, c, d, e, f] = matrix;
+    // 图片初始位置（未应用矩阵）
+    const baseX = ml + wrapW / 2;
+    const baseY = mt + wrapH / 2;
+    // 图片显示尺寸（缩放前）
+    const display = getImageDisplayRect();
+    const w = display.w;
+    const h = display.h;
+    // 应用矩阵缩放后的实际尺寸
+    const scaleX = Math.sqrt(a * a + b * b);
+    const scaleY = Math.sqrt(c * c + d * d);
+    const actualW = w * scaleX;
+    const actualH = h * scaleY;
+    // 实际左上角 = 初始位置 + 矩阵平移
+    const left = baseX + e;
+    const top = baseY + f;
+    return { left, top, right: left + actualW, bottom: top + actualH };
   }
 
   function applyAspectRatio() {
