@@ -359,12 +359,19 @@
     currentBlob = newBlob;
     currentUrl = newUrl;
 
-    // 帧步进：直接替换图片，不销毁重建 Cropper
-    if (cropper) {
-      cropper.replace(newUrl);
-    } else {
-      loadImage(newUrl);
-    }
+    // 预加载新帧，加载完再替换，避免闪烁
+    const canvasWrap = overlayEl?.querySelector('.bn-crop-canvas-wrap');
+    const preloader = new Image();
+    preloader.onload = () => {
+      if (canvasWrap) canvasWrap.style.visibility = 'hidden';
+      if (cropper) {
+        cropper.replace(newUrl);
+      }
+      requestAnimationFrame(() => {
+        if (canvasWrap) canvasWrap.style.visibility = '';
+      });
+    };
+    preloader.src = newUrl;
 
     const s = window.BiViNote.state;
     const old = s.screenshots.get(currentSnapKey);
