@@ -685,7 +685,7 @@
 .bn-crop-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.85);
+  background: var(--bn-bg);
   z-index: 2147483647;
   display: flex;
   flex-direction: column;
@@ -699,9 +699,9 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  border: none;
-  color: #fff;
+  background: var(--bn-btn-bg);
+  border: 1px solid var(--bn-btn-border);
+  color: var(--bn-text);
   font-size: 18px;
   cursor: pointer;
   z-index: 3;
@@ -712,7 +712,7 @@
 }
 
 .bn-crop-close-btn:hover {
-  background: rgba(255,255,255,0.3);
+  background: var(--bn-tab-active);
 }
 
 /* 左右切换按钮 */
@@ -723,9 +723,9 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  border: none;
-  color: #fff;
+  background: var(--bn-btn-bg);
+  border: 1px solid var(--bn-btn-border);
+  color: var(--bn-text);
   font-size: 18px;
   cursor: pointer;
   z-index: 3;
@@ -736,25 +736,25 @@
 }
 
 .bn-crop-nav-btn:hover {
-  background: rgba(255,255,255,0.3);
+  background: var(--bn-tab-active);
 }
 
 /* 截图目录侧栏（左侧，flex 布局） */
 .bn-crop-sidebar {
   width: 200px;
   flex-shrink: 0;
-  background: rgba(0,0,0,0.8);
+  background: var(--bn-header-bg);
   overflow-y: auto;
   z-index: 2;
-  border-right: 1px solid rgba(255,255,255,0.2);
+  border-right: 1px solid var(--bn-border);
 }
 
 .bn-crop-sidebar-title {
   padding: 12px 10px;
   font-size: 13px;
-  color: #fff;
+  color: var(--bn-text);
   text-align: center;
-  border-bottom: 1px solid rgba(255,255,255,0.2);
+  border-bottom: 1px solid var(--bn-border);
   font-weight: bold;
 }
 
@@ -763,17 +763,17 @@
   gap: 8px;
   padding: 6px 8px;
   cursor: pointer;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid var(--bn-row-border);
   transition: background 0.15s;
   align-items: center;
 }
 
 .bn-crop-sidebar-item:hover {
-  background: rgba(255,255,255,0.1);
+  background: var(--bn-hover);
 }
 
 .bn-crop-sidebar-active {
-  background: rgba(74,144,217,0.5);
+  background: var(--bn-highlight);
 }
 
 .bn-crop-sidebar-thumb {
@@ -781,7 +781,7 @@
   height: auto;
   border-radius: 3px;
   flex-shrink: 0;
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 1px solid var(--bn-border);
 }
 
 .bn-crop-sidebar-info {
@@ -792,13 +792,13 @@
 
 .bn-crop-sidebar-time {
   font-size: 11px;
-  color: #999;
+  color: var(--bn-text-sub);
   margin-bottom: 2px;
 }
 
 .bn-crop-sidebar-text {
   font-size: 11px;
-  color: #ccc;
+  color: var(--bn-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -822,7 +822,7 @@
   flex: 1;
   position: relative;
   overflow: hidden;
-  background: #1a1a1a;
+  background: var(--bn-bg);
 }
 
 .bn-crop-canvas-wrap img {
@@ -848,7 +848,7 @@
 
 /* 控制栏 */
 .bn-crop-controls {
-  background: rgba(0,0,0,0.8);
+  background: var(--bn-header-bg);
   padding: 8px 12px;
   display: flex;
   justify-content: center;
@@ -861,16 +861,15 @@
 .bn-crop-controls select {
   font-size: 12px;
   padding: 4px 12px;
-  border: 1px solid rgba(255,255,255,0.2);
-  background: rgba(255,255,255,0.1);
-  color: #ccc;
+  border: 1px solid var(--bn-btn-border);
+  background: var(--bn-btn-bg);
+  color: var(--bn-text);
   cursor: pointer;
   border-radius: 3px;
 }
 
 .bn-crop-controls button:hover {
-  background: rgba(255,255,255,0.2);
-  color: #fff;
+  background: var(--bn-tab-active);
 }
 
 .bn-crop-btns-browse,
