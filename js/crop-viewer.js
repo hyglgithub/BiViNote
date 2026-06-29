@@ -264,12 +264,17 @@
 
   function setCropperVisible(visible) {
     if (!overlayEl) return;
-    const display = visible ? '' : 'none';
     const cropBox = overlayEl.querySelector('.cropper-crop-box');
     const modal = overlayEl.querySelector('.cropper-modal');
-    // dragBox 保持可见，否则浏览模式下无法拖动图片
-    if (cropBox) cropBox.style.display = display;
-    if (modal) modal.style.display = display;
+    if (visible) {
+      // 裁剪模式：正常显示
+      if (cropBox) { cropBox.style.display = ''; cropBox.style.opacity = ''; }
+      if (modal) { modal.style.display = ''; modal.style.opacity = ''; }
+    } else {
+      // 浏览模式：隐藏裁剪框，遮罩透明化（保留拖动交互）
+      if (cropBox) cropBox.style.display = 'none';
+      if (modal) modal.style.opacity = '0';
+    }
   }
 
   function enterCropMode() {
