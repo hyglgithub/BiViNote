@@ -17,7 +17,7 @@
         "*://*.bilibili.com/video/*",
         "*://*.bilibili.com/list/*"
       ],
-      "js": ["libs/jszip.min.js", "js/state.js", "js/panel.js", "js/subtitle.js", "js/chapter.js", "js/video-info.js", "js/capture.js", "js/export.js", "js/settings.js", "js/crop-viewer.js", "content.js"],
+      "js": ["libs/jszip.min.js", "libs/cropper.js", "js/state.js", "js/panel.js", "js/subtitle.js", "js/chapter.js", "js/video-info.js", "js/capture.js", "js/export.js", "js/settings.js", "js/crop-viewer.js", "content.js"],
       "css": ["css/panel.css"],
       "run_at": "document_idle"
     }
