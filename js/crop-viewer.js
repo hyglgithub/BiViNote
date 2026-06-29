@@ -154,11 +154,17 @@
   // ── 加载图片 ──
 
   function loadImage(url) {
+    const canvasWrap = overlayEl?.querySelector('.bn-crop-canvas-wrap');
+    // 加载期间隐藏画布，防止闪烁
+    if (canvasWrap) canvasWrap.style.visibility = 'hidden';
+
     cropperEl.onload = () => {
       imgNatW = cropperEl.naturalWidth;
       imgNatH = cropperEl.naturalHeight;
       initCropper();
       renderSidebar();
+      // Cropper.js 初始化完成后再显示
+      if (canvasWrap) canvasWrap.style.visibility = '';
     };
     cropperEl.src = url;
   }
