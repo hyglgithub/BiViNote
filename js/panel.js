@@ -524,6 +524,7 @@
   let savedIconTop = null;
 
   function toggleCollapse() {
+    if (!panelEl) createPanel();
     const s = window.BiViNote.state;
     s.collapsed = !s.collapsed;
 
@@ -540,9 +541,10 @@
         collapseContainerEl.style.left = x + 'px';
         collapseContainerEl.style.top = y + 'px';
       } else {
-        const rect = panelEl.getBoundingClientRect();
-        const x = clamp(rect.right - BTN_SIZE - 8, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
-        const y = clamp(rect.top + 2, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
+        // 默认位置：右上角（与面板 CSS 默认 right:20px top:100px 对齐）
+        const panelRight = window.innerWidth - 20;
+        const x = clamp(panelRight - BTN_SIZE - 8, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
+        const y = clamp(100 + 2, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
         collapseContainerEl.style.left = x + 'px';
         collapseContainerEl.style.top = y + 'px';
         savedIconLeft = x;
