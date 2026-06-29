@@ -739,14 +739,6 @@
   background: rgba(255,255,255,0.3);
 }
 
-.bn-crop-nav-prev {
-  left: 12px;
-}
-
-.bn-crop-nav-next {
-  right: 12px;
-}
-
 /* 截图目录侧栏（左侧，flex 布局） */
 .bn-crop-sidebar {
   width: 200px;
@@ -838,6 +830,22 @@
   display: block;
 }
 
+/* 导航按钮（在画布区域内） */
+.bn-crop-canvas-wrap .bn-crop-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.bn-crop-canvas-wrap .bn-crop-nav-prev {
+  left: 12px;
+}
+
+.bn-crop-canvas-wrap .bn-crop-nav-next {
+  right: 12px;
+}
+
 /* 控制栏 */
 .bn-crop-controls {
   background: rgba(0,0,0,0.8);
@@ -863,13 +871,6 @@
 .bn-crop-controls button:hover {
   background: rgba(255,255,255,0.2);
   color: #fff;
-}
-
-.bn-crop-catalog-btn {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
 }
 
 .bn-crop-btns-browse,

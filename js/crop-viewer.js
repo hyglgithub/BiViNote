@@ -11,7 +11,6 @@
   let cropperEl = null;
   let cropper = null;
   let sidebarEl = null;
-  let sidebarVisible = false;
 
   let currentSnapKey = -1;
   let currentBlob = null;
@@ -82,7 +81,6 @@
 
   function createOverlay() {
     if (overlayEl) overlayEl.remove();
-    sidebarVisible = false;
 
     overlayEl = document.createElement('div');
     overlayEl.className = 'bn-crop-overlay';
@@ -90,19 +88,18 @@
 
     overlayEl.innerHTML = `
       <button class="bn-crop-close-btn" title="关闭 (Esc)">✕</button>
-      <button class="bn-crop-nav-btn bn-crop-nav-prev" title="上一张截图"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-      <button class="bn-crop-nav-btn bn-crop-nav-next" title="下一张截图"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
       <div class="bn-crop-main">
-        <div class="bn-crop-sidebar" style="display:none;">
+        <div class="bn-crop-sidebar">
           <div class="bn-crop-sidebar-title">截图目录</div>
           <div class="bn-crop-sidebar-list"></div>
         </div>
         <div class="bn-crop-canvas-wrap">
+          <button class="bn-crop-nav-btn bn-crop-nav-prev" title="上一张截图"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <button class="bn-crop-nav-btn bn-crop-nav-next" title="下一张截图"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
           <img id="bn-cropper-img" src="" alt="">
         </div>
       </div>
       <div class="bn-crop-controls">
-        <button class="bn-crop-catalog-btn" data-act="catalog" title="截图目录">${ICONS.catalog}</button>
         <div class="bn-crop-btns-browse">
           <button data-act="prev" title="上一帧">${ICONS.prev}</button>
           <button data-act="next" title="下一帧">${ICONS.next}</button>
@@ -161,6 +158,7 @@
       imgNatW = cropperEl.naturalWidth;
       imgNatH = cropperEl.naturalHeight;
       initCropper();
+      renderSidebar();
     };
     cropperEl.src = url;
   }
@@ -224,15 +222,6 @@
 
   // ── 目录侧栏 ──
 
-  function toggleSidebar() {
-    sidebarVisible = !sidebarVisible;
-    if (!sidebarEl) return;
-    sidebarEl.style.display = sidebarVisible ? '' : 'none';
-    if (sidebarVisible) renderSidebar();
-    // 侧栏展开/收起后，重新调整 Cropper.js
-    setTimeout(() => { if (cropper) cropper.resize(); }, 50);
-  }
-
   function renderSidebar() {
     if (!sidebarEl) return;
     const list = getScreenshotList();
@@ -259,7 +248,7 @@
   }
 
   function updateSidebarHighlight() {
-    if (!sidebarEl || !sidebarVisible) return;
+    if (!sidebarEl) return;
     sidebarEl.querySelectorAll('.bn-crop-sidebar-item').forEach(el => {
       el.classList.toggle('bn-crop-sidebar-active', el.dataset.key === String(currentSnapKey));
     });
@@ -286,13 +275,10 @@
 
   function enterCropMode() {
     if (!cropper) return;
-    if (sidebarVisible) { sidebarVisible = false; sidebarEl.style.display = 'none'; }
-
     setCropperVisible(true);
 
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = 'none';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = '';
-    overlayEl.querySelector('.bn-crop-catalog-btn').style.display = 'none';
     overlayEl.querySelector('.bn-crop-nav-prev').style.display = 'none';
     overlayEl.querySelector('.bn-crop-nav-next').style.display = 'none';
   }
@@ -303,7 +289,6 @@
 
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = '';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = 'none';
-    overlayEl.querySelector('.bn-crop-catalog-btn').style.display = '';
     updateNavButtons();
   }
 
@@ -370,7 +355,6 @@
     if (!act || !cropper) return;
 
     if (act === 'close') close();
-    else if (act === 'catalog') toggleSidebar();
     else if (act === 'prev') doFrameStep('prev');
     else if (act === 'next') doFrameStep('next');
     else if (act === 'enter-crop') enterCropMode();
@@ -423,7 +407,6 @@
     if (overlayEl) { overlayEl.remove(); overlayEl = null; }
     window.removeEventListener('resize', onResize);
     document.removeEventListener('keydown', onKeyDown);
-    sidebarVisible = false;
     flipH = false;
     flipV = false;
     currentRotation = 0;
