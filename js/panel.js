@@ -733,6 +733,13 @@
     }
   }
 
+  function hideCollapse() {
+    if (collapseContainerEl) {
+      collapseContainerEl.classList.add('bn-hidden');
+    }
+    window.BiViNote.state.collapsed = false;
+  }
+
   function toggle() {
     if (window.BiViNote.state.panelVisible) {
       hide();
@@ -787,6 +794,7 @@
     create: createPanel,
     show,
     hide,
+    hideCollapse,
     toggle,
     toggleCollapse,
     switchTab,

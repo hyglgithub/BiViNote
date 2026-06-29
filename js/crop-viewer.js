@@ -238,6 +238,10 @@
 
   function enterCropMode() {
     cropMode = true;
+    // 居中复位图片
+    fitImageToCanvas();
+    render();
+
     // 默认裁剪框 = 图片显示区域
     const imgRect = getImageDisplayRect();
     cropX = imgRect.x;

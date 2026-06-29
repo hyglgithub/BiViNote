@@ -24,7 +24,7 @@
             return;
           }
           if (s.collapsed) {
-            BN.panel.toggleCollapse();
+            BN.panel.hideCollapse();
             return;
           }
           // 都没显示，按默认方式打开
