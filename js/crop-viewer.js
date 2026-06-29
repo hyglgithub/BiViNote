@@ -13,7 +13,7 @@
   let cropFrameEl = null;
   let currentBlob = null;
   let currentUrl = null;
-  let currentSnapKey = -1; // 当前截图在 screenshots Map 中的 key
+  let currentSnapKey = -1;
   let sidebarEl = null;
   let sidebarVisible = false;
 
@@ -36,6 +36,21 @@
   let cropStartRect = {};
 
   const MIN_CROP = 20;
+  const SIDEBAR_WIDTH = 200;
+
+  // ── 获取截图文本（字幕内容或章节标题）──
+
+  function getSnapText(snapKey) {
+    const s = window.BiViNote.state;
+    if (snapKey >= 0) {
+      const item = s.subtitleBody[snapKey];
+      return item?.content || '';
+    } else {
+      const chapterIndex = -snapKey - 1;
+      const item = s.chapters[chapterIndex];
+      return item?.title || '';
+    }
+  }
 
   // ── 获取所有截图的有序列表 ──
 
@@ -45,7 +60,6 @@
     for (const [key, snap] of s.screenshots) {
       list.push({ key, ...snap });
     }
-    // 按时间排序（章节用 from，字幕也用 from）
     list.sort((a, b) => (a.timeSeconds || 0) - (b.timeSeconds || 0));
     return list;
   }
@@ -86,42 +100,44 @@
       <button class="bn-crop-close-btn" title="关闭 (Esc)">✕</button>
       <button class="bn-crop-nav-btn bn-crop-nav-prev" data-dir="prev" title="上一张截图">◀</button>
       <button class="bn-crop-nav-btn bn-crop-nav-next" data-dir="next" title="下一张截图">▶</button>
-      <div class="bn-crop-canvas-wrap">
-        <canvas class="bn-crop-canvas"></canvas>
-        <div class="bn-crop-frame" style="display:none;">
-          <div class="bn-crop-handle bn-crop-handle-nw" data-handle="nw"></div>
-          <div class="bn-crop-handle bn-crop-handle-ne" data-handle="ne"></div>
-          <div class="bn-crop-handle bn-crop-handle-sw" data-handle="sw"></div>
-          <div class="bn-crop-handle bn-crop-handle-se" data-handle="se"></div>
-          <div class="bn-crop-handle bn-crop-handle-n" data-handle="n"></div>
-          <div class="bn-crop-handle bn-crop-handle-s" data-handle="s"></div>
-          <div class="bn-crop-handle bn-crop-handle-e" data-handle="e"></div>
-          <div class="bn-crop-handle bn-crop-handle-w" data-handle="w"></div>
-        </div>
-      </div>
-      <div class="bn-crop-controls">
-        <div class="bn-crop-btns-browse">
-          <button data-act="catalog">目录</button>
-          <button data-act="prev">上一帧</button>
-          <button data-act="next">下一帧</button>
-          <button data-act="crop">裁剪</button>
-          <button data-act="download">下载</button>
-          <button data-act="clipboard">复制</button>
-        </div>
-        <div class="bn-crop-btns-crop" style="display:none;">
-          <select class="bn-crop-ratio">
-            <option value="0">自由</option>
-            <option value="1.7778">16:9</option>
-            <option value="1.3333">4:3</option>
-            <option value="1">1:1</option>
-          </select>
-          <button data-act="crop-done">完成</button>
-          <button data-act="crop-cancel">取消</button>
-        </div>
-      </div>
       <div class="bn-crop-sidebar" style="display:none;">
         <div class="bn-crop-sidebar-title">截图目录</div>
         <div class="bn-crop-sidebar-list"></div>
+      </div>
+      <div class="bn-crop-body">
+        <div class="bn-crop-canvas-wrap">
+          <canvas class="bn-crop-canvas"></canvas>
+          <div class="bn-crop-frame" style="display:none;">
+            <div class="bn-crop-handle bn-crop-handle-nw" data-handle="nw"></div>
+            <div class="bn-crop-handle bn-crop-handle-ne" data-handle="ne"></div>
+            <div class="bn-crop-handle bn-crop-handle-sw" data-handle="sw"></div>
+            <div class="bn-crop-handle bn-crop-handle-se" data-handle="se"></div>
+            <div class="bn-crop-handle bn-crop-handle-n" data-handle="n"></div>
+            <div class="bn-crop-handle bn-crop-handle-s" data-handle="s"></div>
+            <div class="bn-crop-handle bn-crop-handle-e" data-handle="e"></div>
+            <div class="bn-crop-handle bn-crop-handle-w" data-handle="w"></div>
+          </div>
+        </div>
+        <div class="bn-crop-controls">
+          <div class="bn-crop-btns-browse">
+            <button data-act="catalog">目录</button>
+            <button data-act="prev">上一帧</button>
+            <button data-act="next">下一帧</button>
+            <button data-act="crop">裁剪</button>
+            <button data-act="download">下载</button>
+            <button data-act="clipboard">复制</button>
+          </div>
+          <div class="bn-crop-btns-crop" style="display:none;">
+            <select class="bn-crop-ratio">
+              <option value="0">自由</option>
+              <option value="1.7778">16:9</option>
+              <option value="1.3333">4:3</option>
+              <option value="1">1:1</option>
+            </select>
+            <button data-act="crop-done">完成</button>
+            <button data-act="crop-cancel">取消</button>
+          </div>
+        </div>
       </div>
     `;
 
@@ -142,7 +158,6 @@
     document.addEventListener('keydown', onKeyDown);
     cropFrameEl.addEventListener('mousedown', onCropMouseDown);
 
-    // 裁剪比例
     overlayEl.querySelector('.bn-crop-ratio').addEventListener('change', (e) => {
       cropRatio = parseFloat(e.target.value) || 0;
       if (cropRatio > 0 && cropMode) {
@@ -155,16 +170,15 @@
     window.addEventListener('resize', onResize);
   }
 
-  // ── 截图导航 ──
+  // ── 截图导航（不循环）──
 
   function navigateTo(direction) {
     const list = getScreenshotList();
     if (list.length < 2) return;
 
     const idx = getCurrentIndex();
-    let newIdx = idx + direction;
-    if (newIdx < 0) newIdx = list.length - 1;
-    if (newIdx >= list.length) newIdx = 0;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= list.length) return; // 边界停止
 
     switchToScreenshot(list[newIdx].key);
   }
@@ -174,7 +188,6 @@
     const snap = s.screenshots.get(snapKey);
     if (!snap) return;
 
-    // 退出裁剪模式
     if (cropMode) exitCropMode(false);
 
     currentSnapKey = snapKey;
@@ -189,21 +202,31 @@
   function updateNavButtons() {
     if (!overlayEl) return;
     const list = getScreenshotList();
-    const hasMultiple = list.length > 1;
+    const idx = getCurrentIndex();
     const prevBtn = overlayEl.querySelector('.bn-crop-nav-prev');
     const nextBtn = overlayEl.querySelector('.bn-crop-nav-next');
-    if (prevBtn) prevBtn.style.display = hasMultiple ? '' : 'none';
-    if (nextBtn) nextBtn.style.display = hasMultiple ? '' : 'none';
+    if (prevBtn) prevBtn.style.display = (idx > 0) ? '' : 'none';
+    if (nextBtn) nextBtn.style.display = (idx < list.length - 1) ? '' : 'none';
   }
 
   // ── 目录侧栏 ──
 
   function toggleSidebar() {
     sidebarVisible = !sidebarVisible;
-    if (sidebarEl) {
-      sidebarEl.style.display = sidebarVisible ? '' : 'none';
-      if (sidebarVisible) renderSidebar();
+    if (!sidebarEl) return;
+
+    if (sidebarVisible) {
+      sidebarEl.style.display = '';
+      overlayEl.querySelector('.bn-crop-body').style.marginLeft = SIDEBAR_WIDTH + 'px';
+      renderSidebar();
+    } else {
+      sidebarEl.style.display = 'none';
+      overlayEl.querySelector('.bn-crop-body').style.marginLeft = '0';
     }
+    // 重新适应画布尺寸
+    setTimeout(() => {
+      if (img) { fitImageToCanvas(); render(); }
+    }, 50);
   }
 
   function renderSidebar() {
@@ -218,7 +241,16 @@
       div.className = 'bn-crop-sidebar-item';
       if (item.key === currentSnapKey) div.classList.add('bn-crop-sidebar-active');
       div.dataset.key = item.key;
-      div.textContent = item.timeCode || '0000';
+
+      const text = getSnapText(item.key);
+      const timeCode = item.timeCode || '0000';
+      div.innerHTML = `
+        <img class="bn-crop-sidebar-thumb" src="${item.url}" alt="${timeCode}">
+        <div class="bn-crop-sidebar-info">
+          <div class="bn-crop-sidebar-time">${timeCode}</div>
+          <div class="bn-crop-sidebar-text">${escapeHtml(text)}</div>
+        </div>
+      `;
       div.addEventListener('click', () => switchToScreenshot(item.key));
       listEl.appendChild(div);
     });
@@ -229,6 +261,9 @@
     sidebarEl.querySelectorAll('.bn-crop-sidebar-item').forEach(el => {
       el.classList.toggle('bn-crop-sidebar-active', el.dataset.key === String(currentSnapKey));
     });
+    // 滚动到当前项
+    const activeEl = sidebarEl.querySelector('.bn-crop-sidebar-active');
+    if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   // ── 加载图片 ──
@@ -337,7 +372,6 @@
 
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = 'none';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = '';
-    // 隐藏导航按钮
     overlayEl.querySelector('.bn-crop-nav-prev').style.display = 'none';
     overlayEl.querySelector('.bn-crop-nav-next').style.display = 'none';
   }
@@ -466,7 +500,6 @@
       currentUrl = url;
       loadImage(url);
 
-      // 重新渲染列表
       window.BiViNote.subtitle.renderSubtitleList();
       window.BiViNote.chapter.render();
       window.BiViNote.panel.renderPrompt();
@@ -558,6 +591,10 @@
 
   function clamp(val, min, max) {
     return Math.max(min, Math.min(val, max));
+  }
+
+  function escapeHtml(str) {
+    return String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
   }
 
   window.BiViNote.cropViewer = { open, close };
