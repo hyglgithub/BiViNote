@@ -171,10 +171,10 @@
         cropperEl.onload = null;
         initCropper();
         renderSidebar();
-        // Cropper 初始化完成后恢复显示
-        requestAnimationFrame(() => {
+        // 等 Cropper 完成居中后再显示
+        setTimeout(() => {
           if (canvasWrap) canvasWrap.style.visibility = '';
-        });
+        }, 80);
       };
     };
     preloader.src = url;
@@ -367,9 +367,10 @@
       if (cropper) {
         cropper.replace(newUrl);
       }
-      requestAnimationFrame(() => {
+      // 等 Cropper 完成居中后再显示
+      setTimeout(() => {
         if (canvasWrap) canvasWrap.style.visibility = '';
-      });
+      }, 80);
     };
     preloader.src = newUrl;
 
