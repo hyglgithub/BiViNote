@@ -358,7 +358,13 @@
     if (currentUrl) URL.revokeObjectURL(currentUrl);
     currentBlob = newBlob;
     currentUrl = newUrl;
-    loadImage(newUrl);
+
+    // 帧步进：直接替换图片，不销毁重建 Cropper
+    if (cropper) {
+      cropper.replace(newUrl);
+    } else {
+      loadImage(newUrl);
+    }
 
     const s = window.BiViNote.state;
     const old = s.screenshots.get(currentSnapKey);
