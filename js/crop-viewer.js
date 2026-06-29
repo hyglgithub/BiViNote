@@ -114,19 +114,44 @@
     applyMatrix();
   }
 
+  // 获取图片中心在 canvas-wrap 中的坐标
+  function getImageCenter() {
+    const wrapW = canvasWrapEl.clientWidth;
+    const wrapH = canvasWrapEl.clientHeight;
+    const ml = parseFloat(imgEl.style.marginLeft) || 0;
+    const mt = parseFloat(imgEl.style.marginTop) || 0;
+    const display = getImageDisplayRect();
+    return {
+      x: ml + wrapW / 2 + display.w / 2,
+      y: mt + wrapH / 2 + display.h / 2
+    };
+  }
+
   function rotateImage(deg) {
+    const center = getImageCenter();
     const rad = (deg / 360) * Math.PI * 2;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
-    matrix = multiplyMatrix(matrix, [cos, sin, -sin, cos, 0, 0]);
+    const cx = center.x, cy = center.y;
+    // translate(cx,cy) → rotate → translate(-cx,-cy)
+    const t = [
+      cos, sin, -sin, cos,
+      cx - cx * cos + cy * sin,
+      cy - cx * sin - cy * cos
+    ];
+    matrix = multiplyMatrix(matrix, t);
     applyMatrix();
   }
 
   function flipImage(horizontal) {
+    const center = getImageCenter();
+    const cx = center.x, cy = center.y;
     if (horizontal) {
-      matrix = multiplyMatrix(matrix, [-1, 0, 0, 1, 0, 0]);
+      // translate(cx,cy) → scale(-1,1) → translate(-cx,-cy)
+      matrix = multiplyMatrix(matrix, [-1, 0, 0, 1, 2 * cx, 0]);
     } else {
-      matrix = multiplyMatrix(matrix, [1, 0, 0, -1, 0, 0]);
+      // translate(cx,cy) → scale(1,-1) → translate(-cx,-cy)
+      matrix = multiplyMatrix(matrix, [1, 0, 0, -1, 0, 2 * cy]);
     }
     applyMatrix();
   }
@@ -188,10 +213,25 @@
 
   function applyAspectRatio() {
     if (!isNaN(selAspectRatio) && selAspectRatio > 0) {
-      const newH = selW / selAspectRatio;
-      const wrapH = canvasWrapEl.clientHeight;
-      selH = Math.min(newH, wrapH - selY);
-      selW = selH * selAspectRatio;
+      const b = getImageBounds();
+      const imgW = b.right - b.left;
+      const imgH = b.bottom - b.top;
+      // 在图片范围内居中，按比例适配
+      let newW = selW;
+      let newH = newW / selAspectRatio;
+      if (newH > imgH) {
+        newH = imgH;
+        newW = newH * selAspectRatio;
+      }
+      if (newW > imgW) {
+        newW = imgW;
+        newH = newW / selAspectRatio;
+      }
+      selW = newW;
+      selH = newH;
+      // 居中
+      selX = b.left + (imgW - selW) / 2;
+      selY = b.top + (imgH - selH) / 2;
     }
   }
 
@@ -602,14 +642,19 @@
 
   // ── 选区拖动和调整 ──
 
+  // 拖动开始时保存选区快照
+  let dragStartSel = {};
+
   function onSelectionMouseDown(e) {
     e.stopPropagation();
     const handle = e.target.dataset?.handle;
-    if (!handle) return; // 选区本身不可拖动，只有手柄可以
+    if (!handle) return;
     dragType = handle;
     isDragging = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
+    // 保存拖动开始时的选区状态
+    dragStartSel = { x: selX, y: selY, w: selW, h: selH };
   }
 
   function handleResize(e) {
@@ -617,14 +662,15 @@
     const dy = e.clientY - dragStartY;
     const b = getImageBounds();
     const MIN = 20;
+    const s = dragStartSel; // 使用快照，避免累积误差
 
-    let newX = selX, newY = selY, newW = selW, newH = selH;
-    let newX2 = selX + selW, newY2 = selY + selH;
+    let newX = s.x, newY = s.y, newW = s.w, newH = s.h;
+    let newX2 = s.x + s.w, newY2 = s.y + s.h;
 
-    if (dragType.includes('w')) { newX = clamp(selX + dx, b.left, newX2 - MIN); newW = newX2 - newX; }
-    if (dragType.includes('e')) { newX2 = clamp(selX + selW + dx, newX + MIN, b.right); newW = newX2 - newX; }
-    if (dragType.includes('n')) { newY = clamp(selY + dy, b.top, newY2 - MIN); newH = newY2 - newY; }
-    if (dragType.includes('s')) { newY2 = clamp(selY + selH + dy, newY + MIN, b.bottom); newH = newY2 - newY; }
+    if (dragType.includes('w')) { newX = clamp(s.x + dx, b.left, newX2 - MIN); newW = newX2 - newX; }
+    if (dragType.includes('e')) { newX2 = clamp(s.x + s.w + dx, newX + MIN, b.right); newW = newX2 - newX; }
+    if (dragType.includes('n')) { newY = clamp(s.y + dy, b.top, newY2 - MIN); newH = newY2 - newY; }
+    if (dragType.includes('s')) { newY2 = clamp(s.y + s.h + dy, newY + MIN, b.bottom); newH = newY2 - newY; }
 
     if (!isNaN(selAspectRatio) && selAspectRatio > 0) {
       if (dragType === 'se' || dragType === 'e' || dragType === 's') {
