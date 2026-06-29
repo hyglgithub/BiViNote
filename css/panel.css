@@ -747,13 +747,10 @@
   right: 12px;
 }
 
-/* 截图目录侧栏（左侧） */
+/* 截图目录侧栏（左侧，flex 布局） */
 .bn-crop-sidebar {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 44px;
   width: 200px;
+  flex-shrink: 0;
   background: rgba(0,0,0,0.8);
   overflow-y: auto;
   z-index: 2;
@@ -819,6 +816,13 @@
 .bn-crop-canvas-wrap {
   flex: 1;
   position: relative;
+  overflow: hidden;
+}
+
+/* 浏览主体（侧栏 + 画布） */
+.bn-crop-main {
+  flex: 1;
+  display: flex;
   overflow: hidden;
 }
 

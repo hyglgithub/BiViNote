@@ -63,6 +63,23 @@
 
   // ── 创建 DOM ──
 
+  // SVG 图标
+  const ICONS = {
+    prev: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>',
+    next: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>',
+    crop: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.13 1L6 16a2 2 0 0 0 2 2h15"/><path d="M1 6.13L16 6a2 2 0 0 1 2 2v15"/></svg>',
+    download: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+    copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    zoomIn: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>',
+    zoomOut: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>',
+    rotateL: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+    rotateR: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
+    flipH: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><line x1="12" y1="2" x2="12" y2="22"/></svg>',
+    flipV: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V5a2 2 0 0 1 2-2h14c1.1 0 2 .9 2 2v3"/><path d="M3 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><line x1="2" y1="12" x2="22" y2="12"/></svg>',
+    reset: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+    catalog: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>'
+  };
+
   function createOverlay() {
     if (overlayEl) overlayEl.remove();
     sidebarVisible = false;
@@ -75,21 +92,23 @@
       <button class="bn-crop-close-btn" title="关闭 (Esc)">✕</button>
       <button class="bn-crop-nav-btn bn-crop-nav-prev" title="上一张截图"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
       <button class="bn-crop-nav-btn bn-crop-nav-next" title="下一张截图"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
-      <div class="bn-crop-sidebar" style="display:none;">
-        <div class="bn-crop-sidebar-title">截图目录</div>
-        <div class="bn-crop-sidebar-list"></div>
-      </div>
-      <div class="bn-crop-canvas-wrap">
-        <img id="bn-cropper-img" src="" alt="">
+      <div class="bn-crop-main">
+        <div class="bn-crop-sidebar" style="display:none;">
+          <div class="bn-crop-sidebar-title">截图目录</div>
+          <div class="bn-crop-sidebar-list"></div>
+        </div>
+        <div class="bn-crop-canvas-wrap">
+          <img id="bn-cropper-img" src="" alt="">
+        </div>
       </div>
       <div class="bn-crop-controls">
-        <button class="bn-crop-catalog-btn" data-act="catalog" title="截图目录">目录</button>
+        <button class="bn-crop-catalog-btn" data-act="catalog" title="截图目录">${ICONS.catalog}</button>
         <div class="bn-crop-btns-browse">
-          <button data-act="prev">上一帧</button>
-          <button data-act="next">下一帧</button>
-          <button data-act="enter-crop">裁剪</button>
-          <button data-act="download">下载</button>
-          <button data-act="clipboard">复制</button>
+          <button data-act="prev" title="上一帧">${ICONS.prev}</button>
+          <button data-act="next" title="下一帧">${ICONS.next}</button>
+          <button data-act="enter-crop" title="裁剪">${ICONS.crop}</button>
+          <button data-act="download" title="下载">${ICONS.download}</button>
+          <button data-act="clipboard" title="复制">${ICONS.copy}</button>
         </div>
         <div class="bn-crop-btns-crop" style="display:none;">
           <select class="bn-crop-ratio" title="裁剪比例">
@@ -101,16 +120,16 @@
             <option value="0.5625">9:16</option>
           </select>
           <span class="bn-crop-divider"></span>
-          <button data-act="zoom-in" title="放大">＋</button>
-          <button data-act="zoom-out" title="缩小">－</button>
-          <button data-act="rotate-left" title="左旋90°">↺</button>
-          <button data-act="rotate-right" title="右旋90°">↻</button>
-          <button data-act="flip-h" title="水平翻转">⇔</button>
-          <button data-act="flip-v" title="垂直翻转">⇕</button>
-          <button data-act="reset" title="重置">重置</button>
+          <button data-act="zoom-in" title="放大">${ICONS.zoomIn}</button>
+          <button data-act="zoom-out" title="缩小">${ICONS.zoomOut}</button>
+          <button data-act="rotate-left" title="左旋90°">${ICONS.rotateL}</button>
+          <button data-act="rotate-right" title="右旋90°">${ICONS.rotateR}</button>
+          <button data-act="flip-h" title="水平翻转">${ICONS.flipH}</button>
+          <button data-act="flip-v" title="垂直翻转">${ICONS.flipV}</button>
+          <button data-act="reset" title="重置">${ICONS.reset}</button>
           <span class="bn-crop-divider"></span>
-          <button data-act="crop-done">完成</button>
-          <button data-act="crop-cancel">取消</button>
+          <button data-act="crop-done" title="完成裁剪">✓</button>
+          <button data-act="crop-cancel" title="取消裁剪">✕</button>
         </div>
       </div>
     `;
@@ -164,9 +183,8 @@
       cropBoxResizable: true,
       toggleDragModeOnDblclick: false,
       ready() {
-        // 默认隐藏裁剪框
-        const cropBox = overlayEl.querySelector('.cropper-crop-box');
-        if (cropBox) cropBox.style.display = 'none';
+        // 默认隐藏裁剪框和遮罩
+        setCropperVisible(false);
       }
     });
   }
@@ -211,6 +229,8 @@
     if (!sidebarEl) return;
     sidebarEl.style.display = sidebarVisible ? '' : 'none';
     if (sidebarVisible) renderSidebar();
+    // 侧栏展开/收起后，重新调整 Cropper.js
+    setTimeout(() => { if (cropper) cropper.resize(); }, 50);
   }
 
   function renderSidebar() {
@@ -253,13 +273,22 @@
   let flipH = false;
   let flipV = false;
 
+  function setCropperVisible(visible) {
+    if (!overlayEl) return;
+    const display = visible ? '' : 'none';
+    const cropBox = overlayEl.querySelector('.cropper-crop-box');
+    const modal = overlayEl.querySelector('.cropper-modal');
+    const dragBox = overlayEl.querySelector('.cropper-drag-box');
+    if (cropBox) cropBox.style.display = display;
+    if (modal) modal.style.display = display;
+    if (dragBox) dragBox.style.display = display;
+  }
+
   function enterCropMode() {
     if (!cropper) return;
     if (sidebarVisible) { sidebarVisible = false; sidebarEl.style.display = 'none'; }
 
-    // 显示裁剪框
-    const cropBox = overlayEl.querySelector('.cropper-crop-box');
-    if (cropBox) cropBox.style.display = '';
+    setCropperVisible(true);
 
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = 'none';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = '';
@@ -270,9 +299,7 @@
 
   function exitCropMode() {
     if (!cropper) return;
-    // 隐藏裁剪框
-    const cropBox = overlayEl.querySelector('.cropper-crop-box');
-    if (cropBox) cropBox.style.display = 'none';
+    setCropperVisible(false);
 
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = '';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = 'none';
