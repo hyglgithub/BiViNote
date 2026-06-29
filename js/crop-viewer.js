@@ -154,19 +154,23 @@
   // ── 加载图片 ──
 
   function loadImage(url) {
-    const canvasWrap = overlayEl?.querySelector('.bn-crop-canvas-wrap');
-    // 加载期间隐藏画布，防止闪烁
-    if (canvasWrap) canvasWrap.style.visibility = 'hidden';
+    // 先销毁旧 Cropper 实例
+    if (cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
 
-    cropperEl.onload = () => {
-      imgNatW = cropperEl.naturalWidth;
-      imgNatH = cropperEl.naturalHeight;
+    // 预加载新图片，加载完成后再初始化 Cropper
+    const tempImg = new Image();
+    tempImg.onload = () => {
+      imgNatW = tempImg.naturalWidth;
+      imgNatH = tempImg.naturalHeight;
+      cropperEl.src = url;
+      // 图片已缓存，src 设置后立即可用
       initCropper();
       renderSidebar();
-      // Cropper.js 初始化完成后再显示
-      if (canvasWrap) canvasWrap.style.visibility = '';
     };
-    cropperEl.src = url;
+    tempImg.src = url;
   }
 
   function initCropper() {
