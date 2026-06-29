@@ -76,12 +76,12 @@
 
 .bn-collapse-btn {
   position: fixed;
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: var(--bn-card);
   border: 2px solid var(--bn-border);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   cursor: pointer;
   z-index: 2147483647;
   display: flex;
@@ -91,13 +91,13 @@
 }
 
 .bn-collapse-btn:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
 }
 
 .bn-collapse-btn img {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
   pointer-events: none;
 }
 

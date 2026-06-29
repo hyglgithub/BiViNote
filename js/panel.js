@@ -107,10 +107,8 @@
     collapseBtnEl = document.createElement('div');
     collapseBtnEl.className = 'bn-collapse-btn bn-hidden';
     collapseBtnEl.title = '展开 BiViNote';
-    collapseBtnEl.innerHTML = '<img src="' + chrome.runtime.getURL('icons/icon-32.png') + '" alt="BiViNote">';
-    collapseBtnEl.addEventListener('click', () => {
-      if (!isDraggingCollapse) toggleCollapse();
-    });
+    const iconUrl = chrome.runtime.getURL('icons/icon-32.png');
+    collapseBtnEl.innerHTML = '<img src="' + iconUrl + '" alt="BiViNote">';
     setupCollapseDrag(collapseBtnEl);
     document.body.appendChild(collapseBtnEl);
 
@@ -456,6 +454,12 @@
 
   // ── 折叠/展开 ──
 
+  const BTN_SIZE = 36;
+
+  function clamp(val, min, max) {
+    return Math.max(min, Math.min(val, max));
+  }
+
   function toggleCollapse() {
     const s = window.BiViNote.state;
     s.collapsed = !s.collapsed;
@@ -463,16 +467,21 @@
     if (s.collapsed) {
       // 折叠：隐藏面板，显示圆形按钮（在面板当前位置）
       const rect = panelEl.getBoundingClientRect();
-      collapseBtnEl.style.left = rect.left + 'px';
-      collapseBtnEl.style.top = rect.top + 'px';
-      collapseBtnEl.style.right = 'auto';
+      const x = clamp(rect.left, 0, window.innerWidth - BTN_SIZE);
+      const y = clamp(rect.top, 0, window.innerHeight - BTN_SIZE);
+      collapseBtnEl.style.left = x + 'px';
+      collapseBtnEl.style.top = y + 'px';
       panelEl.classList.add('bn-hidden');
       collapseBtnEl.classList.remove('bn-hidden');
     } else {
-      // 展开：隐藏圆形按钮，显示面板（在圆形按钮当前位置）
+      // 展开：隐藏圆形按钮，显示面板（在按钮当前位置，限制在页面内）
       const rect = collapseBtnEl.getBoundingClientRect();
-      panelEl.style.left = rect.left + 'px';
-      panelEl.style.top = rect.top + 'px';
+      const panelW = 400;
+      const panelH = 600;
+      const x = clamp(rect.left, 0, window.innerWidth - panelW);
+      const y = clamp(rect.top, 0, window.innerHeight - panelH);
+      panelEl.style.left = x + 'px';
+      panelEl.style.top = y + 'px';
       panelEl.style.right = 'auto';
       collapseBtnEl.classList.add('bn-hidden');
       panelEl.classList.remove('bn-hidden');
@@ -500,30 +509,26 @@
     document.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
       hasMoved = true;
+      isDraggingCollapse = true;
       let x = e.clientX - offsetX;
       let y = e.clientY - offsetY;
-      // 边界限制
-      x = Math.max(0, Math.min(x, window.innerWidth - 48));
-      y = Math.max(0, Math.min(y, window.innerHeight - 48));
+      // 边界限制：图标完整在页面内
+      x = clamp(x, 0, window.innerWidth - BTN_SIZE);
+      y = clamp(y, 0, window.innerHeight - BTN_SIZE);
       el.style.left = x + 'px';
       el.style.top = y + 'px';
-      el.style.right = 'auto';
     });
 
     document.addEventListener('mouseup', () => {
-      if (isDragging && !hasMoved) {
-        // 没有移动，视为点击
+      if (isDragging) {
+        if (!hasMoved) {
+          // 没有移动，视为点击 → 展开
+          toggleCollapse();
+        }
         isDraggingCollapse = false;
       }
       isDragging = false;
-    });
-
-    // 区分拖动和点击
-    el.addEventListener('mousedown', () => {
-      isDraggingCollapse = false;
-    });
-    el.addEventListener('mousemove', () => {
-      if (isDragging) isDraggingCollapse = true;
+      hasMoved = false;
     });
   }
 
