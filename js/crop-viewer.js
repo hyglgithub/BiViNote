@@ -102,50 +102,36 @@
 
   // ── 变换操作 ──
 
-  function zoomImage(delta, cx, cy) {
+  function zoomImage(delta) {
     const s = delta < 0 ? 1 / (1 + Math.abs(delta)) : 1 + delta;
     const [a, b, c, d, e, f] = matrix;
-    const wrapRect = canvasWrapEl.getBoundingClientRect();
-    const wrapW = wrapRect.width;
-    const wrapH = wrapRect.height;
+    const wrapW = canvasWrapEl.clientWidth;
+    const wrapH = canvasWrapEl.clientHeight;
 
-    // 检查缩放下限：图片不能小于裁剪框
+    // 缩放下限：图片不能小于裁剪框
     if (s < 1 && selectionEl && selectionEl.style.display !== 'none') {
-      const newScaleX = Math.abs(a * s);
-      const newScaleY = Math.abs(d * s);
-      const imgDisplay = getImageDisplayRect();
-      const newImgW = imgDisplay.w * newScaleX;
-      const newImgH = imgDisplay.h * newScaleY;
-      if (newImgW < selW || newImgH < selH) {
-        return; // 已经是最小缩放，不允许继续缩小
-      }
+      const display = getImageDisplayRect();
+      const newW = display.w * Math.abs(a * s);
+      const newH = display.h * Math.abs(d * s);
+      if (newW < selW || newH < selH) return;
     }
 
-    // 默认以画布中心为缩放中心
-    let mx = wrapW / 2;
-    let my = wrapH / 2;
-    if (cx !== undefined && cy !== undefined) {
-      mx = cx;
-      my = cy;
-    }
-
-    // 图片左上角在画布中的位置
+    // 以图片中心为缩放中心
+    const center = getImageCenter();
+    const cx = center.x, cy = center.y;
     const imgLeft = parseFloat(imgEl.style.marginLeft) + wrapW / 2;
     const imgTop = parseFloat(imgEl.style.marginTop) + wrapH / 2;
 
-    // 鼠标在图片坐标系中的位置
     const det = a * d - c * b;
     if (Math.abs(det) < 1e-10) return;
-    const localX = ((mx - imgLeft - e) * d - c * (my - imgTop - f)) / det;
-    const localY = ((my - imgTop - f) * a - b * (mx - imgLeft - e)) / det;
+    const localX = ((cx - imgLeft - e) * d - c * (cy - imgTop - f)) / det;
+    const localY = ((cy - imgTop - f) * a - b * (cx - imgLeft - e)) / det;
 
-    // 缩放后的偏移：保持鼠标下的图片点不动
-    const newE = mx - imgLeft - localX * a * s;
-    const newF = my - imgTop - localY * d * s;
+    const newE = cx - imgLeft - localX * a * s;
+    const newF = cy - imgTop - localY * d * s;
 
     matrix = [a * s, b * s, c * s, d * s, newE, newF];
     applyMatrix();
-    clampSelectionToBounds();
   }
 
   function moveImage(dx, dy) {
@@ -174,14 +160,12 @@
   function rotateImage(deg) {
     rotateAngle = (rotateAngle + deg) % 360;
     applyMatrix();
-    clampSelectionToBounds();
   }
 
   function flipImage(horizontal) {
     if (horizontal) flipH = !flipH;
     else flipV = !flipV;
     applyMatrix();
-    clampSelectionToBounds();
   }
 
   function resetTransform() {
@@ -198,20 +182,6 @@
     imgEl.style.height = display.h + 'px';
     imgEl.style.marginLeft = (display.x - canvasWrapEl.clientWidth / 2) + 'px';
     imgEl.style.marginTop = (display.y - canvasWrapEl.clientHeight / 2) + 'px';
-  }
-
-  // 将选区限制在图片范围内（图片移动后调用）
-  function clampSelectionToBounds() {
-    const b = getImageBounds();
-    const imgW = b.right - b.left;
-    const imgH = b.bottom - b.top;
-    // 如果选区比图片大，缩小选区
-    if (selW > imgW) { selW = imgW; }
-    if (selH > imgH) { selH = imgH; }
-    // 限制选区不超出图片
-    selX = clamp(selX, b.left, b.right - selW);
-    selY = clamp(selY, b.top, b.bottom - selH);
-    renderSelection();
   }
 
   // ── 选区操作 ──
@@ -659,9 +629,8 @@
 
   function onWheel(e) {
     e.preventDefault();
-    const rect = canvasWrapEl.getBoundingClientRect();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    zoomImage(delta, e.clientX - rect.left, e.clientY - rect.top);
+    zoomImage(delta);
   }
 
   function onPointerDown(e) {
@@ -682,10 +651,6 @@
       moveImage(dx, dy);
       dragStartX = e.clientX;
       dragStartY = e.clientY;
-      // 图片移动后，裁剪框要限制在图片范围内
-      if (selectionEl && selectionEl.style.display !== 'none') {
-        clampSelectionToBounds();
-      }
     } else if (dragType) {
       // resize handles
       handleResize(e);
