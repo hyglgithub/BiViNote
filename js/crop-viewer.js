@@ -100,13 +100,40 @@
     applyMatrix();
   }
 
+  // ── 图片基础位置（不含矩阵变换）──
+
+  function getBasePosition() {
+    const wrapW = canvasWrapEl.clientWidth;
+    const wrapH = canvasWrapEl.clientHeight;
+    const ml = parseFloat(imgEl.style.marginLeft) || 0;
+    const mt = parseFloat(imgEl.style.marginTop) || 0;
+    return { x: wrapW / 2 + ml, y: wrapH / 2 + mt };
+  }
+
+  // ── 图片当前边界（含矩阵变换）──
+
+  function getImageBounds() {
+    if (!canvasWrapEl || !imgNatW) return { left: 0, top: 0, right: 0, bottom: 0 };
+    const base = getBasePosition();
+    const [a, b, c, d, e, f] = matrix;
+    const display = getImageDisplayRect();
+    const w = display.w;
+    const h = display.h;
+    const scaleX = Math.sqrt(a * a + b * b);
+    const scaleY = Math.sqrt(c * c + d * d);
+    return {
+      left: base.x + e,
+      top: base.y + f,
+      right: base.x + e + w * scaleX,
+      bottom: base.y + f + h * scaleY
+    };
+  }
+
   // ── 变换操作 ──
 
   function zoomImage(delta) {
     const s = delta < 0 ? 1 / (1 + Math.abs(delta)) : 1 + delta;
     const [a, b, c, d, e, f] = matrix;
-    const wrapW = canvasWrapEl.clientWidth;
-    const wrapH = canvasWrapEl.clientHeight;
 
     // 缩放下限：图片不能小于裁剪框
     if (s < 1 && selectionEl && selectionEl.style.display !== 'none') {
@@ -116,19 +143,18 @@
       if (newW < selW || newH < selH) return;
     }
 
-    // 以图片中心为缩放中心
-    const center = getImageCenter();
-    const cx = center.x, cy = center.y;
-    const imgLeft = parseFloat(imgEl.style.marginLeft) + wrapW / 2;
-    const imgTop = parseFloat(imgEl.style.marginTop) + wrapH / 2;
+    // 以图片视觉中心为缩放中心
+    // 图片中心在元素坐标系 = (w/2, h/2)
+    // 变换后中心 = base + (a*w/2 + c*h/2 + e, b*w/2 + d*h/2 + f)
+    const display = getImageDisplayRect();
+    const base = getBasePosition();
+    const cx = base.x + a * display.w / 2 + c * display.h / 2 + e;
+    const cy = base.y + b * display.w / 2 + d * display.h / 2 + f;
 
-    const det = a * d - c * b;
-    if (Math.abs(det) < 1e-10) return;
-    const localX = ((cx - imgLeft - e) * d - c * (cy - imgTop - f)) / det;
-    const localY = ((cy - imgTop - f) * a - b * (cx - imgLeft - e)) / det;
-
-    const newE = cx - imgLeft - localX * a * s;
-    const newF = cy - imgTop - localY * d * s;
+    // 缩放后要保持中心点不变
+    // newE = cx - base.x - (a*s) * w/2 - (c*s) * h/2
+    const newE = cx - base.x - a * s * display.w / 2 - c * s * display.h / 2;
+    const newF = cy - base.y - b * s * display.w / 2 - d * s * display.h / 2;
 
     matrix = [a * s, b * s, c * s, d * s, newE, newF];
     applyMatrix();
@@ -138,23 +164,35 @@
     const [a, b, c, d] = matrix;
     const det = a * d - c * b;
     if (Math.abs(det) < 1e-10) return;
+
+    // 屏幕位移 → 图片坐标系位移
     const tx = (dx * d - c * dy) / det;
     const ty = (dy * a - b * dx) / det;
-    matrix = multiplyMatrix(matrix, [1, 0, 0, 1, tx, ty]);
-    applyMatrix();
-  }
 
-  // 获取图片中心在 canvas-wrap 中的坐标
-  function getImageCenter() {
-    const wrapW = canvasWrapEl.clientWidth;
-    const wrapH = canvasWrapEl.clientHeight;
-    const ml = parseFloat(imgEl.style.marginLeft) || 0;
-    const mt = parseFloat(imgEl.style.marginTop) || 0;
+    // 计算移动后的边界
+    const newE = matrix[4] + tx;
+    const newF = matrix[5] + ty;
     const display = getImageDisplayRect();
-    return {
-      x: ml + wrapW / 2 + display.w / 2,
-      y: mt + wrapH / 2 + display.h / 2
-    };
+    const base = getBasePosition();
+    const scaleX = Math.sqrt(a * a + b * b);
+    const scaleY = Math.sqrt(c * c + d * d);
+    const newImgW = display.w * scaleX;
+    const newImgH = display.h * scaleY;
+    const newLeft = base.x + newE;
+    const newTop = base.y + newF;
+
+    // 如果裁剪框可见，限制图片必须覆盖裁剪框
+    if (selectionEl && selectionEl.style.display !== 'none') {
+      const selBounds = { left: selX, top: selY, right: selX + selW, bottom: selY + selH };
+      if (newLeft > selBounds.left || newTop > selBounds.top ||
+          newLeft + newImgW < selBounds.right || newTop + newImgH < selBounds.bottom) {
+        return; // 移动会导致裁剪框超出图片，阻止
+      }
+    }
+
+    matrix[4] = newE;
+    matrix[5] = newF;
+    applyMatrix();
   }
 
   function rotateImage(deg) {
@@ -217,32 +255,6 @@
     const w = imgNatW * scale;
     const h = imgNatH * scale;
     return { x: (wrapW - w) / 2, y: (wrapH - h) / 2, w, h };
-  }
-
-  // 获取图片当前实际边界（包含矩阵变换后的偏移和缩放）
-  function getImageBounds() {
-    if (!canvasWrapEl || !imgNatW) return { left: 0, top: 0, right: 0, bottom: 0 };
-    const wrapW = canvasWrapEl.clientWidth;
-    const wrapH = canvasWrapEl.clientHeight;
-    const ml = parseFloat(imgEl.style.marginLeft) || 0;
-    const mt = parseFloat(imgEl.style.marginTop) || 0;
-    const [a, b, c, d, e, f] = matrix;
-    // 图片初始位置（未应用矩阵）
-    const baseX = ml + wrapW / 2;
-    const baseY = mt + wrapH / 2;
-    // 图片显示尺寸（缩放前）
-    const display = getImageDisplayRect();
-    const w = display.w;
-    const h = display.h;
-    // 应用矩阵缩放后的实际尺寸
-    const scaleX = Math.sqrt(a * a + b * b);
-    const scaleY = Math.sqrt(c * c + d * d);
-    const actualW = w * scaleX;
-    const actualH = h * scaleY;
-    // 实际左上角 = 初始位置 + 矩阵平移
-    const left = baseX + e;
-    const top = baseY + f;
-    return { left, top, right: left + actualW, bottom: top + actualH };
   }
 
   function applyAspectRatio() {
