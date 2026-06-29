@@ -150,7 +150,13 @@
       wrapEl.innerHTML = '';
       wrapEl.appendChild(imgEl);
 
-      cropper = new window.Cropper.Cropper(imgEl, {
+      const CropperClass = window.Cropper?.Cropper || window.Cropper;
+      if (typeof CropperClass !== 'function') {
+        console.error('[BiViNote] Cropper not available:', typeof CropperClass, window.Cropper);
+        window.BiViNote.panel.showToast('裁剪组件加载失败');
+        return;
+      }
+      cropper = new CropperClass(imgEl, {
         template: [
           '<cropper-canvas background>',
           '  <cropper-image rotatable scalable skewable translatable></cropper-image>',
@@ -175,6 +181,13 @@
 
       cropperImage = cropper.getCropperImage();
       cropperSelection = cropper.getCropperSelection();
+      console.log('[BiViNote] Cropper initialized:', {
+        cropper: !!cropper,
+        image: !!cropperImage,
+        selection: !!cropperSelection,
+        imageType: typeof cropperImage,
+        hasZoom: typeof cropperImage?.$zoom,
+      });
     };
   }
 
