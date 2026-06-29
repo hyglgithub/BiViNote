@@ -160,18 +160,15 @@
   // ── 加载图片 ──
 
   function loadImage(url) {
-    if (cropper) {
-      // 已有 Cropper 实例，直接替换图片（不销毁重建，避免闪烁）
-      cropper.replace(url);
-      // 更新截图目录高亮
-      updateSidebarHighlight();
-      return;
-    }
+    // 隐藏图片避免闪烁
+    cropperEl.style.visibility = 'hidden';
+    if (cropper) { cropper.destroy(); cropper = null; }
     cropperEl.onload = () => {
       imgNatW = cropperEl.naturalWidth;
       imgNatH = cropperEl.naturalHeight;
       initCropper();
       renderSidebar();
+      cropperEl.style.visibility = '';
     };
     cropperEl.src = url;
   }
