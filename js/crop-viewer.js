@@ -78,9 +78,7 @@
         <div class="bn-crop-sidebar-title">截图目录</div>
         <div class="bn-crop-sidebar-list"></div>
       </div>
-      <div class="bn-crop-cropper-wrap">
-        <img id="bn-cropper-target" src="" alt="">
-      </div>
+      <div class="bn-crop-cropper-wrap"></div>
       <div class="bn-crop-controls">
         <button class="bn-crop-catalog-btn" data-act="catalog" title="截图目录">目录</button>
         <div class="bn-crop-btns-browse">
@@ -136,11 +134,21 @@
   // ── 初始化 cropperjs ──
 
   function initCropper(url) {
-    const imgEl = overlayEl.querySelector('#bn-cropper-target');
+    const wrapEl = overlayEl.querySelector('.bn-crop-cropper-wrap');
+    // 清空容器
+    wrapEl.innerHTML = '';
+
+    // 创建新的 img 元素
+    const imgEl = document.createElement('img');
     imgEl.src = url;
+    imgEl.style.display = 'block';
+    imgEl.style.maxWidth = '100%';
 
     imgEl.onload = () => {
-      if (cropper) cropper.destroy();
+      if (cropper) { cropper.destroy(); cropper = null; }
+
+      wrapEl.innerHTML = '';
+      wrapEl.appendChild(imgEl);
 
       cropper = new window.Cropper.Cropper(imgEl, {
         template: [
