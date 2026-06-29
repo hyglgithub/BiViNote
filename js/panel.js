@@ -554,6 +554,9 @@
       collapseContainerEl.classList.add('bn-hidden');
       panelEl.classList.remove('bn-hidden');
       s.panelVisible = true;
+      // 记住用户选择的模式
+      window.BiViNote.state.settings.lastOpenMode = 'panel';
+      window.BiViNote.settings.save();
       loadSettingsToUI();
       applyDisplaySettings();
       // 自动加载字幕
