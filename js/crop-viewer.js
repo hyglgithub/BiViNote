@@ -21,8 +21,13 @@
   let currentUrl = null;
   let sidebarVisible = false;
 
-  // 图片变换矩阵 [a, b, c, d, e, f]
+  // 图片变换矩阵 [a, b, c, d, e, f]（仅控制平移和缩放）
   let matrix = [1, 0, 0, 1, 0, 0];
+
+  // 旋转和翻转状态（独立于矩阵，裁剪框也要应用）
+  let rotateAngle = 0;    // 累计旋转角度（度）
+  let flipH = false;       // 水平翻转
+  let flipV = false;       // 垂直翻转
 
   // 拖动状态
   let isDragging = false;
@@ -61,11 +66,37 @@
 
   function applyMatrix() {
     if (!imgEl) return;
-    imgEl.style.transform = `matrix(${matrix.join(',')})`;
+    const transform = buildTransform();
+    imgEl.style.transform = transform;
+    // 裁剪框也应用相同的旋转/翻转
+    if (selectionEl) {
+      selectionEl.style.transform = buildSelectionTransform();
+    }
+  }
+
+  // 构建图片的 CSS transform（矩阵 + 旋转 + 翻转）
+  function buildTransform() {
+    let t = `matrix(${matrix.join(',')})`;
+    if (rotateAngle !== 0) t += ` rotate(${rotateAngle}deg)`;
+    if (flipH) t += ' scaleX(-1)';
+    if (flipV) t += ' scaleY(-1)';
+    return t;
+  }
+
+  // 构建裁剪框的 CSS transform（只有旋转 + 翻转，无矩阵）
+  function buildSelectionTransform() {
+    let t = '';
+    if (rotateAngle !== 0) t += `rotate(${rotateAngle}deg) `;
+    if (flipH) t += 'scaleX(-1) ';
+    if (flipV) t += 'scaleY(-1) ';
+    return t.trim() || 'none';
   }
 
   function resetMatrix() {
     matrix = [1, 0, 0, 1, 0, 0];
+    rotateAngle = 0;
+    flipH = false;
+    flipV = false;
     applyMatrix();
   }
 
@@ -77,6 +108,18 @@
     const wrapRect = canvasWrapEl.getBoundingClientRect();
     const wrapW = wrapRect.width;
     const wrapH = wrapRect.height;
+
+    // 检查缩放下限：图片不能小于裁剪框
+    if (s < 1 && selectionEl && selectionEl.style.display !== 'none') {
+      const newScaleX = Math.abs(a * s);
+      const newScaleY = Math.abs(d * s);
+      const imgDisplay = getImageDisplayRect();
+      const newImgW = imgDisplay.w * newScaleX;
+      const newImgH = imgDisplay.h * newScaleY;
+      if (newImgW < selW || newImgH < selH) {
+        return; // 已经是最小缩放，不允许继续缩小
+      }
+    }
 
     // 默认以画布中心为缩放中心
     let mx = wrapW / 2;
@@ -102,6 +145,7 @@
 
     matrix = [a * s, b * s, c * s, d * s, newE, newF];
     applyMatrix();
+    clampSelectionToBounds();
   }
 
   function moveImage(dx, dy) {
@@ -128,32 +172,16 @@
   }
 
   function rotateImage(deg) {
-    const center = getImageCenter();
-    const rad = (deg / 360) * Math.PI * 2;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
-    const cx = center.x, cy = center.y;
-    // translate(cx,cy) → rotate → translate(-cx,-cy)
-    const t = [
-      cos, sin, -sin, cos,
-      cx - cx * cos + cy * sin,
-      cy - cx * sin - cy * cos
-    ];
-    matrix = multiplyMatrix(matrix, t);
+    rotateAngle = (rotateAngle + deg) % 360;
     applyMatrix();
+    clampSelectionToBounds();
   }
 
   function flipImage(horizontal) {
-    const center = getImageCenter();
-    const cx = center.x, cy = center.y;
-    if (horizontal) {
-      // translate(cx,cy) → scale(-1,1) → translate(-cx,-cy)
-      matrix = multiplyMatrix(matrix, [-1, 0, 0, 1, 2 * cx, 0]);
-    } else {
-      // translate(cx,cy) → scale(1,-1) → translate(-cx,-cy)
-      matrix = multiplyMatrix(matrix, [1, 0, 0, -1, 0, 2 * cy]);
-    }
+    if (horizontal) flipH = !flipH;
+    else flipV = !flipV;
     applyMatrix();
+    clampSelectionToBounds();
   }
 
   function resetTransform() {
