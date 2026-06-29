@@ -52,7 +52,7 @@
 
     arrowEl = document.createElement('button');
     arrowEl.className = 'bn-arrow';
-    arrowEl.title = '折叠/展开';
+    arrowEl.title = '折叠';
     arrowEl.addEventListener('click', toggleCollapse);
     headerEl.appendChild(arrowEl);
 
