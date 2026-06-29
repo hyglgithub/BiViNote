@@ -691,24 +691,45 @@
   flex-direction: column;
 }
 
-/* 右上角关闭按钮 */
+/* 顶部栏（拖动 + 关闭） */
+.bn-crop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  flex-shrink: 0;
+  background: var(--bn-header-bg);
+  border-bottom: 1px solid var(--bn-border);
+}
+
+.bn-crop-drag-handle {
+  cursor: grab;
+  padding: 4px 8px;
+  font-size: 16px;
+  color: var(--bn-text-sub);
+  user-select: none;
+  letter-spacing: 2px;
+}
+
+.bn-crop-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* 关闭按钮 */
 .bn-crop-close-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--bn-btn-bg);
   border: 1px solid var(--bn-btn-border);
   color: var(--bn-text);
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
-  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
+  flex-shrink: 0;
 }
 
 .bn-crop-close-btn:hover {
