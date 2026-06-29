@@ -52,19 +52,19 @@
     }
   }
 
-  // ── 获取截图时间（字幕/章节的时间码）──
+  // ── 获取截图时间显示（带冒号）──
 
-  function getSnapTimeCode(snapKey) {
+  function getSnapTimeDisplay(snapKey) {
     const s = window.BiViNote.state;
     if (snapKey >= 0) {
       const item = s.subtitleBody[snapKey];
-      if (item) return window.BiViNote.capture.formatTimeCode(item.from);
+      if (item) return window.BiViNote.capture.formatTimeDisplay(item.from);
     } else {
       const chapterIndex = -snapKey - 1;
       const item = s.chapters[chapterIndex];
-      if (item) return window.BiViNote.capture.formatTimeCode(item.from);
+      if (item) return window.BiViNote.capture.formatTimeDisplay(item.from);
     }
-    return '0000';
+    return '00:00';
   }
 
   // ── 获取所有截图的有序列表 ──
@@ -109,8 +109,8 @@
 
     overlayEl.innerHTML = `
       <button class="bn-crop-close-btn" title="关闭 (Esc)">✕</button>
-      <button class="bn-crop-nav-btn bn-crop-nav-prev" title="上一张截图">◀</button>
-      <button class="bn-crop-nav-btn bn-crop-nav-next" title="下一张截图">▶</button>
+      <button class="bn-crop-nav-btn bn-crop-nav-prev" title="上一张截图"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <button class="bn-crop-nav-btn bn-crop-nav-next" title="下一张截图"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
       <div class="bn-crop-sidebar" style="display:none;">
         <div class="bn-crop-sidebar-title">截图目录</div>
         <div class="bn-crop-sidebar-list"></div>
@@ -238,7 +238,7 @@
       div.dataset.key = item.key;
 
       const text = getSnapText(item.key);
-      const timeCode = getSnapTimeCode(item.key);
+      const timeCode = getSnapTimeDisplay(item.key);
       div.innerHTML = `
         <img class="bn-crop-sidebar-thumb" src="${item.url}" alt="">
         <div class="bn-crop-sidebar-info">

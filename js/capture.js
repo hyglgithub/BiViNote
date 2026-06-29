@@ -21,7 +21,7 @@
   }
 
   /**
-   * 格式化时间码（用于文件名）
+   * 格式化时间码（用于文件名，无冒号）
    * 不足1小时：MMSS，超过1小时：HHMMSS
    */
   function formatTimeCode(seconds) {
@@ -31,6 +31,19 @@
     const s = safe % 60;
     const pad = n => String(n).padStart(2, '0');
     return h > 0 ? `${pad(h)}${pad(m)}${pad(s)}` : `${pad(m)}${pad(s)}`;
+  }
+
+  /**
+   * 格式化时间显示（带冒号）
+   * 不足1小时：MM:SS，超过1小时：HH:MM:SS
+   */
+  function formatTimeDisplay(seconds) {
+    const safe = Math.max(0, Math.floor(seconds || 0));
+    const h = Math.floor(safe / 3600);
+    const m = Math.floor((safe % 3600) / 60);
+    const s = safe % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
   }
 
   /**
@@ -186,6 +199,7 @@
     saveToFile,
     copyToClipboard,
     formatTimeCode,
+    formatTimeDisplay,
     generateDownloadFilename,
     generateAssetFilename
   };

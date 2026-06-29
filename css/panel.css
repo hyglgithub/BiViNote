@@ -752,7 +752,7 @@
   position: absolute;
   left: 0;
   top: 0;
-  bottom: 0;
+  bottom: 44px;
   width: 200px;
   background: rgba(0,0,0,0.8);
   overflow-y: auto;
