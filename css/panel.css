@@ -860,12 +860,19 @@
 .bn-crop-controls button,
 .bn-crop-controls select {
   font-size: 12px;
-  padding: 4px 12px;
+  padding: 4px 10px;
   border: 1px solid var(--bn-btn-border);
   background: var(--bn-btn-bg);
   color: var(--bn-text);
   cursor: pointer;
   border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bn-crop-controls button svg {
+  flex-shrink: 0;
 }
 
 .bn-crop-controls button:hover {

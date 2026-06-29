@@ -101,11 +101,11 @@
       </div>
       <div class="bn-crop-controls">
         <div class="bn-crop-btns-browse">
-          <button data-act="prev" title="上一帧">${ICONS.prev}</button>
-          <button data-act="next" title="下一帧">${ICONS.next}</button>
-          <button data-act="enter-crop" title="裁剪">${ICONS.crop}</button>
-          <button data-act="download" title="下载">${ICONS.download}</button>
-          <button data-act="clipboard" title="复制">${ICONS.copy}</button>
+          <button data-act="prev">${ICONS.prev} <span>上一帧</span></button>
+          <button data-act="next">${ICONS.next} <span>下一帧</span></button>
+          <button data-act="enter-crop">${ICONS.crop} <span>裁剪</span></button>
+          <button data-act="download">${ICONS.download} <span>下载</span></button>
+          <button data-act="clipboard">${ICONS.copy} <span>复制</span></button>
         </div>
         <div class="bn-crop-btns-crop" style="display:none;">
           <select class="bn-crop-ratio" title="裁剪比例">
@@ -117,16 +117,16 @@
             <option value="0.5625">9:16</option>
           </select>
           <span class="bn-crop-divider"></span>
-          <button data-act="zoom-in" title="放大">${ICONS.zoomIn}</button>
-          <button data-act="zoom-out" title="缩小">${ICONS.zoomOut}</button>
-          <button data-act="rotate-left" title="左旋90°">${ICONS.rotateL}</button>
-          <button data-act="rotate-right" title="右旋90°">${ICONS.rotateR}</button>
-          <button data-act="flip-h" title="水平翻转">${ICONS.flipH}</button>
-          <button data-act="flip-v" title="垂直翻转">${ICONS.flipV}</button>
-          <button data-act="reset" title="重置">${ICONS.reset}</button>
+          <button data-act="zoom-in">${ICONS.zoomIn} <span>放大</span></button>
+          <button data-act="zoom-out">${ICONS.zoomOut} <span>缩小</span></button>
+          <button data-act="rotate-left">${ICONS.rotateL} <span>左旋</span></button>
+          <button data-act="rotate-right">${ICONS.rotateR} <span>右旋</span></button>
+          <button data-act="flip-h">${ICONS.flipH} <span>水平翻转</span></button>
+          <button data-act="flip-v">${ICONS.flipV} <span>垂直翻转</span></button>
+          <button data-act="reset">${ICONS.reset} <span>重置</span></button>
           <span class="bn-crop-divider"></span>
-          <button data-act="crop-done" title="完成裁剪">✓</button>
-          <button data-act="crop-cancel" title="取消裁剪">✕</button>
+          <button data-act="crop-done">✓ <span>完成</span></button>
+          <button data-act="crop-cancel">✕ <span>取消</span></button>
         </div>
       </div>
     `;
@@ -351,7 +351,8 @@
   // ── 按钮事件 ──
 
   function onControlClick(e) {
-    const act = e.target.dataset?.act;
+    const btn = e.target.closest('button');
+    const act = btn?.dataset?.act;
     if (!act || !cropper) return;
 
     if (act === 'close') close();
