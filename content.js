@@ -54,15 +54,21 @@
   });
   urlObserver.observe(document.body, { childList: true, subtree: true });
 
+  let lastBvid = '';
+  let lastPage = 1;
+
   function onRouteChange() {
-    const oldBvid = BN.state.bvid;
+    const oldBvid = lastBvid;
+    const oldPage = lastPage;
     // 重置状态
     BN.state.reset();
-    // 如果面板可见且 BVID 变化，自动刷新
+    // 如果面板可见，检测 BVID 或分P 变化则自动刷新
     if (BN.state.panelVisible && BN.subtitle) {
       const newBvid = BN.subtitle.extractBvid(location.href);
-      if (newBvid && newBvid !== oldBvid) {
-        // 等待页面加载后再刷新
+      const newPage = BN.subtitle.extractPageIndex(location.href);
+      if (newBvid && (newBvid !== oldBvid || newPage !== oldPage)) {
+        lastBvid = newBvid;
+        lastPage = newPage;
         setTimeout(async () => {
           if (BN.state.panelVisible) {
             await BN.subtitle.refresh();

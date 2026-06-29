@@ -724,7 +724,10 @@
     // 自动加载字幕：无数据或 URL 变化时刷新
     const s = window.BiViNote.state;
     const currentBvid = window.BiViNote.subtitle?.extractBvid(location.href) || '';
-    if (window.BiViNote.subtitle && (!s.bvid || s.bvid !== currentBvid)) {
+    const currentBvidChanged = currentBvid && s.bvid !== currentBvid;
+    const currentPage = window.BiViNote.subtitle?.extractPageIndex(location.href) || 1;
+    const currentPageChanged = s.cid && currentPage !== (s.pageIndex || 1);
+    if (window.BiViNote.subtitle && (!s.bvid || currentBvidChanged || currentPageChanged)) {
       window.BiViNote.subtitle.refresh();
     }
   }

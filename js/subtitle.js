@@ -131,6 +131,7 @@
 
       // 用 URL 中的 ?p= 参数选择正确的分P，获取对应 CID
       const pageIndex = extractPageIndex(location.href);
+      s.pageIndex = pageIndex;
       const currentPage = pickPageFromPages(meta.pages, pageIndex);
       s.cid = currentPage?.cid || meta.defaultCid || meta.pages?.[0]?.cid || '';
 
@@ -564,6 +565,7 @@
     formatTime,
     fetchVideoMeta,
     extractBvid,
+    extractPageIndex,
     findActiveIndex
   };
 })();

@@ -9,6 +9,7 @@ window.BiViNote.state = {
   bvid: '',
   aid: '',
   cid: '',
+  pageIndex: 1,
   title: '',
   author: '',
   uploadDate: '',
@@ -63,6 +64,7 @@ window.BiViNote.state.reset = function () {
   s.bvid = '';
   s.aid = '';
   s.cid = '';
+  s.pageIndex = 1;
   s.title = '';
   s.author = '';
   s.uploadDate = '';
