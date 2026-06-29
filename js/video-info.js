@@ -7,10 +7,20 @@
 
   window.BiViNote = window.BiViNote || {};
 
+  let infoListenerAttached = false;
+
   function render() {
     const s = window.BiViNote.state;
     const container = document.getElementById('bn-video-info');
     if (!container) return;
+
+    container.innerHTML = '';
+
+    // 只绑定一次事件委托
+    if (!infoListenerAttached) {
+      container.addEventListener('click', onInfoClick);
+      infoListenerAttached = true;
+    }
 
     const video = window.BiViNote.subtitle?.getVideoElement();
     const duration = video?.duration || s.videoDuration || 0;
@@ -27,9 +37,10 @@
     container.innerHTML = items.map(item => {
       const checked = s.videoInfoChecked[item.key] ? 'checked' : '';
       const displayValue = escapeHtml(item.value).replace(/\n/g, '<br>');
-      return `<div class="bn-info-item">
+      return `<div class="bn-info-item" data-copy="${escapeHtml(item.value)}">
         <input type="checkbox" data-key="${item.key}" ${checked}>
         <span><strong>${item.label}：</strong>${displayValue}</span>
+        <div class="bn-btns"><button data-action="copy">复制</button></div>
       </div>`;
     }).join('') + `
       <div class="bn-info-item">
@@ -48,6 +59,17 @@
         s.videoInfoChecked[cb.dataset.key] = cb.checked;
         window.BiViNote.settings.save();
       });
+    });
+  }
+
+  function onInfoClick(e) {
+    const btn = e.target.closest('button');
+    if (!btn || btn.dataset.action !== 'copy') return;
+    const row = btn.closest('.bn-info-item');
+    if (!row) return;
+    const text = row.dataset.copy || '';
+    navigator.clipboard.writeText(text).then(() => {
+      window.BiViNote.panel.showToast('已复制');
     });
   }
 

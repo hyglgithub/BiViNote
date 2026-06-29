@@ -280,7 +280,8 @@
 }
 
 .bn-row:hover .bn-btns,
-.bn-row-img:hover .bn-btns {
+.bn-row-img:hover .bn-btns,
+.bn-info-item:hover .bn-btns {
   display: flex;
 }
 
@@ -341,6 +342,7 @@
   padding: 6px 12px;
   border-bottom: 1px solid var(--bn-row-border);
   font-size: 1em;
+  position: relative;
 }
 
 .bn-info-item input[type="checkbox"] {
