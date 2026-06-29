@@ -585,7 +585,8 @@
       try {
         const blob = await capture.captureFrame(video);
         const ts = formatCompactTime(video.currentTime);
-        capture.saveToFile(blob, `bivinote-${ts}.png`);
+        const bvid = window.BiViNote.state.bvid || 'video';
+        capture.saveToFile(blob, `bivinote-${bvid}-${ts}.png`);
         showToast('截图已保存');
       } catch (err) {
         showToast('截图失败：' + err.message);
