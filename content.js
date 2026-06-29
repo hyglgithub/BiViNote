@@ -47,9 +47,10 @@
       const newBvid = BN.subtitle.extractBvid(location.href);
       if (newBvid && newBvid !== oldBvid) {
         // 等待页面加载后再刷新
-        setTimeout(() => {
+        setTimeout(async () => {
           if (BN.state.panelVisible) {
-            BN.subtitle.refresh();
+            await BN.subtitle.refresh();
+            BN.panel.renderPrompt();
           }
         }, 1000);
       }
