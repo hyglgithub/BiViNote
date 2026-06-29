@@ -106,7 +106,7 @@
     // 折叠圆形按钮
     collapseBtnEl = document.createElement('div');
     collapseBtnEl.className = 'bn-collapse-btn bn-hidden';
-    collapseBtnEl.title = '展开 BiViNote';
+    collapseBtnEl.title = '展开';
     const iconUrl = chrome.runtime.getURL('icons/icon-32.png');
     collapseBtnEl.innerHTML = '<img src="' + iconUrl + '" alt="BiViNote">';
     setupCollapseDrag(collapseBtnEl);
@@ -470,15 +470,16 @@
     s.collapsed = !s.collapsed;
 
     if (s.collapsed) {
-      // 折叠：隐藏面板，显示圆形按钮
-      // 优先使用用户之前设定的位置，否则从面板位置初始化
+      // 折叠：隐藏面板，显示圆形按钮（在面板右上角）
+      // 优先使用用户之前设定的位置，否则从面板右上角初始化
       if (savedIconLeft !== null) {
         collapseBtnEl.style.left = savedIconLeft + 'px';
         collapseBtnEl.style.top = savedIconTop + 'px';
       } else {
         const rect = panelEl.getBoundingClientRect();
-        const x = clamp(rect.left, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
-        const y = clamp(rect.top, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
+        // icon 在面板右上角：右边缘 - icon宽度 - 8px内边距，顶部 + 8px
+        const x = clamp(rect.right - BTN_SIZE - 8, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
+        const y = clamp(rect.top + 2, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
         collapseBtnEl.style.left = x + 'px';
         collapseBtnEl.style.top = y + 'px';
         savedIconLeft = x;
@@ -487,12 +488,13 @@
       panelEl.classList.add('bn-hidden');
       collapseBtnEl.classList.remove('bn-hidden');
     } else {
-      // 展开：隐藏圆形按钮，显示面板（在按钮位置，限制在页面内）
-      const rect = collapseBtnEl.getBoundingClientRect();
+      // 展开：隐藏圆形按钮，显示面板（icon 位置对应面板右上角）
+      const iconRect = collapseBtnEl.getBoundingClientRect();
       const panelW = 400;
       const panelH = 600;
-      const x = clamp(rect.left, EDGE_MARGIN, window.innerWidth - panelW - EDGE_MARGIN);
-      const y = clamp(rect.top, EDGE_MARGIN, window.innerHeight - panelH - EDGE_MARGIN);
+      // 面板左上角 = icon位置 - 面板宽度 + icon宽度 + 8px内边距
+      const x = clamp(iconRect.left - panelW + BTN_SIZE + 8, EDGE_MARGIN, window.innerWidth - panelW - EDGE_MARGIN);
+      const y = clamp(iconRect.top - 2, EDGE_MARGIN, window.innerHeight - panelH - EDGE_MARGIN);
       panelEl.style.left = x + 'px';
       panelEl.style.top = y + 'px';
       panelEl.style.right = 'auto';
