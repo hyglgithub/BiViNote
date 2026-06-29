@@ -825,6 +825,12 @@
   background: var(--bn-bg);
 }
 
+/* 覆盖 Cropper.js 方格背景 */
+.bn-crop-canvas-wrap .cropper-bg {
+  background-image: none !important;
+  background-color: var(--bn-bg) !important;
+}
+
 .bn-crop-canvas-wrap img {
   max-width: 100%;
   display: block;
