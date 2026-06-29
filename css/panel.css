@@ -831,11 +831,13 @@
 .bn-crop-canvas {
   width: 100%;
   height: 100%;
-  cursor: grab;
 }
 
-.bn-crop-canvas:active {
-  cursor: grabbing;
+/* 图片 */
+.bn-crop-img {
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* 裁剪框 */
@@ -902,6 +904,32 @@
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+.bn-crop-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.2);
+  margin: 0 2px;
+}
+
+.bn-crop-mode-btn {
+  opacity: 0.6;
+}
+
+.bn-crop-mode-active {
+  opacity: 1;
+  background: rgba(74,144,217,0.5) !important;
+  color: #fff !important;
+}
+
+/* 选区 */
+.bn-crop-selection {
+  position: absolute;
+  border: 2px solid rgba(255,255,255,0.8);
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+  cursor: move;
+  z-index: 1;
 }
 
 /* 滚动条样式 */

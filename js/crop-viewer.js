@@ -1,73 +1,175 @@
 /**
- * BiViNote Crop Viewer Module
- * 截图浏览：裁剪、缩放、拖动、截图导航
+ * BiViNote Crop Viewer Module (v2)
+ * 基于 2D 仿射矩阵的裁剪浏览
+ * 参考 cropperjs 架构：矩阵变换 + action 事件驱动
  */
 (function () {
   'use strict';
 
   window.BiViNote = window.BiViNote || {};
 
+  // ── DOM 引用 ──
   let overlayEl = null;
-  let canvasEl = null;
-  let ctx = null;
-  let cropFrameEl = null;
+  let canvasWrapEl = null;
+  let imgEl = null;
+  let selectionEl = null;
+  let sidebarEl = null;
+
+  // ── 状态 ──
+  let currentSnapKey = -1;
   let currentBlob = null;
   let currentUrl = null;
-  let currentSnapKey = -1;
-  let sidebarEl = null;
   let sidebarVisible = false;
 
-  // 图片状态
-  let img = null;
-  let imgScale = 1;
-  let imgX = 0;
-  let imgY = 0;
-  let isDraggingImg = false;
+  // 图片变换矩阵 [a, b, c, d, e, f]
+  let matrix = [1, 0, 0, 1, 0, 0];
+
+  // 交互模式
+  let mode = 'translate'; // 'translate' | 'select'
+
+  // 拖动状态
+  let isDragging = false;
   let dragStartX = 0;
   let dragStartY = 0;
+  let dragType = ''; // 'image' | 'selection' | 'nw'|'ne'|'sw'|'se'|'n'|'s'|'e'|'w'
 
-  // 裁剪状态
-  let cropMode = false;
-  let cropX = 0, cropY = 0, cropW = 0, cropH = 0;
-  let cropRatio = 0;
-  let isDraggingCrop = false;
-  let cropDragType = '';
-  let cropDragStartX = 0, cropDragStartY = 0;
-  let cropStartRect = {};
+  // 裁剪选区
+  let selX = 0, selY = 0, selW = 0, selH = 0;
+  let selAspectRatio = NaN; // NaN = 自由
 
-  const MIN_CROP = 20;
-  const SIDEBAR_WIDTH = 200;
+  // 图片原始尺寸
+  let imgNatW = 0;
+  let imgNatH = 0;
 
-  // ── 获取截图文本 ──
+  // ── 工具函数 ──
 
-  function getSnapText(snapKey) {
-    const s = window.BiViNote.state;
-    if (snapKey >= 0) {
-      const item = s.subtitleBody[snapKey];
-      return item?.content || '';
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  function escapeHtml(s) { return String(s).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
+
+  // ── 矩阵运算 ──
+
+  function multiplyMatrix(m1, m2) {
+    const [a1, b1, c1, d1, e1, f1] = m1;
+    const [a2, b2, c2, d2, e2, f2] = m2;
+    return [
+      a1 * a2 + c1 * b2,
+      b1 * a2 + d1 * b2,
+      a1 * c2 + c1 * d2,
+      b1 * c2 + d1 * d2,
+      a1 * e2 + c1 * f2 + e1,
+      b1 * e2 + d1 * f2 + f1,
+    ];
+  }
+
+  function applyMatrix() {
+    if (!imgEl) return;
+    imgEl.style.transform = `matrix(${matrix.join(',')})`;
+  }
+
+  function resetMatrix() {
+    matrix = [1, 0, 0, 1, 0, 0];
+    applyMatrix();
+  }
+
+  // ── 变换操作 ──
+
+  function zoomImage(delta, cx, cy) {
+    const scale = delta < 0 ? 1 / (1 - Math.abs(delta)) : 1 + delta;
+    const [a, b, c, d] = matrix;
+    const wrapRect = canvasWrapEl.getBoundingClientRect();
+    const originX = cx !== undefined ? cx : wrapRect.width / 2;
+    const originY = cy !== undefined ? cy : wrapRect.height / 2;
+
+    // 逆矩阵计算缩放中心
+    const det = a * d - c * b;
+    if (Math.abs(det) < 1e-10) return;
+    const moveX = originX - wrapRect.width / 2;
+    const moveY = originY - wrapRect.height / 2;
+    const tx = (moveX * d - c * moveY) / det;
+    const ty = (moveY * a - b * moveX) / det;
+
+    const t = [scale, 0, 0, scale, tx * (1 - scale), ty * (1 - scale)];
+    matrix = multiplyMatrix(matrix, t);
+    applyMatrix();
+  }
+
+  function moveImage(dx, dy) {
+    const [a, b, c, d] = matrix;
+    const det = a * d - c * b;
+    if (Math.abs(det) < 1e-10) return;
+    const tx = (dx * d - c * dy) / det;
+    const ty = (dy * a - b * dx) / det;
+    matrix = multiplyMatrix(matrix, [1, 0, 0, 1, tx, ty]);
+    applyMatrix();
+  }
+
+  function rotateImage(deg) {
+    const rad = (deg / 360) * Math.PI * 2;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    matrix = multiplyMatrix(matrix, [cos, sin, -sin, cos, 0, 0]);
+    applyMatrix();
+  }
+
+  function flipImage(horizontal) {
+    if (horizontal) {
+      matrix = multiplyMatrix(matrix, [-1, 0, 0, 1, 0, 0]);
     } else {
-      const chapterIndex = -snapKey - 1;
-      const item = s.chapters[chapterIndex];
-      return item?.title || '';
+      matrix = multiplyMatrix(matrix, [1, 0, 0, -1, 0, 0]);
+    }
+    applyMatrix();
+  }
+
+  function resetTransform() {
+    resetMatrix();
+  }
+
+  // ── 选区操作 ──
+
+  function renderSelection() {
+    if (!selectionEl) return;
+    selectionEl.style.left = selX + 'px';
+    selectionEl.style.top = selY + 'px';
+    selectionEl.style.width = selW + 'px';
+    selectionEl.style.height = selH + 'px';
+  }
+
+  function initSelection() {
+    if (!canvasWrapEl) return;
+    const wrapW = canvasWrapEl.clientWidth;
+    const wrapH = canvasWrapEl.clientHeight;
+    // 默认选区 = 图片显示区域（居中，contain 模式）
+    const imgDisplay = getImageDisplayRect();
+    selX = imgDisplay.x;
+    selY = imgDisplay.y;
+    selW = imgDisplay.w;
+    selH = imgDisplay.h;
+    renderSelection();
+  }
+
+  function getImageDisplayRect() {
+    if (!canvasWrapEl || !imgNatW) return { x: 0, y: 0, w: 0, h: 0 };
+    const wrapW = canvasWrapEl.clientWidth;
+    const wrapH = canvasWrapEl.clientHeight;
+    const scaleX = wrapW / imgNatW;
+    const scaleY = wrapH / imgNatH;
+    const scale = Math.min(scaleX, scaleY, 1);
+    const w = imgNatW * scale;
+    const h = imgNatH * scale;
+    return { x: (wrapW - w) / 2, y: (wrapH - h) / 2, w, h };
+  }
+
+  function applyAspectRatio() {
+    if (!isNaN(selAspectRatio) && selAspectRatio > 0) {
+      const newH = selW / selAspectRatio;
+      const wrapH = canvasWrapEl.clientHeight;
+      selH = Math.min(newH, wrapH - selY);
+      selW = selH * selAspectRatio;
     }
   }
 
-  // ── 获取截图时间显示（带冒号）──
-
-  function getSnapTimeDisplay(snapKey) {
-    const s = window.BiViNote.state;
-    if (snapKey >= 0) {
-      const item = s.subtitleBody[snapKey];
-      if (item) return window.BiViNote.capture.formatTimeDisplay(item.from);
-    } else {
-      const chapterIndex = -snapKey - 1;
-      const item = s.chapters[chapterIndex];
-      if (item) return window.BiViNote.capture.formatTimeDisplay(item.from);
-    }
-    return '00:00';
-  }
-
-  // ── 获取所有截图的有序列表 ──
+  // ── 获取截图数据 ──
 
   function getScreenshotList() {
     const s = window.BiViNote.state;
@@ -80,11 +182,25 @@
   }
 
   function getCurrentIndex() {
-    const list = getScreenshotList();
-    return list.findIndex(item => item.key === currentSnapKey);
+    return getScreenshotList().findIndex(item => item.key === currentSnapKey);
   }
 
-  // ── 打开浏览 ──
+  function getSnapText(snapKey) {
+    const s = window.BiViNote.state;
+    if (snapKey >= 0) {
+      return s.subtitleBody[snapKey]?.content || '';
+    } else {
+      return s.chapters[-snapKey - 1]?.title || '';
+    }
+  }
+
+  function getSnapTimeDisplay(snapKey) {
+    const s = window.BiViNote.state;
+    const item = snapKey >= 0 ? s.subtitleBody[snapKey] : s.chapters[-snapKey - 1];
+    return item ? window.BiViNote.capture.formatTimeDisplay(item.from) : '00:00';
+  }
+
+  // ── 打开 ──
 
   function open(snapKey) {
     currentSnapKey = snapKey;
@@ -116,8 +232,8 @@
         <div class="bn-crop-sidebar-list"></div>
       </div>
       <div class="bn-crop-canvas-wrap">
-        <canvas class="bn-crop-canvas"></canvas>
-        <div class="bn-crop-frame" style="display:none;">
+        <img class="bn-crop-img" src="" alt="" style="position:absolute;top:50%;left:50%;transform-origin:0 0;">
+        <div class="bn-crop-selection" style="display:none;">
           <div class="bn-crop-handle bn-crop-handle-nw" data-handle="nw"></div>
           <div class="bn-crop-handle bn-crop-handle-ne" data-handle="ne"></div>
           <div class="bn-crop-handle bn-crop-handle-sw" data-handle="sw"></div>
@@ -133,16 +249,29 @@
         <div class="bn-crop-btns-browse">
           <button data-act="prev">上一帧</button>
           <button data-act="next">下一帧</button>
-          <button data-act="crop">裁剪</button>
+          <button data-act="enter-crop">裁剪</button>
           <button data-act="download">下载</button>
           <button data-act="clipboard">复制</button>
         </div>
         <div class="bn-crop-btns-crop" style="display:none;">
-          <select class="bn-crop-ratio">
-            <option value="0">自由</option>
+          <button data-act="mode-translate" class="bn-crop-mode-btn bn-crop-mode-active" title="平移模式">平移</button>
+          <button data-act="mode-select" class="bn-crop-mode-btn" title="裁剪模式">裁剪</button>
+          <span class="bn-crop-divider"></span>
+          <button data-act="zoom-in" title="放大">＋</button>
+          <button data-act="zoom-out" title="缩小">－</button>
+          <button data-act="rotate-left" title="左旋45°">↺</button>
+          <button data-act="rotate-right" title="右旋45°">↻</button>
+          <button data-act="flip-h" title="水平翻转">⇔</button>
+          <button data-act="flip-v" title="垂直翻转">⇕</button>
+          <button data-act="reset" title="重置">重置</button>
+          <span class="bn-crop-divider"></span>
+          <select class="bn-crop-ratio" title="裁剪比例">
+            <option value="NaN">自由</option>
             <option value="1.7778">16:9</option>
             <option value="1.3333">4:3</option>
             <option value="1">1:1</option>
+            <option value="0.6667">2:3</option>
+            <option value="0.5625">9:16</option>
           </select>
           <button data-act="crop-done">完成</button>
           <button data-act="crop-cancel">取消</button>
@@ -150,35 +279,66 @@
       </div>
     `;
 
-    canvasEl = overlayEl.querySelector('.bn-crop-canvas');
-    ctx = canvasEl.getContext('2d');
-    cropFrameEl = overlayEl.querySelector('.bn-crop-frame');
+    canvasWrapEl = overlayEl.querySelector('.bn-crop-canvas-wrap');
+    imgEl = overlayEl.querySelector('.bn-crop-img');
+    selectionEl = overlayEl.querySelector('.bn-crop-selection');
     sidebarEl = overlayEl.querySelector('.bn-crop-sidebar');
 
+    // 事件绑定
     overlayEl.querySelector('.bn-crop-controls').addEventListener('click', onControlClick);
     overlayEl.querySelector('.bn-crop-close-btn').addEventListener('click', close);
     overlayEl.querySelector('.bn-crop-nav-prev').addEventListener('click', () => navigateTo(-1));
     overlayEl.querySelector('.bn-crop-nav-next').addEventListener('click', () => navigateTo(1));
-    canvasEl.addEventListener('wheel', onWheel, { passive: false });
-    canvasEl.addEventListener('mousedown', onCanvasMouseDown);
-    document.addEventListener('mousemove', onDocMouseMove);
-    document.addEventListener('mouseup', onDocMouseUp);
+    canvasWrapEl.addEventListener('wheel', onWheel, { passive: false });
+    canvasWrapEl.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('mousemove', onPointerMove);
+    document.addEventListener('mouseup', onPointerUp);
     document.addEventListener('keydown', onKeyDown);
-    cropFrameEl.addEventListener('mousedown', onCropMouseDown);
 
+    // 选区手柄
+    selectionEl.addEventListener('mousedown', onSelectionMouseDown);
+
+    // 比例
     overlayEl.querySelector('.bn-crop-ratio').addEventListener('change', (e) => {
-      cropRatio = parseFloat(e.target.value) || 0;
-      if (cropRatio > 0 && cropMode) {
-        applyCropRatio();
-        renderCropFrame();
-      }
+      selAspectRatio = parseFloat(e.target.value);
+      if (isNaN(selAspectRatio)) selAspectRatio = NaN;
+      applyAspectRatio();
+      renderSelection();
+    });
+
+    // 模式切换按钮高亮
+    overlayEl.querySelectorAll('.bn-crop-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        mode = btn.dataset.act === 'mode-select' ? 'select' : 'translate';
+        updateModeButtons();
+        updateCursor();
+      });
     });
 
     document.body.appendChild(overlayEl);
     window.addEventListener('resize', onResize);
   }
 
-  // ── 截图导航（不循环）──
+  // ── 加载图片 ──
+
+  function loadImage(url) {
+    imgEl.onload = () => {
+      imgNatW = imgEl.naturalWidth;
+      imgNatH = imgEl.naturalHeight;
+      resetMatrix();
+      // 居中图片
+      imgEl.style.width = imgNatW + 'px';
+      imgEl.style.height = imgNatH + 'px';
+      const display = getImageDisplayRect();
+      imgEl.style.marginLeft = (display.x - canvasWrapEl.clientWidth / 2) + 'px';
+      imgEl.style.marginTop = (display.y - canvasWrapEl.clientHeight / 2) + 'px';
+      imgEl.style.width = display.w + 'px';
+      imgEl.style.height = display.h + 'px';
+    };
+    imgEl.src = url;
+  }
+
+  // ── 截图导航 ──
 
   function navigateTo(direction) {
     const list = getScreenshotList();
@@ -192,7 +352,7 @@
   function switchToScreenshot(snapKey) {
     const snap = window.BiViNote.state.screenshots.get(snapKey);
     if (!snap) return;
-    if (cropMode) exitCropMode(false);
+    exitCropMode();
     currentSnapKey = snapKey;
     currentBlob = snap.blob;
     currentUrl = snap.url;
@@ -216,12 +376,8 @@
   function toggleSidebar() {
     sidebarVisible = !sidebarVisible;
     if (!sidebarEl) return;
-    if (sidebarVisible) {
-      sidebarEl.style.display = '';
-      renderSidebar();
-    } else {
-      sidebarEl.style.display = 'none';
-    }
+    sidebarEl.style.display = sidebarVisible ? '' : 'none';
+    if (sidebarVisible) renderSidebar();
   }
 
   function renderSidebar() {
@@ -229,20 +385,18 @@
     const list = getScreenshotList();
     const listEl = sidebarEl.querySelector('.bn-crop-sidebar-list');
     if (!listEl) return;
-
     listEl.innerHTML = '';
     list.forEach(item => {
       const div = document.createElement('div');
       div.className = 'bn-crop-sidebar-item';
       if (item.key === currentSnapKey) div.classList.add('bn-crop-sidebar-active');
       div.dataset.key = item.key;
-
       const text = getSnapText(item.key);
-      const timeCode = getSnapTimeDisplay(item.key);
+      const time = getSnapTimeDisplay(item.key);
       div.innerHTML = `
         <img class="bn-crop-sidebar-thumb" src="${item.url}" alt="">
         <div class="bn-crop-sidebar-info">
-          <div class="bn-crop-sidebar-time">${timeCode}</div>
+          <div class="bn-crop-sidebar-time">${time}</div>
           <div class="bn-crop-sidebar-text">${escapeHtml(text)}</div>
         </div>
       `;
@@ -256,206 +410,79 @@
     sidebarEl.querySelectorAll('.bn-crop-sidebar-item').forEach(el => {
       el.classList.toggle('bn-crop-sidebar-active', el.dataset.key === String(currentSnapKey));
     });
-    const activeEl = sidebarEl.querySelector('.bn-crop-sidebar-active');
-    if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const active = sidebarEl.querySelector('.bn-crop-sidebar-active');
+    if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  // ── 加载图片 ──
+  // ── 模式切换 ──
 
-  function loadImage(url) {
-    img = new Image();
-    img.onload = () => {
-      fitImageToCanvas();
-      render();
-    };
-    img.src = url;
+  function updateModeButtons() {
+    if (!overlayEl) return;
+    overlayEl.querySelectorAll('.bn-crop-mode-btn').forEach(btn => {
+      const isActive = (btn.dataset.act === 'mode-select' && mode === 'select') ||
+                       (btn.dataset.act === 'mode-translate' && mode === 'translate');
+      btn.classList.toggle('bn-crop-mode-active', isActive);
+    });
   }
 
-  function fitImageToCanvas() {
-    if (!img || !canvasEl) return;
-    const wrapW = canvasEl.parentElement.clientWidth;
-    const wrapH = canvasEl.parentElement.clientHeight;
-    canvasEl.width = wrapW;
-    canvasEl.height = wrapH;
-    const scaleX = wrapW / img.width;
-    const scaleY = wrapH / img.height;
-    imgScale = Math.min(scaleX, scaleY, 1);
-    imgX = (wrapW - img.width * imgScale) / 2;
-    imgY = (wrapH - img.height * imgScale) / 2;
+  function updateCursor() {
+    if (!canvasWrapEl) return;
+    canvasWrapEl.style.cursor = mode === 'select' ? 'crosshair' : 'grab';
   }
 
-  function render() {
-    if (!ctx || !img) return;
-    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-    ctx.save();
-    ctx.translate(imgX, imgY);
-    ctx.scale(imgScale, imgScale);
-    ctx.drawImage(img, 0, 0);
-    ctx.restore();
-  }
-
-  // ── 缩放 ──
-
-  function onWheel(e) {
-    e.preventDefault();
-    const rect = canvasEl.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.max(0.1, Math.min(10, imgScale * delta));
-    imgX = mouseX - (mouseX - imgX) * (newScale / imgScale);
-    imgY = mouseY - (mouseY - imgY) * (newScale / imgScale);
-    imgScale = newScale;
-    render();
-  }
-
-  // ── 拖动图片 ──
-
-  function onCanvasMouseDown(e) {
-    if (cropMode) return;
-    isDraggingImg = true;
-    dragStartX = e.clientX - imgX;
-    dragStartY = e.clientY - imgY;
-    canvasEl.style.cursor = 'grabbing';
-  }
-
-  function onDocMouseMove(e) {
-    if (isDraggingImg) {
-      imgX = e.clientX - dragStartX;
-      imgY = e.clientY - dragStartY;
-      render();
-    }
-    if (isDraggingCrop) handleCropDrag(e);
-  }
-
-  function onDocMouseUp() {
-    isDraggingImg = false;
-    isDraggingCrop = false;
-    if (canvasEl) canvasEl.style.cursor = '';
-  }
-
-  function onKeyDown(e) {
-    if (e.key === 'Escape') {
-      if (cropMode) exitCropMode(false);
-      else close();
-    }
-  }
-
-  // ── 裁剪框 ──
+  // ── 裁剪模式 ──
 
   function enterCropMode() {
-    cropMode = true;
-    // 关闭目录
+    mode = 'translate';
     if (sidebarVisible) { sidebarVisible = false; sidebarEl.style.display = 'none'; }
-    fitImageToCanvas();
-    render();
-
-    const imgRect = getImageDisplayRect();
-    cropX = imgRect.x; cropY = imgRect.y;
-    cropW = imgRect.w; cropH = imgRect.h;
-
-    cropFrameEl.style.display = '';
-    renderCropFrame();
 
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = 'none';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = '';
+    overlayEl.querySelector('.bn-crop-catalog-btn').style.display = 'none';
     overlayEl.querySelector('.bn-crop-nav-prev').style.display = 'none';
     overlayEl.querySelector('.bn-crop-nav-next').style.display = 'none';
-    overlayEl.querySelector('.bn-crop-catalog-btn').style.display = 'none';
+
+    selectionEl.style.display = '';
+    initSelection();
+    updateModeButtons();
+    updateCursor();
   }
 
-  function exitCropMode(save) {
-    if (save) applyCrop();
-    cropMode = false;
-    cropFrameEl.style.display = 'none';
+  function exitCropMode() {
+    mode = 'translate';
+    selectionEl.style.display = 'none';
+
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = '';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = 'none';
     overlayEl.querySelector('.bn-crop-catalog-btn').style.display = '';
     updateNavButtons();
-  }
-
-  function getImageDisplayRect() {
-    return { x: imgX, y: imgY, w: img.width * imgScale, h: img.height * imgScale };
-  }
-
-  function renderCropFrame() {
-    cropFrameEl.style.left = cropX + 'px';
-    cropFrameEl.style.top = cropY + 'px';
-    cropFrameEl.style.width = cropW + 'px';
-    cropFrameEl.style.height = cropH + 'px';
-  }
-
-  function applyCropRatio() {
-    if (cropRatio <= 0) return;
-    const newH = cropW / cropRatio;
-    const imgRect = getImageDisplayRect();
-    cropH = Math.min(newH, imgRect.y + imgRect.h - cropY);
-    cropW = cropH * cropRatio;
-  }
-
-  // ── 裁剪框拖动 ──
-
-  function onCropMouseDown(e) {
-    if (!cropMode) return;
-    e.stopPropagation();
-    cropDragType = e.target.dataset?.handle || 'move';
-    isDraggingCrop = true;
-    cropDragStartX = e.clientX;
-    cropDragStartY = e.clientY;
-    cropStartRect = { x: cropX, y: cropY, w: cropW, h: cropH };
-  }
-
-  function handleCropDrag(e) {
-    const dx = e.clientX - cropDragStartX;
-    const dy = e.clientY - cropDragStartY;
-    const imgRect = getImageDisplayRect();
-    const minX = imgRect.x, minY = imgRect.y;
-    const maxX = imgRect.x + imgRect.w, maxY = imgRect.y + imgRect.h;
-
-    if (cropDragType === 'move') {
-      cropX = clamp(cropStartRect.x + dx, minX, maxX - cropW);
-      cropY = clamp(cropStartRect.y + dy, minY, maxY - cropH);
-    } else {
-      let newX = cropStartRect.x, newY = cropStartRect.y;
-      let newW = cropStartRect.w, newY2 = cropStartRect.y + cropStartRect.h;
-      let newX2 = cropStartRect.x + cropStartRect.w;
-
-      if (cropDragType.includes('w')) { newX = clamp(cropStartRect.x + dx, minX, newX2 - MIN_CROP); newW = newX2 - newX; }
-      if (cropDragType.includes('e')) { newX2 = clamp(cropStartRect.x + cropStartRect.w + dx, newX + MIN_CROP, maxX); newW = newX2 - newX; }
-      if (cropDragType.includes('n')) { newY = clamp(cropStartRect.y + dy, minY, newY2 - MIN_CROP); var newH = newY2 - newY; }
-      if (cropDragType.includes('s')) { newY2 = clamp(cropStartRect.y + cropStartRect.h + dy, newY + MIN_CROP, maxY); var newH = newY2 - newY; }
-
-      if (cropRatio > 0) {
-        if (cropDragType === 'se' || cropDragType === 'e' || cropDragType === 's') {
-          newH = newW / cropRatio;
-          if (newY + newH > maxY) { newH = maxY - newY; newW = newH * cropRatio; }
-        } else if (cropDragType === 'nw' || cropDragType === 'w' || cropDragType === 'n') {
-          const targetW = (cropStartRect.y + cropStartRect.h - newY) * cropRatio;
-          newW = targetW; newX = newX2 - newW;
-          if (newX < minX) { newX = minX; newW = newX2 - newX; }
-          newH = newW / cropRatio; newY = newY2 - newH;
-        }
-      }
-
-      cropX = newX; cropY = newY;
-      cropW = Math.max(MIN_CROP, newW);
-      cropH = Math.max(MIN_CROP, newH || cropH);
-    }
-    renderCropFrame();
+    if (canvasWrapEl) canvasWrapEl.style.cursor = '';
   }
 
   // ── 裁剪应用 ──
 
   function applyCrop() {
-    if (!img) return;
-    const sx = Math.max(0, Math.round((cropX - imgX) / imgScale));
-    const sy = Math.max(0, Math.round((cropY - imgY) / imgScale));
-    const sw = Math.min(Math.round(cropW / imgScale), img.width - sx);
-    const sh = Math.min(Math.round(cropH / imgScale), img.height - sy);
+    if (!imgEl || !imgNatW) return;
+    // 将选区坐标转换为原图像素坐标
+    const display = getImageDisplayRect();
+    const scaleX = imgNatW / display.w;
+    const scaleY = imgNatH / display.h;
+
+    const sx = Math.max(0, Math.round((selX - display.x) * scaleX));
+    const sy = Math.max(0, Math.round((selY - display.y) * scaleY));
+    const sw = Math.min(Math.round(selW * scaleX), imgNatW - sx);
+    const sh = Math.min(Math.round(selH * scaleY), imgNatH - sy);
+
     if (sw <= 0 || sh <= 0) return;
 
     const offscreen = new OffscreenCanvas(sw, sh);
-    offscreen.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    const offCtx = offscreen.getContext('2d');
+
+    // 应用当前矩阵变换后再裁剪
+    offCtx.translate(sw / 2, sh / 2);
+    offCtx.transform(matrix[0], matrix[1], matrix[2], matrix[3], 0, 0);
+    offCtx.translate(-sx - sw / 2, -sy - sh / 2);
+    offCtx.drawImage(imgEl, 0, 0, imgNatW, imgNatH);
 
     offscreen.convertToBlob({ type: 'image/png' }).then(blob => {
       const s = window.BiViNote.state;
@@ -467,6 +494,7 @@
       });
       currentBlob = blob; currentUrl = url;
       loadImage(url);
+      exitCropMode();
       window.BiViNote.subtitle.renderSubtitleList();
       window.BiViNote.chapter.render();
       window.BiViNote.panel.renderPrompt();
@@ -500,19 +528,26 @@
     });
   }
 
-  // ── 按钮事件 ──
+  // ── 事件处理 ──
 
   function onControlClick(e) {
     const act = e.target.dataset?.act;
     if (!act) return;
 
     if (act === 'close') close();
+    else if (act === 'catalog') toggleSidebar();
     else if (act === 'prev') doFrameStep('prev');
     else if (act === 'next') doFrameStep('next');
-    else if (act === 'crop') enterCropMode();
-    else if (act === 'crop-done') exitCropMode(true);
-    else if (act === 'crop-cancel') exitCropMode(false);
-    else if (act === 'catalog') toggleSidebar();
+    else if (act === 'enter-crop') enterCropMode();
+    else if (act === 'crop-done') applyCrop();
+    else if (act === 'crop-cancel') exitCropMode();
+    else if (act === 'zoom-in') zoomImage(0.1);
+    else if (act === 'zoom-out') zoomImage(-0.1);
+    else if (act === 'rotate-left') rotateImage(-45);
+    else if (act === 'rotate-right') rotateImage(45);
+    else if (act === 'flip-h') flipImage(true);
+    else if (act === 'flip-v') flipImage(false);
+    else if (act === 'reset') resetTransform();
     else if (act === 'download') {
       const video = window.BiViNote.subtitle?.getVideoElement();
       window.BiViNote.capture.saveToFile(currentBlob, window.BiViNote.capture.generateDownloadFilename(video?.currentTime || 0));
@@ -524,32 +559,156 @@
     }
   }
 
+  function onWheel(e) {
+    e.preventDefault();
+    const rect = canvasWrapEl.getBoundingClientRect();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    zoomImage(delta, e.clientX - rect.left, e.clientY - rect.top);
+  }
+
+  function onPointerDown(e) {
+    if (mode === 'select') {
+      // 在选区外点击 → 创建新选区
+      const rect = canvasWrapEl.getBoundingClientRect();
+      isDragging = true;
+      dragType = 'new-selection';
+      dragStartX = e.clientX - rect.left;
+      dragStartY = e.clientY - rect.top;
+      selX = dragStartX;
+      selY = dragStartY;
+      selW = 0;
+      selH = 0;
+      selectionEl.style.display = '';
+      renderSelection();
+      return;
+    }
+    // 平移模式
+    isDragging = true;
+    dragType = 'image';
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    canvasWrapEl.style.cursor = 'grabbing';
+  }
+
+  function onPointerMove(e) {
+    if (!isDragging) return;
+
+    if (dragType === 'image') {
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      moveImage(dx, dy);
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+    } else if (dragType === 'new-selection') {
+      const rect = canvasWrapEl.getBoundingClientRect();
+      const curX = e.clientX - rect.left;
+      const curY = e.clientY - rect.top;
+      selW = Math.abs(curX - dragStartX);
+      selH = Math.abs(curY - dragStartY);
+      selX = Math.min(curX, dragStartX);
+      selY = Math.min(curY, dragStartY);
+      if (!isNaN(selAspectRatio)) {
+        selH = selW / selAspectRatio;
+      }
+      renderSelection();
+    } else if (dragType === 'selection-move') {
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      const wrapW = canvasWrapEl.clientWidth;
+      const wrapH = canvasWrapEl.clientHeight;
+      selX = clamp(selX + dx, 0, wrapW - selW);
+      selY = clamp(selY + dy, 0, wrapH - selH);
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      renderSelection();
+    } else if (dragType) {
+      // resize handles
+      handleResize(e);
+    }
+  }
+
+  function onPointerUp() {
+    isDragging = false;
+    dragType = '';
+    if (canvasWrapEl && mode === 'translate') canvasWrapEl.style.cursor = 'grab';
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'Escape') {
+      if (overlayEl?.querySelector('.bn-crop-btns-crop').style.display !== 'none') {
+        exitCropMode();
+      } else {
+        close();
+      }
+    }
+  }
+
+  // ── 选区拖动和调整 ──
+
+  function onSelectionMouseDown(e) {
+    e.stopPropagation();
+    const handle = e.target.dataset?.handle;
+    if (handle) {
+      dragType = handle;
+    } else {
+      dragType = 'selection-move';
+    }
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+  }
+
+  function handleResize(e) {
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    const wrapW = canvasWrapEl.clientWidth;
+    const wrapH = canvasWrapEl.clientHeight;
+    const MIN = 20;
+
+    let newX = selX, newY = selY, newW = selW, newH = selH;
+    let newX2 = selX + selW, newY2 = selY + selH;
+
+    if (dragType.includes('w')) { newX = clamp(selX + dx, 0, newX2 - MIN); newW = newX2 - newX; }
+    if (dragType.includes('e')) { newX2 = clamp(selX + selW + dx, newX + MIN, wrapW); newW = newX2 - newX; }
+    if (dragType.includes('n')) { newY = clamp(selY + dy, 0, newY2 - MIN); newH = newY2 - newY; }
+    if (dragType.includes('s')) { newY2 = clamp(selY + selH + dy, newY + MIN, wrapH); newH = newY2 - newY; }
+
+    if (!isNaN(selAspectRatio) && selAspectRatio > 0) {
+      if (dragType === 'se' || dragType === 'e' || dragType === 's') {
+        newH = newW / selAspectRatio;
+        if (newY + newH > wrapH) { newH = wrapH - newY; newW = newH * selAspectRatio; }
+      } else if (dragType === 'nw' || dragType === 'w' || dragType === 'n') {
+        newW = newH * selAspectRatio;
+        newX = newX2 - newW;
+        if (newX < 0) { newX = 0; newW = newX2; newH = newW / selAspectRatio; newY = newY2 - newH; }
+      }
+    }
+
+    selX = newX; selY = newY;
+    selW = Math.max(MIN, newW);
+    selH = Math.max(MIN, newH);
+    renderSelection();
+  }
+
   // ── 关闭 ──
 
   function close() {
     if (overlayEl) { overlayEl.remove(); overlayEl = null; }
     window.removeEventListener('resize', onResize);
-    document.removeEventListener('mousemove', onDocMouseMove);
-    document.removeEventListener('mouseup', onDocMouseUp);
+    document.removeEventListener('mousemove', onPointerMove);
+    document.removeEventListener('mouseup', onPointerUp);
     document.removeEventListener('keydown', onKeyDown);
-    cropMode = false; img = null; sidebarVisible = false;
+    imgEl = null; sidebarVisible = false;
   }
 
   function onResize() {
-    if (!overlayEl || !img) return;
-    fitImageToCanvas(); render();
-    if (cropMode) {
-      const imgRect = getImageDisplayRect();
-      cropX = clamp(cropX, imgRect.x, imgRect.x + imgRect.w - MIN_CROP);
-      cropY = clamp(cropY, imgRect.y, imgRect.y + imgRect.h - MIN_CROP);
-      cropW = Math.min(cropW, imgRect.x + imgRect.w - cropX);
-      cropH = Math.min(cropH, imgRect.y + imgRect.h - cropY);
-      renderCropFrame();
-    }
+    if (!overlayEl || !imgNatW) return;
+    const display = getImageDisplayRect();
+    imgEl.style.marginLeft = (display.x - canvasWrapEl.clientWidth / 2) + 'px';
+    imgEl.style.marginTop = (display.y - canvasWrapEl.clientHeight / 2) + 'px';
+    imgEl.style.width = display.w + 'px';
+    imgEl.style.height = display.h + 'px';
   }
-
-  function clamp(val, min, max) { return Math.max(min, Math.min(val, max)); }
-  function escapeHtml(str) { return String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
 
   window.BiViNote.cropViewer = { open, close };
 })();
