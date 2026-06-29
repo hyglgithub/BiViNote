@@ -691,34 +691,13 @@
   flex-direction: column;
 }
 
-/* 顶部栏（拖动 + 关闭） */
-.bn-crop-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 8px;
-  flex-shrink: 0;
-  background: var(--bn-header-bg);
-  border-bottom: 1px solid var(--bn-border);
-}
-
-.bn-crop-drag-handle {
-  cursor: grab;
-  padding: 4px 8px;
-  font-size: 16px;
-  color: var(--bn-text-sub);
-  user-select: none;
-  letter-spacing: 2px;
-}
-
-.bn-crop-drag-handle:active {
-  cursor: grabbing;
-}
-
 /* 关闭按钮 */
 .bn-crop-close-btn {
-  width: 28px;
-  height: 28px;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--bn-btn-bg);
   border: 1px solid var(--bn-btn-border);

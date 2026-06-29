@@ -87,10 +87,7 @@
     overlayEl.setAttribute('data-bn-theme', window.BiViNote.state.settings.darkMode ? 'dark' : '');
 
     overlayEl.innerHTML = `
-      <div class="bn-crop-header">
-        <div class="bn-crop-drag-handle" title="拖动">⠿</div>
-        <button class="bn-crop-close-btn" title="关闭 (Esc)">✕</button>
-      </div>
+      <button class="bn-crop-close-btn" title="关闭 (Esc)">✕</button>
       <div class="bn-crop-main">
         <div class="bn-crop-sidebar">
           <div class="bn-crop-sidebar-title">截图目录</div>
@@ -144,8 +141,6 @@
     overlayEl.querySelector('.bn-crop-nav-next').addEventListener('click', () => navigateTo(1));
     document.addEventListener('keydown', onKeyDown);
 
-    // 拖动
-    setupViewerDrag();
 
     // 比例切换
     overlayEl.querySelector('.bn-crop-ratio').addEventListener('change', (e) => {
@@ -409,39 +404,6 @@
         close();
       }
     }
-  }
-
-  // ── 拖动 ──
-
-  function setupViewerDrag() {
-    let isDragging = false;
-    let offsetX = 0, offsetY = 0;
-    const handle = overlayEl.querySelector('.bn-crop-drag-handle');
-    if (!handle) return;
-
-    handle.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      const rect = overlayEl.getBoundingClientRect();
-      offsetX = e.clientX - rect.left;
-      offsetY = e.clientY - rect.top;
-      e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      let x = e.clientX - offsetX;
-      let y = e.clientY - offsetY;
-      x = Math.max(0, Math.min(x, window.innerWidth - 200));
-      y = Math.max(0, Math.min(y, window.innerHeight - 100));
-      overlayEl.style.left = x + 'px';
-      overlayEl.style.top = y + 'px';
-      overlayEl.style.right = 'auto';
-      overlayEl.style.bottom = 'auto';
-    });
-
-    document.addEventListener('mouseup', () => {
-      isDragging = false;
-    });
   }
 
   // ── 关闭 ──
