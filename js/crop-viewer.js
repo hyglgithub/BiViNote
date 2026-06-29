@@ -1,6 +1,6 @@
 /**
  * BiViNote Crop Viewer Module
- * 截图浏览：裁剪、缩放、拖动
+ * 截图浏览：裁剪、缩放、拖动、截图导航
  */
 (function () {
   'use strict';
@@ -13,8 +13,9 @@
   let cropFrameEl = null;
   let currentBlob = null;
   let currentUrl = null;
-  let currentIndex = -1;
-  let isChapter = false;
+  let currentSnapKey = -1; // 当前截图在 screenshots Map 中的 key
+  let sidebarEl = null;
+  let sidebarVisible = false;
 
   // 图片状态
   let img = null;
@@ -27,27 +28,39 @@
 
   // 裁剪状态
   let cropMode = false;
-  let cropX = 0;
-  let cropY = 0;
-  let cropW = 0;
-  let cropH = 0;
-  let cropRatio = 0; // 0 = 自由
+  let cropX = 0, cropY = 0, cropW = 0, cropH = 0;
+  let cropRatio = 0;
   let isDraggingCrop = false;
-  let cropDragType = ''; // 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w'
-  let cropDragStartX = 0;
-  let cropDragStartY = 0;
+  let cropDragType = '';
+  let cropDragStartX = 0, cropDragStartY = 0;
   let cropStartRect = {};
 
   const MIN_CROP = 20;
 
+  // ── 获取所有截图的有序列表 ──
+
+  function getScreenshotList() {
+    const s = window.BiViNote.state;
+    const list = [];
+    for (const [key, snap] of s.screenshots) {
+      list.push({ key, ...snap });
+    }
+    // 按时间排序（章节用 from，字幕也用 from）
+    list.sort((a, b) => (a.timeSeconds || 0) - (b.timeSeconds || 0));
+    return list;
+  }
+
+  function getCurrentIndex() {
+    const list = getScreenshotList();
+    return list.findIndex(item => item.key === currentSnapKey);
+  }
+
   // ── 打开浏览 ──
 
-  function open(index, chapter = false) {
+  function open(snapKey) {
     const s = window.BiViNote.state;
-    isChapter = chapter;
-    currentIndex = index;
+    currentSnapKey = snapKey;
 
-    const snapKey = chapter ? (-index - 1) : index;
     const snap = s.screenshots.get(snapKey);
     if (!snap) return;
 
@@ -56,12 +69,14 @@
 
     createOverlay();
     loadImage(snap.url);
+    updateNavButtons();
   }
 
   // ── 创建 DOM ──
 
   function createOverlay() {
     if (overlayEl) overlayEl.remove();
+    sidebarVisible = false;
 
     overlayEl = document.createElement('div');
     overlayEl.className = 'bn-crop-overlay';
@@ -69,6 +84,8 @@
 
     overlayEl.innerHTML = `
       <button class="bn-crop-close-btn" title="关闭 (Esc)">✕</button>
+      <button class="bn-crop-nav-btn bn-crop-nav-prev" data-dir="prev" title="上一张截图">◀</button>
+      <button class="bn-crop-nav-btn bn-crop-nav-next" data-dir="next" title="下一张截图">▶</button>
       <div class="bn-crop-canvas-wrap">
         <canvas class="bn-crop-canvas"></canvas>
         <div class="bn-crop-frame" style="display:none;">
@@ -84,6 +101,7 @@
       </div>
       <div class="bn-crop-controls">
         <div class="bn-crop-btns-browse">
+          <button data-act="catalog">目录</button>
           <button data-act="prev">上一帧</button>
           <button data-act="next">下一帧</button>
           <button data-act="crop">裁剪</button>
@@ -101,15 +119,22 @@
           <button data-act="crop-cancel">取消</button>
         </div>
       </div>
+      <div class="bn-crop-sidebar" style="display:none;">
+        <div class="bn-crop-sidebar-title">截图目录</div>
+        <div class="bn-crop-sidebar-list"></div>
+      </div>
     `;
 
     canvasEl = overlayEl.querySelector('.bn-crop-canvas');
     ctx = canvasEl.getContext('2d');
     cropFrameEl = overlayEl.querySelector('.bn-crop-frame');
+    sidebarEl = overlayEl.querySelector('.bn-crop-sidebar');
 
     // 事件绑定
     overlayEl.querySelector('.bn-crop-controls').addEventListener('click', onControlClick);
     overlayEl.querySelector('.bn-crop-close-btn').addEventListener('click', close);
+    overlayEl.querySelector('.bn-crop-nav-prev').addEventListener('click', () => navigateTo(-1));
+    overlayEl.querySelector('.bn-crop-nav-next').addEventListener('click', () => navigateTo(1));
     canvasEl.addEventListener('wheel', onWheel, { passive: false });
     canvasEl.addEventListener('mousedown', onCanvasMouseDown);
     document.addEventListener('mousemove', onDocMouseMove);
@@ -127,9 +152,83 @@
     });
 
     document.body.appendChild(overlayEl);
-
-    // 窗口大小变化时重新渲染
     window.addEventListener('resize', onResize);
+  }
+
+  // ── 截图导航 ──
+
+  function navigateTo(direction) {
+    const list = getScreenshotList();
+    if (list.length < 2) return;
+
+    const idx = getCurrentIndex();
+    let newIdx = idx + direction;
+    if (newIdx < 0) newIdx = list.length - 1;
+    if (newIdx >= list.length) newIdx = 0;
+
+    switchToScreenshot(list[newIdx].key);
+  }
+
+  function switchToScreenshot(snapKey) {
+    const s = window.BiViNote.state;
+    const snap = s.screenshots.get(snapKey);
+    if (!snap) return;
+
+    // 退出裁剪模式
+    if (cropMode) exitCropMode(false);
+
+    currentSnapKey = snapKey;
+    currentBlob = snap.blob;
+    currentUrl = snap.url;
+
+    loadImage(snap.url);
+    updateNavButtons();
+    updateSidebarHighlight();
+  }
+
+  function updateNavButtons() {
+    if (!overlayEl) return;
+    const list = getScreenshotList();
+    const hasMultiple = list.length > 1;
+    const prevBtn = overlayEl.querySelector('.bn-crop-nav-prev');
+    const nextBtn = overlayEl.querySelector('.bn-crop-nav-next');
+    if (prevBtn) prevBtn.style.display = hasMultiple ? '' : 'none';
+    if (nextBtn) nextBtn.style.display = hasMultiple ? '' : 'none';
+  }
+
+  // ── 目录侧栏 ──
+
+  function toggleSidebar() {
+    sidebarVisible = !sidebarVisible;
+    if (sidebarEl) {
+      sidebarEl.style.display = sidebarVisible ? '' : 'none';
+      if (sidebarVisible) renderSidebar();
+    }
+  }
+
+  function renderSidebar() {
+    if (!sidebarEl) return;
+    const list = getScreenshotList();
+    const listEl = sidebarEl.querySelector('.bn-crop-sidebar-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+    list.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'bn-crop-sidebar-item';
+      if (item.key === currentSnapKey) div.classList.add('bn-crop-sidebar-active');
+      div.dataset.key = item.key;
+      div.textContent = item.timeCode || '0000';
+      div.addEventListener('click', () => switchToScreenshot(item.key));
+      listEl.appendChild(div);
+    });
+  }
+
+  function updateSidebarHighlight() {
+    if (!sidebarEl || !sidebarVisible) return;
+    sidebarEl.querySelectorAll('.bn-crop-sidebar-item').forEach(el => {
+      el.classList.toggle('bn-crop-sidebar-active', el.dataset.key === String(currentSnapKey));
+    });
   }
 
   // ── 加载图片 ──
@@ -159,8 +258,6 @@
     imgY = (wrapH - img.height * imgScale) / 2;
   }
 
-  // ── 渲染 ──
-
   function render() {
     if (!ctx || !img) return;
     ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
@@ -182,11 +279,9 @@
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     const newScale = Math.max(0.1, Math.min(10, imgScale * delta));
 
-    // 以鼠标位置为中心缩放
     imgX = mouseX - (mouseX - imgX) * (newScale / imgScale);
     imgY = mouseY - (mouseY - imgY) * (newScale / imgScale);
     imgScale = newScale;
-
     render();
   }
 
@@ -219,11 +314,8 @@
 
   function onKeyDown(e) {
     if (e.key === 'Escape') {
-      if (cropMode) {
-        exitCropMode(false);
-      } else {
-        close();
-      }
+      if (cropMode) exitCropMode(false);
+      else close();
     }
   }
 
@@ -231,11 +323,9 @@
 
   function enterCropMode() {
     cropMode = true;
-    // 居中复位图片
     fitImageToCanvas();
     render();
 
-    // 默认裁剪框 = 图片显示区域
     const imgRect = getImageDisplayRect();
     cropX = imgRect.x;
     cropY = imgRect.y;
@@ -245,28 +335,24 @@
     cropFrameEl.style.display = '';
     renderCropFrame();
 
-    // 切换按钮
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = 'none';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = '';
+    // 隐藏导航按钮
+    overlayEl.querySelector('.bn-crop-nav-prev').style.display = 'none';
+    overlayEl.querySelector('.bn-crop-nav-next').style.display = 'none';
   }
 
   function exitCropMode(save) {
-    if (save) {
-      applyCrop();
-    }
+    if (save) applyCrop();
     cropMode = false;
     cropFrameEl.style.display = 'none';
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = '';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = 'none';
+    updateNavButtons();
   }
 
   function getImageDisplayRect() {
-    return {
-      x: imgX,
-      y: imgY,
-      w: img.width * imgScale,
-      h: img.height * imgScale
-    };
+    return { x: imgX, y: imgY, w: img.width * imgScale, h: img.height * imgScale };
   }
 
   function renderCropFrame() {
@@ -278,7 +364,6 @@
 
   function applyCropRatio() {
     if (cropRatio <= 0) return;
-    // 保持宽度，调整高度
     const newH = cropW / cropRatio;
     const imgRect = getImageDisplayRect();
     cropH = Math.min(newH, imgRect.y + imgRect.h - cropY);
@@ -291,11 +376,7 @@
     if (!cropMode) return;
     e.stopPropagation();
     const handle = e.target.dataset?.handle;
-    if (handle) {
-      cropDragType = handle;
-    } else {
-      cropDragType = 'move';
-    }
+    cropDragType = handle || 'move';
     isDraggingCrop = true;
     cropDragStartX = e.clientX;
     cropDragStartY = e.clientY;
@@ -306,19 +387,15 @@
     const dx = e.clientX - cropDragStartX;
     const dy = e.clientY - cropDragStartY;
     const imgRect = getImageDisplayRect();
-    const minX = imgRect.x;
-    const minY = imgRect.y;
-    const maxX = imgRect.x + imgRect.w;
-    const maxY = imgRect.y + imgRect.h;
+    const minX = imgRect.x, minY = imgRect.y;
+    const maxX = imgRect.x + imgRect.w, maxY = imgRect.y + imgRect.h;
 
     if (cropDragType === 'move') {
       cropX = clamp(cropStartRect.x + dx, minX, maxX - cropW);
       cropY = clamp(cropStartRect.y + dy, minY, maxY - cropH);
     } else {
-      let newX = cropStartRect.x;
-      let newY = cropStartRect.y;
-      let newW = cropStartRect.w;
-      let newY2 = cropStartRect.y + cropStartRect.h;
+      let newX = cropStartRect.x, newY = cropStartRect.y;
+      let newW = cropStartRect.w, newY2 = cropStartRect.y + cropStartRect.h;
       let newX2 = cropStartRect.x + cropStartRect.w;
 
       if (cropDragType.includes('w')) {
@@ -331,31 +408,22 @@
       }
       if (cropDragType.includes('n')) {
         newY = clamp(cropStartRect.y + dy, minY, newY2 - MIN_CROP);
-        newH = newY2 - newY;
+        var newH = newY2 - newY;
       }
       if (cropDragType.includes('s')) {
         newY2 = clamp(cropStartRect.y + cropStartRect.h + dy, newY + MIN_CROP, maxY);
         var newH = newY2 - newY;
       }
 
-      // 裁剪比例约束
       if (cropRatio > 0) {
         if (cropDragType === 'se' || cropDragType === 'e' || cropDragType === 's') {
           newH = newW / cropRatio;
-          if (newY + newH > maxY) {
-            newH = maxY - newY;
-            newW = newH * cropRatio;
-          }
+          if (newY + newH > maxY) { newH = maxY - newY; newW = newH * cropRatio; }
         } else if (cropDragType === 'nw' || cropDragType === 'w' || cropDragType === 'n') {
           const targetW = (cropStartRect.y + cropStartRect.h - newY) * cropRatio;
-          newW = targetW;
-          newX = newX2 - newW;
-          if (newX < minX) {
-            newX = minX;
-            newW = newX2 - newX;
-          }
-          newH = newW / cropRatio;
-          newY = newY2 - newH;
+          newW = targetW; newX = newX2 - newW;
+          if (newX < minX) { newX = minX; newW = newX2 - newX; }
+          newH = newW / cropRatio; newY = newY2 - newH;
         }
       }
 
@@ -372,46 +440,35 @@
 
   function applyCrop() {
     if (!img) return;
-    // 将裁剪框坐标转换为原图像素坐标
-    const sx = (cropX - imgX) / imgScale;
-    const sy = (cropY - imgY) / imgScale;
-    const sw = cropW / imgScale;
-    const sh = cropH / imgScale;
+    const sx = Math.max(0, Math.round((cropX - imgX) / imgScale));
+    const sy = Math.max(0, Math.round((cropY - imgY) / imgScale));
+    const sw = Math.min(Math.round(cropW / imgScale), img.width - sx);
+    const sh = Math.min(Math.round(cropH / imgScale), img.height - sy);
 
-    const clampedSx = Math.max(0, Math.round(sx));
-    const clampedSy = Math.max(0, Math.round(sy));
-    const clampedSw = Math.min(Math.round(sw), img.width - clampedSx);
-    const clampedSh = Math.min(Math.round(sh), img.height - clampedSy);
+    if (sw <= 0 || sh <= 0) return;
 
-    if (clampedSw <= 0 || clampedSh <= 0) return;
-
-    const offscreen = new OffscreenCanvas(clampedSw, clampedSh);
-    const offCtx = offscreen.getContext('2d');
-    offCtx.drawImage(img, clampedSx, clampedSy, clampedSw, clampedSh, 0, 0, clampedSw, clampedSh);
+    const offscreen = new OffscreenCanvas(sw, sh);
+    offscreen.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
 
     offscreen.convertToBlob({ type: 'image/png' }).then(blob => {
-      // 替换截图
       const s = window.BiViNote.state;
-      const snapKey = isChapter ? (-currentIndex - 1) : currentIndex;
-      const old = s.screenshots.get(snapKey);
+      const old = s.screenshots.get(currentSnapKey);
       if (old?.url) URL.revokeObjectURL(old.url);
 
       const url = URL.createObjectURL(blob);
-      const timeCode = old?.timeCode || '0000';
-      const timeSeconds = old?.timeSeconds || 0;
-      s.screenshots.set(snapKey, { blob, url, timeCode, timeSeconds });
+      s.screenshots.set(currentSnapKey, {
+        blob, url,
+        timeCode: old?.timeCode || '0000',
+        timeSeconds: old?.timeSeconds || 0
+      });
 
-      // 更新浏览
       currentBlob = blob;
       currentUrl = url;
       loadImage(url);
 
       // 重新渲染列表
-      if (isChapter) {
-        window.BiViNote.chapter.render();
-      } else {
-        window.BiViNote.subtitle.renderSubtitleList();
-      }
+      window.BiViNote.subtitle.renderSubtitleList();
+      window.BiViNote.chapter.render();
       window.BiViNote.panel.renderPrompt();
       window.BiViNote.panel.showToast('裁剪完成');
     });
@@ -424,11 +481,9 @@
     if (!video) return;
 
     const step = window.BiViNote.state.settings.frameStep || 0.2;
-    if (direction === 'prev') {
-      video.currentTime = Math.max(0, video.currentTime - step);
-    } else {
-      video.currentTime = Math.min(video.duration, video.currentTime + step);
-    }
+    video.currentTime = direction === 'prev'
+      ? Math.max(0, video.currentTime - step)
+      : Math.min(video.duration, video.currentTime + step);
     await new Promise(r => video.addEventListener('seeked', r, { once: true }));
 
     const newBlob = await window.BiViNote.capture.captureFrame(video);
@@ -439,13 +494,10 @@
     currentUrl = newUrl;
     loadImage(newUrl);
 
-    // 更新截图数据
     const s = window.BiViNote.state;
-    const snapKey = isChapter ? (-currentIndex - 1) : currentIndex;
-    const old = s.screenshots.get(snapKey);
-    s.screenshots.set(snapKey, {
-      blob: newBlob,
-      url: newUrl,
+    const old = s.screenshots.get(currentSnapKey);
+    s.screenshots.set(currentSnapKey, {
+      blob: newBlob, url: newUrl,
       timeCode: old?.timeCode || window.BiViNote.capture.formatTimeCode(video.currentTime),
       timeSeconds: video.currentTime
     });
@@ -457,22 +509,16 @@
     const act = e.target.dataset?.act;
     if (!act) return;
 
-    if (act === 'close') {
-      close();
-    } else if (act === 'prev') {
-      doFrameStep('prev');
-    } else if (act === 'next') {
-      doFrameStep('next');
-    } else if (act === 'crop') {
-      enterCropMode();
-    } else if (act === 'crop-done') {
-      exitCropMode(true);
-    } else if (act === 'crop-cancel') {
-      exitCropMode(false);
-    } else if (act === 'download') {
+    if (act === 'close') close();
+    else if (act === 'prev') doFrameStep('prev');
+    else if (act === 'next') doFrameStep('next');
+    else if (act === 'crop') enterCropMode();
+    else if (act === 'crop-done') exitCropMode(true);
+    else if (act === 'crop-cancel') exitCropMode(false);
+    else if (act === 'catalog') toggleSidebar();
+    else if (act === 'download') {
       const video = window.BiViNote.subtitle?.getVideoElement();
-      const ts = video ? video.currentTime : 0;
-      window.BiViNote.capture.saveToFile(currentBlob, window.BiViNote.capture.generateDownloadFilename(ts));
+      window.BiViNote.capture.saveToFile(currentBlob, window.BiViNote.capture.generateDownloadFilename(video?.currentTime || 0));
       window.BiViNote.panel.showToast('截图已保存');
     } else if (act === 'clipboard') {
       window.BiViNote.capture.copyToClipboard(currentBlob).then(ok => {
@@ -484,16 +530,14 @@
   // ── 关闭 ──
 
   function close() {
-    if (overlayEl) {
-      overlayEl.remove();
-      overlayEl = null;
-    }
+    if (overlayEl) { overlayEl.remove(); overlayEl = null; }
     window.removeEventListener('resize', onResize);
     document.removeEventListener('mousemove', onDocMouseMove);
     document.removeEventListener('mouseup', onDocMouseUp);
     document.removeEventListener('keydown', onKeyDown);
     cropMode = false;
     img = null;
+    sidebarVisible = false;
   }
 
   // ── 窗口大小变化 ──
@@ -512,14 +556,9 @@
     }
   }
 
-  // ── 工具 ──
-
   function clamp(val, min, max) {
     return Math.max(min, Math.min(val, max));
   }
 
-  window.BiViNote.cropViewer = {
-    open,
-    close
-  };
+  window.BiViNote.cropViewer = { open, close };
 })();

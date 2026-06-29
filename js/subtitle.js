@@ -288,7 +288,7 @@
 
     if (thumb) {
       const index = parseInt(thumb.dataset.index);
-      window.BiViNote.cropViewer.open(index, false);
+      window.BiViNote.cropViewer.open(index);
       return;
     }
 
