@@ -12,7 +12,7 @@
   let arrowEl = null;
   let footerEl = null;
   let headerEl = null;
-  let collapseBtnEl = null;
+  let collapseContainerEl = null;
   let tabs = [];
   let views = {};
 
@@ -103,15 +103,42 @@
     panelEl.appendChild(mainWrapEl);
     document.body.appendChild(panelEl);
 
-    // 折叠圆形按钮
-    collapseBtnEl = document.createElement('div');
-    collapseBtnEl.className = 'bn-collapse-btn bn-hidden';
-    collapseBtnEl.title = '展开';
-    collapseBtnEl.setAttribute('data-bn-theme', s.settings.darkMode ? 'dark' : '');
+    // 折叠浮动组件（icon + 快捷菜单）
+    collapseContainerEl = document.createElement('div');
+    collapseContainerEl.className = 'bn-collapse-container bn-hidden';
+    collapseContainerEl.setAttribute('data-bn-theme', s.settings.darkMode ? 'dark' : '');
+
     const iconUrl = chrome.runtime.getURL('icons/icon-32.png');
-    collapseBtnEl.innerHTML = '<img src="' + iconUrl + '" alt="BiViNote">';
-    setupCollapseDrag(collapseBtnEl);
-    document.body.appendChild(collapseBtnEl);
+    collapseContainerEl.innerHTML = `
+      <div class="bn-collapse-icon" title="展开">
+        <img src="${iconUrl}" alt="BiViNote">
+      </div>
+      <div class="bn-collapse-menu">
+        <div class="bn-collapse-menu-item" data-action="add-snap" title="添加截屏到字幕">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+        <div class="bn-collapse-menu-divider"></div>
+        <div class="bn-collapse-menu-item" data-action="download-snap" title="下载截图">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="bn-collapse-menu-divider"></div>
+        <div class="bn-collapse-menu-item" data-action="copy-snap" title="复制到剪贴板">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </div>
+      </div>
+    `;
+
+    // icon 点击 → 展开面板
+    collapseContainerEl.querySelector('.bn-collapse-icon').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!isDraggingCollapse) toggleCollapse();
+    });
+
+    // 菜单项点击
+    collapseContainerEl.querySelector('.bn-collapse-menu').addEventListener('click', onCollapseMenuClick);
+
+    setupCollapseDrag(collapseContainerEl);
+    document.body.appendChild(collapseContainerEl);
 
     // 绑定 footer 按钮
     footerEl.addEventListener('click', onFooterClick);
@@ -265,7 +292,7 @@
         window.BiViNote.state.settings.darkMode = darkModeEl.checked;
         const theme = darkModeEl.checked ? 'dark' : '';
         panelEl.setAttribute('data-bn-theme', theme);
-        if (collapseBtnEl) collapseBtnEl.setAttribute('data-bn-theme', theme);
+        if (collapseContainerEl) collapseContainerEl.setAttribute('data-bn-theme', theme);
         window.BiViNote.settings.save();
       });
     }
@@ -279,7 +306,7 @@
         applyDisplaySettings();
         // 同步暗色模式到面板和折叠按钮
         panelEl.setAttribute('data-bn-theme', '');
-        if (collapseBtnEl) collapseBtnEl.setAttribute('data-bn-theme', '');
+        if (collapseContainerEl) collapseContainerEl.setAttribute('data-bn-theme', '');
         // 重新渲染视频信息页（恢复默认勾选）
         if (window.BiViNote.videoInfo) {
           window.BiViNote.videoInfo.render();
@@ -457,8 +484,20 @@
     footerEl.classList.toggle('bn-show', tabDef?.footer || false);
   }
 
+  // ── 工具函数 ──
+
+  function formatCompactTime(seconds) {
+    const safe = Math.max(0, Math.floor(seconds || 0));
+    const h = Math.floor(safe / 3600);
+    const m = Math.floor((safe % 3600) / 60);
+    const s = safe % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return h > 0 ? `${pad(h)}${pad(m)}${pad(s)}` : `${pad(m)}${pad(s)}`;
+  }
+
   // ── 折叠/展开 ──
 
+  let isDraggingCollapse = false;
   const BTN_SIZE = 36;
   const EDGE_MARGIN = 20; // 距右边界的距离，避免覆盖滚动条
 
@@ -475,38 +514,85 @@
     s.collapsed = !s.collapsed;
 
     if (s.collapsed) {
-      // 折叠：隐藏面板，显示圆形按钮（在面板右上角）
-      // 优先使用用户之前设定的位置，否则从面板右上角初始化
+      // 折叠：隐藏面板，显示浮动组件
       if (savedIconLeft !== null) {
         const x = clamp(savedIconLeft, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
         const y = clamp(savedIconTop, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
-        collapseBtnEl.style.left = x + 'px';
-        collapseBtnEl.style.top = y + 'px';
+        collapseContainerEl.style.left = x + 'px';
+        collapseContainerEl.style.top = y + 'px';
       } else {
         const rect = panelEl.getBoundingClientRect();
-        // icon 在面板右上角：右边缘 - icon宽度 - 8px内边距，顶部 + 8px
         const x = clamp(rect.right - BTN_SIZE - 8, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
         const y = clamp(rect.top + 2, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
-        collapseBtnEl.style.left = x + 'px';
-        collapseBtnEl.style.top = y + 'px';
+        collapseContainerEl.style.left = x + 'px';
+        collapseContainerEl.style.top = y + 'px';
         savedIconLeft = x;
         savedIconTop = y;
       }
       panelEl.classList.add('bn-hidden');
-      collapseBtnEl.classList.remove('bn-hidden');
+      collapseContainerEl.classList.remove('bn-hidden');
     } else {
-      // 展开：隐藏圆形按钮，显示面板（icon 位置对应面板右上角）
-      const iconRect = collapseBtnEl.getBoundingClientRect();
+      // 展开：隐藏浮动组件，显示面板
+      const iconRect = collapseContainerEl.getBoundingClientRect();
       const panelW = 400;
       const panelH = 600;
-      // 面板左上角 = icon位置 - 面板宽度 + icon宽度 + 8px内边距
       const x = clamp(iconRect.left - panelW + BTN_SIZE + 8, EDGE_MARGIN, window.innerWidth - panelW - EDGE_MARGIN);
       const y = clamp(iconRect.top - 2, EDGE_MARGIN, window.innerHeight - panelH - EDGE_MARGIN);
       panelEl.style.left = x + 'px';
       panelEl.style.top = y + 'px';
       panelEl.style.right = 'auto';
-      collapseBtnEl.classList.add('bn-hidden');
+      collapseContainerEl.classList.add('bn-hidden');
       panelEl.classList.remove('bn-hidden');
+    }
+  }
+
+  // ── 折叠菜单点击 ──
+
+  async function onCollapseMenuClick(e) {
+    const item = e.target.closest('.bn-collapse-menu-item');
+    if (!item) return;
+    e.stopPropagation();
+
+    const action = item.dataset.action;
+    const capture = window.BiViNote.capture;
+    const subtitle = window.BiViNote.subtitle;
+    const video = subtitle?.getVideoElement();
+
+    if (!video) {
+      showToast('未找到视频元素');
+      return;
+    }
+
+    if (action === 'add-snap') {
+      // 如果字幕未加载，先刷新
+      if (!window.BiViNote.state.subtitleBody.length) {
+        showToast('正在获取字幕...');
+        await subtitle.refresh();
+      }
+      // 找到当前时间对应的字幕
+      const activeIndex = subtitle.findActiveIndex(video.currentTime);
+      if (activeIndex >= 0) {
+        await capture.addScreenshot(activeIndex);
+      } else {
+        showToast('当前时间无对应字幕');
+      }
+    } else if (action === 'download-snap') {
+      try {
+        const blob = await capture.captureFrame(video);
+        const ts = formatCompactTime(video.currentTime);
+        capture.saveToFile(blob, `bivinote-${ts}.png`);
+        showToast('截图已保存');
+      } catch (err) {
+        showToast('截图失败：' + err.message);
+      }
+    } else if (action === 'copy-snap') {
+      try {
+        const blob = await capture.captureFrame(video);
+        const ok = await capture.copyToClipboard(blob);
+        showToast(ok ? '已复制到剪贴板' : '复制失败');
+      } catch (err) {
+        showToast('复制失败：' + err.message);
+      }
     }
   }
 
@@ -518,8 +604,11 @@
     let offsetX = 0, offsetY = 0;
 
     el.addEventListener('mousedown', (e) => {
+      // 只有点击 icon 区域才触发拖动
+      if (!e.target.closest('.bn-collapse-icon')) return;
       isDragging = true;
       hasMoved = false;
+      isDraggingCollapse = false;
       const rect = el.getBoundingClientRect();
       offsetX = e.clientX - rect.left;
       offsetY = e.clientY - rect.top;
@@ -529,6 +618,7 @@
     document.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
       hasMoved = true;
+      isDraggingCollapse = true;
       let x = e.clientX - offsetX;
       let y = e.clientY - offsetY;
       x = clamp(x, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
@@ -540,11 +630,6 @@
     });
 
     document.addEventListener('mouseup', () => {
-      if (isDragging) {
-        if (!hasMoved) {
-          toggleCollapse();
-        }
-      }
       isDragging = false;
       hasMoved = false;
     });
@@ -606,7 +691,7 @@
     // 确保非折叠状态
     window.BiViNote.state.collapsed = false;
     panelEl.classList.remove('bn-hidden');
-    if (collapseBtnEl) collapseBtnEl.classList.add('bn-hidden');
+    if (collapseContainerEl) collapseContainerEl.classList.add('bn-hidden');
     window.BiViNote.state.panelVisible = true;
     loadSettingsToUI();
     applyDisplaySettings();
@@ -621,7 +706,7 @@
   function hide() {
     if (panelEl) {
       panelEl.classList.add('bn-hidden');
-      if (collapseBtnEl) collapseBtnEl.classList.add('bn-hidden');
+      if (collapseContainerEl) collapseContainerEl.classList.add('bn-hidden');
       window.BiViNote.state.panelVisible = false;
       window.BiViNote.state.collapsed = false;
     }

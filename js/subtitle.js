@@ -561,6 +561,7 @@
     stopSync,
     formatTime,
     fetchVideoMeta,
-    extractBvid
+    extractBvid,
+    findActiveIndex
   };
 })();

@@ -74,8 +74,21 @@
   display: none;
 }
 
-.bn-collapse-btn {
+/* 折叠浮动组件 */
+.bn-collapse-container {
   position: fixed;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bn-collapse-container.bn-hidden {
+  display: none;
+}
+
+/* 折叠图标 */
+.bn-collapse-icon {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -83,26 +96,60 @@
   border: 2px solid var(--bn-border);
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   cursor: pointer;
-  z-index: 2147483647;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: box-shadow 0.2s;
 }
 
-.bn-collapse-btn:hover {
+.bn-collapse-icon:hover {
   box-shadow: 0 4px 14px rgba(0,0,0,0.3);
 }
 
-.bn-collapse-btn img {
+.bn-collapse-icon img {
   width: 24px;
   height: 24px;
   border-radius: 3px;
   pointer-events: none;
 }
 
-.bn-collapse-btn.bn-hidden {
-  display: none;
+/* 快捷菜单 */
+.bn-collapse-menu {
+  margin-top: 4px;
+  background: var(--bn-card);
+  border: 1px solid var(--bn-border);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.bn-collapse-menu-item {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.bn-collapse-menu-item:hover {
+  background: var(--bn-hover);
+}
+
+.bn-collapse-menu-item svg {
+  width: 18px;
+  height: 18px;
+  color: var(--bn-text);
+}
+
+.bn-collapse-menu-divider {
+  width: 20px;
+  height: 1px;
+  background: var(--bn-border);
+  margin: 0 auto;
 }
 
 /* Header */
