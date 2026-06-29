@@ -516,8 +516,13 @@
     if (s.collapsed) {
       // 折叠：隐藏面板，显示浮动组件
       if (savedIconLeft !== null) {
-        const x = clamp(savedIconLeft, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
-        const y = clamp(savedIconTop, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
+        // 先显示以获取实际尺寸
+        collapseContainerEl.style.left = savedIconLeft + 'px';
+        collapseContainerEl.style.top = savedIconTop + 'px';
+        collapseContainerEl.classList.remove('bn-hidden');
+        const rect = collapseContainerEl.getBoundingClientRect();
+        const x = clamp(savedIconLeft, EDGE_MARGIN, window.innerWidth - rect.width - EDGE_MARGIN);
+        const y = clamp(savedIconTop, EDGE_MARGIN, window.innerHeight - rect.height - EDGE_MARGIN);
         collapseContainerEl.style.left = x + 'px';
         collapseContainerEl.style.top = y + 'px';
       } else {
@@ -619,10 +624,13 @@
       if (!isDragging) return;
       hasMoved = true;
       isDraggingCollapse = true;
+      const rect = el.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
       let x = e.clientX - offsetX;
       let y = e.clientY - offsetY;
-      x = clamp(x, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
-      y = clamp(y, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
+      x = clamp(x, EDGE_MARGIN, window.innerWidth - w - EDGE_MARGIN);
+      y = clamp(y, EDGE_MARGIN, window.innerHeight - h - EDGE_MARGIN);
       el.style.left = x + 'px';
       el.style.top = y + 'px';
       savedIconLeft = x;
