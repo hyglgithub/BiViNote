@@ -75,22 +75,35 @@
   // ── 变换操作 ──
 
   function zoomImage(delta, cx, cy) {
-    const scale = delta < 0 ? 1 / (1 + Math.abs(delta)) : 1 + delta;
-    const [a, b, c, d] = matrix;
+    const s = delta < 0 ? 1 / (1 + Math.abs(delta)) : 1 + delta;
+    const [a, b, c, d, e, f] = matrix;
     const wrapRect = canvasWrapEl.getBoundingClientRect();
-    const originX = cx !== undefined ? cx : wrapRect.width / 2;
-    const originY = cy !== undefined ? cy : wrapRect.height / 2;
+    const wrapW = wrapRect.width;
+    const wrapH = wrapRect.height;
 
-    // 逆矩阵计算缩放中心
+    // 默认以画布中心为缩放中心
+    let mx = wrapW / 2;
+    let my = wrapH / 2;
+    if (cx !== undefined && cy !== undefined) {
+      mx = cx;
+      my = cy;
+    }
+
+    // 图片左上角在画布中的位置
+    const imgLeft = parseFloat(imgEl.style.marginLeft) + wrapW / 2;
+    const imgTop = parseFloat(imgEl.style.marginTop) + wrapH / 2;
+
+    // 鼠标在图片坐标系中的位置
     const det = a * d - c * b;
     if (Math.abs(det) < 1e-10) return;
-    const moveX = originX - wrapRect.width / 2;
-    const moveY = originY - wrapRect.height / 2;
-    const tx = (moveX * d - c * moveY) / det;
-    const ty = (moveY * a - b * moveX) / det;
+    const localX = ((mx - imgLeft - e) * d - c * (my - imgTop - f)) / det;
+    const localY = ((my - imgTop - f) * a - b * (mx - imgLeft - e)) / det;
 
-    const t = [scale, 0, 0, scale, tx * (1 - scale), ty * (1 - scale)];
-    matrix = multiplyMatrix(matrix, t);
+    // 缩放后的偏移：保持鼠标下的图片点不动
+    const newE = mx - imgLeft - localX * a * s;
+    const newF = my - imgTop - localY * d * s;
+
+    matrix = [a * s, b * s, c * s, d * s, newE, newF];
     applyMatrix();
   }
 
@@ -168,6 +181,12 @@
     const w = imgNatW * scale;
     const h = imgNatH * scale;
     return { x: (wrapW - w) / 2, y: (wrapH - h) / 2, w, h };
+  }
+
+  // 获取图片边界（选区限制用）
+  function getImageBounds() {
+    const d = getImageDisplayRect();
+    return { left: d.x, top: d.y, right: d.x + d.w, bottom: d.y + d.h };
   }
 
   function applyAspectRatio() {
@@ -575,12 +594,12 @@
 
   function onPointerDown(e) {
     if (mode === 'select') {
-      // 在选区外点击 → 创建新选区
       const rect = canvasWrapEl.getBoundingClientRect();
+      const b = getImageBounds();
       isDragging = true;
       dragType = 'new-selection';
-      dragStartX = e.clientX - rect.left;
-      dragStartY = e.clientY - rect.top;
+      dragStartX = clamp(e.clientX - rect.left, b.left, b.right);
+      dragStartY = clamp(e.clientY - rect.top, b.top, b.bottom);
       selX = dragStartX;
       selY = dragStartY;
       selW = 0;
@@ -608,8 +627,9 @@
       dragStartY = e.clientY;
     } else if (dragType === 'new-selection') {
       const rect = canvasWrapEl.getBoundingClientRect();
-      const curX = e.clientX - rect.left;
-      const curY = e.clientY - rect.top;
+      const b = getImageBounds();
+      const curX = clamp(e.clientX - rect.left, b.left, b.right);
+      const curY = clamp(e.clientY - rect.top, b.top, b.bottom);
       selW = Math.abs(curX - dragStartX);
       selH = Math.abs(curY - dragStartY);
       selX = Math.min(curX, dragStartX);
@@ -617,14 +637,16 @@
       if (!isNaN(selAspectRatio)) {
         selH = selW / selAspectRatio;
       }
+      // 限制在图片范围内
+      selX = clamp(selX, b.left, b.right - selW);
+      selY = clamp(selY, b.top, b.bottom - selH);
       renderSelection();
     } else if (dragType === 'selection-move') {
       const dx = e.clientX - dragStartX;
       const dy = e.clientY - dragStartY;
-      const wrapW = canvasWrapEl.clientWidth;
-      const wrapH = canvasWrapEl.clientHeight;
-      selX = clamp(selX + dx, 0, wrapW - selW);
-      selY = clamp(selY + dy, 0, wrapH - selH);
+      const b = getImageBounds();
+      selX = clamp(selX + dx, b.left, b.right - selW);
+      selY = clamp(selY + dy, b.top, b.bottom - selH);
       dragStartX = e.clientX;
       dragStartY = e.clientY;
       renderSelection();
@@ -668,26 +690,25 @@
   function handleResize(e) {
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
-    const wrapW = canvasWrapEl.clientWidth;
-    const wrapH = canvasWrapEl.clientHeight;
+    const b = getImageBounds();
     const MIN = 20;
 
     let newX = selX, newY = selY, newW = selW, newH = selH;
     let newX2 = selX + selW, newY2 = selY + selH;
 
-    if (dragType.includes('w')) { newX = clamp(selX + dx, 0, newX2 - MIN); newW = newX2 - newX; }
-    if (dragType.includes('e')) { newX2 = clamp(selX + selW + dx, newX + MIN, wrapW); newW = newX2 - newX; }
-    if (dragType.includes('n')) { newY = clamp(selY + dy, 0, newY2 - MIN); newH = newY2 - newY; }
-    if (dragType.includes('s')) { newY2 = clamp(selY + selH + dy, newY + MIN, wrapH); newH = newY2 - newY; }
+    if (dragType.includes('w')) { newX = clamp(selX + dx, b.left, newX2 - MIN); newW = newX2 - newX; }
+    if (dragType.includes('e')) { newX2 = clamp(selX + selW + dx, newX + MIN, b.right); newW = newX2 - newX; }
+    if (dragType.includes('n')) { newY = clamp(selY + dy, b.top, newY2 - MIN); newH = newY2 - newY; }
+    if (dragType.includes('s')) { newY2 = clamp(selY + selH + dy, newY + MIN, b.bottom); newH = newY2 - newY; }
 
     if (!isNaN(selAspectRatio) && selAspectRatio > 0) {
       if (dragType === 'se' || dragType === 'e' || dragType === 's') {
         newH = newW / selAspectRatio;
-        if (newY + newH > wrapH) { newH = wrapH - newY; newW = newH * selAspectRatio; }
+        if (newY + newH > b.bottom) { newH = b.bottom - newY; newW = newH * selAspectRatio; }
       } else if (dragType === 'nw' || dragType === 'w' || dragType === 'n') {
         newW = newH * selAspectRatio;
         newX = newX2 - newW;
-        if (newX < 0) { newX = 0; newW = newX2; newH = newW / selAspectRatio; newY = newY2 - newH; }
+        if (newX < b.left) { newX = b.left; newW = newX2 - newX; newH = newW / selAspectRatio; newY = newY2 - newH; }
       }
     }
 
