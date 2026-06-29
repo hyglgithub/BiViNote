@@ -154,20 +154,30 @@
   // ── 加载图片 ──
 
   function loadImage(url) {
-    // 先预加载图片，加载完再替换 Cropper，避免闪烁
-    const img = new Image();
-    img.onload = () => {
-      imgNatW = img.naturalWidth;
-      imgNatH = img.naturalHeight;
+    const canvasWrap = overlayEl?.querySelector('.bn-crop-canvas-wrap');
+    // 预加载：先在内存中加载完，再更新 DOM，避免闪烁
+    const preloader = new Image();
+    preloader.onload = () => {
+      imgNatW = preloader.naturalWidth;
+      imgNatH = preloader.naturalHeight;
+      // 隐藏画布区域，防止销毁/重建时闪烁
+      if (canvasWrap) canvasWrap.style.visibility = 'hidden';
       if (cropper) {
-        cropper.replace(url);
-      } else {
-        cropperEl.src = url;
-        initCropper();
+        cropper.destroy();
+        cropper = null;
       }
-      renderSidebar();
+      cropperEl.src = url;
+      cropperEl.onload = () => {
+        cropperEl.onload = null;
+        initCropper();
+        renderSidebar();
+        // Cropper 初始化完成后恢复显示
+        requestAnimationFrame(() => {
+          if (canvasWrap) canvasWrap.style.visibility = '';
+        });
+      };
     };
-    img.src = url;
+    preloader.src = url;
   }
 
   function initCropper() {
