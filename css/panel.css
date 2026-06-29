@@ -815,23 +815,55 @@
   text-overflow: ellipsis;
 }
 
-/* cropperjs 容器 */
-.bn-crop-cropper-wrap {
+/* 画布区域 */
+.bn-crop-canvas-wrap {
   flex: 1;
   position: relative;
   overflow: hidden;
 }
 
-.bn-crop-cropper-wrap img {
-  display: block;
-  max-width: 100%;
+.bn-crop-canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
 }
 
-/* cropperjs Web Components 样式覆盖 */
-cropper-canvas {
+.bn-crop-canvas {
   width: 100%;
   height: 100%;
 }
+
+/* 图片 */
+.bn-crop-img {
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 裁剪框 */
+.bn-crop-frame {
+  position: absolute;
+  border: 2px dashed #fff;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+  cursor: move;
+}
+
+.bn-crop-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border: 1px solid #333;
+}
+
+.bn-crop-handle-nw { top: -5px; left: -5px; cursor: nw-resize; }
+.bn-crop-handle-ne { top: -5px; right: -5px; cursor: ne-resize; }
+.bn-crop-handle-sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+.bn-crop-handle-se { bottom: -5px; right: -5px; cursor: se-resize; }
+.bn-crop-handle-n { top: -5px; left: 50%; margin-left: -5px; cursor: n-resize; }
+.bn-crop-handle-s { bottom: -5px; left: 50%; margin-left: -5px; cursor: s-resize; }
+.bn-crop-handle-e { top: 50%; right: -5px; margin-top: -5px; cursor: e-resize; }
+.bn-crop-handle-w { top: 50%; left: -5px; margin-top: -5px; cursor: w-resize; }
 
 /* 控制栏 */
 .bn-crop-controls {
