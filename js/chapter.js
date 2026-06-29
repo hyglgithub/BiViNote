@@ -77,7 +77,7 @@
     // 点击缩略图 → 预览
     if (thumb) {
       const index = parseInt(thumb.dataset.index);
-      showChapterPreview(index);
+      window.BiViNote.cropViewer.open(index, true);
       return;
     }
 

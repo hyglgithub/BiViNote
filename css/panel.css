@@ -680,6 +680,89 @@
   font-size: 1em;
 }
 
+/* ── 裁剪浏览 ── */
+
+.bn-crop-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+}
+
+.bn-crop-canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.bn-crop-canvas {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.bn-crop-canvas:active {
+  cursor: grabbing;
+}
+
+/* 裁剪框 */
+.bn-crop-frame {
+  position: absolute;
+  border: 2px dashed #fff;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+  cursor: move;
+}
+
+.bn-crop-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border: 1px solid #333;
+}
+
+.bn-crop-handle-nw { top: -5px; left: -5px; cursor: nw-resize; }
+.bn-crop-handle-ne { top: -5px; right: -5px; cursor: ne-resize; }
+.bn-crop-handle-sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+.bn-crop-handle-se { bottom: -5px; right: -5px; cursor: se-resize; }
+.bn-crop-handle-n { top: -5px; left: 50%; margin-left: -5px; cursor: n-resize; }
+.bn-crop-handle-s { bottom: -5px; left: 50%; margin-left: -5px; cursor: s-resize; }
+.bn-crop-handle-e { top: 50%; right: -5px; margin-top: -5px; cursor: e-resize; }
+.bn-crop-handle-w { top: 50%; left: -5px; margin-top: -5px; cursor: w-resize; }
+
+/* 控制栏 */
+.bn-crop-controls {
+  background: var(--bn-header-bg);
+  padding: 8px 12px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.bn-crop-controls button,
+.bn-crop-controls select {
+  font-size: 12px;
+  padding: 4px 12px;
+  border: 1px solid var(--bn-btn-border);
+  background: var(--bn-btn-bg);
+  color: var(--bn-text);
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.bn-crop-controls button:hover {
+  background: var(--bn-tab-active);
+}
+
+.bn-crop-btns-browse,
+.bn-crop-btns-crop {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 /* 滚动条样式 */
 .bn-scroll::-webkit-scrollbar {
   width: 6px;
