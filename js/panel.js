@@ -243,6 +243,11 @@
         <input type="checkbox" id="bn-dark-mode">
         <label class="bn-switch-track" for="bn-dark-mode"></label>
       </div>
+      <div class="bn-setting-label">默认打开方式</div>
+      <div class="bn-chip-group" data-setting="defaultOpen">
+        <input type="radio" name="bn-defaultOpen" id="bn-do-panel" value="panel" checked><label for="bn-do-panel">字幕面板</label>
+        <input type="radio" name="bn-defaultOpen" id="bn-do-menu" value="menu"><label for="bn-do-menu">功能菜单</label>
+      </div>
       <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
     `;
   }
@@ -296,6 +301,14 @@
         window.BiViNote.settings.save();
       });
     }
+
+    // 默认打开方式
+    panelEl.querySelectorAll('input[name="bn-defaultOpen"]').forEach(r => {
+      r.addEventListener('change', () => {
+        window.BiViNote.state.settings.defaultOpen = r.value;
+        window.BiViNote.settings.save();
+      });
+    });
 
     // 恢复默认
     const resetBtn = panelEl.querySelector('#bn-reset-btn');
@@ -446,6 +459,7 @@
     setRadio('bn-fontSize', s.fontSize);
     setRadio('bn-lineHeight', s.lineHeight);
     setRadio('bn-frameStep', String(s.frameStep));
+    setRadio('bn-defaultOpen', s.defaultOpen || 'panel');
 
     const autoScrollEl = panelEl.querySelector('#bn-auto-scroll');
     if (autoScrollEl) autoScrollEl.checked = s.autoScroll;
@@ -584,9 +598,7 @@
     } else if (action === 'download-snap') {
       try {
         const blob = await capture.captureFrame(video);
-        const ts = formatCompactTime(video.currentTime);
-        const bvid = window.BiViNote.state.bvid || 'video';
-        capture.saveToFile(blob, `bivinote-${bvid}-${ts}.png`);
+        capture.saveToFile(blob, capture.generateDownloadFilename(video.currentTime));
         showToast('截图已保存');
       } catch (err) {
         showToast('截图失败：' + err.message);
@@ -776,6 +788,7 @@
     show,
     hide,
     toggle,
+    toggleCollapse,
     switchTab,
     updateSubtitleSelect,
     showToast,

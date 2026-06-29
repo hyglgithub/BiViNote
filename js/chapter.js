@@ -111,10 +111,78 @@
   }
 
   function showChapterPreview(index) {
+    const s = window.BiViNote.state;
     const snapKey = -index - 1;
-    if (window.BiViNote.cropViewer) {
-      window.BiViNote.cropViewer.open(snapKey);
+    const screenshot = s.screenshots.get(snapKey);
+    if (!screenshot) return;
+
+    const video = window.BiViNote.subtitle?.getVideoElement();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'bn-preview-overlay';
+    overlay.setAttribute('data-bn-theme', window.BiViNote.state.settings.darkMode ? 'dark' : '');
+
+    let currentUrl = screenshot.url;
+    let currentBlob = screenshot.blob;
+
+    overlay.innerHTML = `
+      <div class="bn-preview-box">
+        <img class="bn-preview-img" src="${currentUrl}" alt="预览">
+        <div class="bn-preview-btns">
+          <button data-act="prev">上一帧</button>
+          <button data-act="next">下一帧</button>
+          <button data-act="download">下载截图</button>
+          <button data-act="clipboard">复制到剪贴板</button>
+          <button data-act="close">关闭</button>
+        </div>
+      </div>
+    `;
+
+    const imgEl = overlay.querySelector('.bn-preview-img');
+    let frameActionBusy = false;
+
+    async function doFrameAction(act) {
+      if (!video || frameActionBusy) return;
+      frameActionBusy = true;
+      try {
+        const step = s.settings.frameStep || 0.2;
+        if (act === 'prev') {
+          video.currentTime = Math.max(0, video.currentTime - step);
+        } else {
+          video.currentTime = Math.min(video.duration, video.currentTime + step);
+        }
+        await new Promise(r => video.addEventListener('seeked', r, { once: true }));
+        const newBlob = await window.BiViNote.capture.captureFrame(video);
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        currentUrl = URL.createObjectURL(newBlob);
+        currentBlob = newBlob;
+        imgEl.src = currentUrl;
+        s.screenshots.set(snapKey, { blob: currentBlob, url: currentUrl });
+      } finally {
+        frameActionBusy = false;
+      }
     }
+
+    overlay.addEventListener('click', async (e) => {
+      const act = e.target.dataset?.act;
+      if (act === 'close' || e.target === overlay) {
+        overlay.remove();
+        return;
+      }
+      if (act === 'prev' || act === 'next') {
+        await doFrameAction(act);
+      } else if (act === 'download') {
+        const video = window.BiViNote.subtitle?.getVideoElement();
+        const ts = video ? video.currentTime : 0;
+        window.BiViNote.capture.saveToFile(currentBlob, window.BiViNote.capture.generateDownloadFilename(ts));
+        window.BiViNote.panel.showToast('截图已保存');
+      } else if (act === 'clipboard') {
+        const ok = await window.BiViNote.capture.copyToClipboard(currentBlob);
+        window.BiViNote.panel.showToast(ok ? '已复制到剪贴板' : '复制失败');
+      }
+    });
+
+    document.body.appendChild(overlay);
   }
 
   function jumpToChapter(seconds) {

@@ -92,7 +92,7 @@
         const prefix = chTs ? `- \`${formatCompactTime(ch.from)}\` ` : '- ';
         lines.push(`${prefix}${ch.title}`);
         if (snap) {
-          lines.push(`  ![章节截图](assets/${snap.timestamp || `chapter-${idx + 1}`}.png)`);
+          lines.push(`  ![章节截图](assets/${snap.timeCode || '0000'}.png)`);
         }
       });
       lines.push('');
@@ -128,7 +128,7 @@
             const prefix = subTs ? `\`${formatCompactTime(item.from)}\` ` : '';
             lines.push(`${prefix}${item.content}`);
             if (snap) {
-              lines.push(`![截图](assets/${snap.timestamp || (index + 1)}.png)`);
+              lines.push(`![截图](assets/${snap.timeCode || '0000'}.png)`);
             }
           });
           lines.push('');
@@ -144,7 +144,7 @@
             const prefix = subTs ? `\`${formatCompactTime(item.from)}\` ` : '';
             lines.push(`${prefix}${item.content}`);
             if (snap) {
-              lines.push(`![截图](assets/${snap.timestamp || (index + 1)}.png)`);
+              lines.push(`![截图](assets/${snap.timeCode || '0000'}.png)`);
             }
           });
           lines.push('');
@@ -156,7 +156,7 @@
           const prefix = subTs ? `\`${formatCompactTime(item.from)}\` ` : '';
           lines.push(`${prefix}${item.content}`);
           if (snap) {
-            lines.push(`![截图](assets/${snap.timestamp || (i + 1)}.png)`);
+            lines.push(`![截图](assets/${snap.timeCode || '0000'}.png)`);
           }
         });
         lines.push('');
@@ -183,9 +183,9 @@
       const zip = new JSZip();
       zip.file('note.md', md);
 
-      for (const [index, { blob, timestamp }] of s.screenshots) {
-        const name = timestamp || (index < 0 ? `chapter-${-index}` : String(index + 1));
-        zip.file(`assets/${name}.png`, blob);
+      for (const [index, { blob, timeCode }] of s.screenshots) {
+        const tc = timeCode || '0000';
+        zip.file(`assets/${tc}.png`, blob);
       }
 
       const zipBlob = await zip.generateAsync({ type: 'blob' });

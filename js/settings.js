@@ -16,7 +16,8 @@
     subtitleLang: '',
     downloadDir: '',
     promptNoImage: '',
-    promptWithImage: ''
+    promptWithImage: '',
+    defaultOpen: 'panel'
   };
 
   const DEFAULT_CHECKED = {

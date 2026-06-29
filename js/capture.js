@@ -8,19 +8,6 @@
   window.BiViNote = window.BiViNote || {};
 
   /**
-   * 生成时间戳字符串 MMSS 或 HHMMSS
-   */
-  function formatTimestamp(seconds) {
-    const safe = Math.max(0, Math.floor(seconds || 0));
-    const h = Math.floor(safe / 3600);
-    const m = Math.floor((safe % 3600) / 60);
-    const s = safe % 60;
-    const pad = n => String(n).padStart(2, '0');
-    if (h > 0) return `${pad(h)}${pad(m)}${pad(s)}`;
-    return `${pad(m)}${pad(s)}`;
-  }
-
-  /**
    * 截取当前视频帧
    */
   async function captureFrame(video) {
@@ -31,6 +18,36 @@
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
     return canvas.convertToBlob({ type: 'image/png' });
+  }
+
+  /**
+   * 格式化时间码（用于文件名）
+   * 不足1小时：MMSS，超过1小时：HHMMSS
+   */
+  function formatTimeCode(seconds) {
+    const safe = Math.max(0, Math.floor(seconds || 0));
+    const h = Math.floor(safe / 3600);
+    const m = Math.floor((safe % 3600) / 60);
+    const s = safe % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return h > 0 ? `${pad(h)}${pad(m)}${pad(s)}` : `${pad(m)}${pad(s)}`;
+  }
+
+  /**
+   * 生成下载文件名：bivinote-{bvid}-{时间码}.png
+   */
+  function generateDownloadFilename(timeSeconds) {
+    const s = window.BiViNote.state;
+    const bvid = s.bvid || 'unknown';
+    const tc = formatTimeCode(timeSeconds);
+    return `bivinote-${bvid}-${tc}.png`;
+  }
+
+  /**
+   * 生成 assets 文件名：{时间码}.png
+   */
+  function generateAssetFilename(timeSeconds) {
+    return `${formatTimeCode(timeSeconds)}.png`;
   }
 
   /**
@@ -63,7 +80,7 @@
       const old = s.screenshots.get(subtitleIndex);
       if (old?.url) URL.revokeObjectURL(old.url);
 
-      s.screenshots.set(subtitleIndex, { blob, url, timestamp: formatTimestamp(item.from) });
+      s.screenshots.set(subtitleIndex, { blob, url, timeCode: formatTimeCode(item.from), timeSeconds: item.from });
 
       // 恢复播放状态
       if (!wasPaused) video.play().catch(() => {});
@@ -106,7 +123,7 @@
       const key = -chapterIndex - 1;
       const old = s.screenshots.get(key);
       if (old?.url) URL.revokeObjectURL(old.url);
-      s.screenshots.set(key, { blob, url, timestamp: formatTimestamp(item.from) });
+      s.screenshots.set(key, { blob, url, timeCode: formatTimeCode(item.from), timeSeconds: item.from });
 
       if (!wasPaused) video.play().catch(() => {});
       window.BiViNote.chapter.render();
@@ -168,6 +185,8 @@
     removeScreenshot,
     saveToFile,
     copyToClipboard,
-    formatTimestamp
+    formatTimeCode,
+    generateDownloadFilename,
+    generateAssetFilename
   };
 })();

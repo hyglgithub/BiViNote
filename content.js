@@ -17,7 +17,12 @@
       // 监听 background 消息（toggle-panel）
       chrome.runtime.onMessage.addListener((message) => {
         if (message.type === 'toggle-panel') {
-          BN.panel.toggle();
+          const defaultOpen = BN.state.settings.defaultOpen || 'panel';
+          if (defaultOpen === 'menu') {
+            BN.panel.toggleCollapse();
+          } else {
+            BN.panel.toggle();
+          }
         }
       });
 
