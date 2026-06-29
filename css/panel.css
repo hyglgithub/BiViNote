@@ -815,13 +815,11 @@
   text-overflow: ellipsis;
 }
 
-/* 浏览主体（canvas + 控制栏） */
-.bn-crop-body {
+/* 画布区域 */
+.bn-crop-canvas-wrap {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  position: relative;
   overflow: hidden;
-  transition: margin-left 0.2s;
 }
 
 .bn-crop-canvas-wrap {
@@ -867,26 +865,36 @@
 
 /* 控制栏 */
 .bn-crop-controls {
-  background: var(--bn-header-bg);
+  background: rgba(0,0,0,0.8);
   padding: 8px 12px;
   display: flex;
   justify-content: center;
   gap: 6px;
+  position: relative;
+  flex-shrink: 0;
 }
 
 .bn-crop-controls button,
 .bn-crop-controls select {
   font-size: 12px;
   padding: 4px 12px;
-  border: 1px solid var(--bn-btn-border);
-  background: var(--bn-btn-bg);
-  color: var(--bn-text);
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.1);
+  color: #ccc;
   cursor: pointer;
   border-radius: 3px;
 }
 
 .bn-crop-controls button:hover {
-  background: var(--bn-tab-active);
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+.bn-crop-catalog-btn {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .bn-crop-btns-browse,

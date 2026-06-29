@@ -38,7 +38,7 @@
   const MIN_CROP = 20;
   const SIDEBAR_WIDTH = 200;
 
-  // ── 获取截图文本（字幕内容或章节标题）──
+  // ── 获取截图文本 ──
 
   function getSnapText(snapKey) {
     const s = window.BiViNote.state;
@@ -50,6 +50,21 @@
       const item = s.chapters[chapterIndex];
       return item?.title || '';
     }
+  }
+
+  // ── 获取截图时间（字幕/章节的时间码）──
+
+  function getSnapTimeCode(snapKey) {
+    const s = window.BiViNote.state;
+    if (snapKey >= 0) {
+      const item = s.subtitleBody[snapKey];
+      if (item) return window.BiViNote.capture.formatTimeCode(item.from);
+    } else {
+      const chapterIndex = -snapKey - 1;
+      const item = s.chapters[chapterIndex];
+      if (item) return window.BiViNote.capture.formatTimeCode(item.from);
+    }
+    return '0000';
   }
 
   // ── 获取所有截图的有序列表 ──
@@ -72,15 +87,11 @@
   // ── 打开浏览 ──
 
   function open(snapKey) {
-    const s = window.BiViNote.state;
     currentSnapKey = snapKey;
-
-    const snap = s.screenshots.get(snapKey);
+    const snap = window.BiViNote.state.screenshots.get(snapKey);
     if (!snap) return;
-
     currentBlob = snap.blob;
     currentUrl = snap.url;
-
     createOverlay();
     loadImage(snap.url);
     updateNavButtons();
@@ -98,45 +109,43 @@
 
     overlayEl.innerHTML = `
       <button class="bn-crop-close-btn" title="关闭 (Esc)">✕</button>
-      <button class="bn-crop-nav-btn bn-crop-nav-prev" data-dir="prev" title="上一张截图">◀</button>
-      <button class="bn-crop-nav-btn bn-crop-nav-next" data-dir="next" title="下一张截图">▶</button>
+      <button class="bn-crop-nav-btn bn-crop-nav-prev" title="上一张截图">◀</button>
+      <button class="bn-crop-nav-btn bn-crop-nav-next" title="下一张截图">▶</button>
       <div class="bn-crop-sidebar" style="display:none;">
         <div class="bn-crop-sidebar-title">截图目录</div>
         <div class="bn-crop-sidebar-list"></div>
       </div>
-      <div class="bn-crop-body">
-        <div class="bn-crop-canvas-wrap">
-          <canvas class="bn-crop-canvas"></canvas>
-          <div class="bn-crop-frame" style="display:none;">
-            <div class="bn-crop-handle bn-crop-handle-nw" data-handle="nw"></div>
-            <div class="bn-crop-handle bn-crop-handle-ne" data-handle="ne"></div>
-            <div class="bn-crop-handle bn-crop-handle-sw" data-handle="sw"></div>
-            <div class="bn-crop-handle bn-crop-handle-se" data-handle="se"></div>
-            <div class="bn-crop-handle bn-crop-handle-n" data-handle="n"></div>
-            <div class="bn-crop-handle bn-crop-handle-s" data-handle="s"></div>
-            <div class="bn-crop-handle bn-crop-handle-e" data-handle="e"></div>
-            <div class="bn-crop-handle bn-crop-handle-w" data-handle="w"></div>
-          </div>
+      <div class="bn-crop-canvas-wrap">
+        <canvas class="bn-crop-canvas"></canvas>
+        <div class="bn-crop-frame" style="display:none;">
+          <div class="bn-crop-handle bn-crop-handle-nw" data-handle="nw"></div>
+          <div class="bn-crop-handle bn-crop-handle-ne" data-handle="ne"></div>
+          <div class="bn-crop-handle bn-crop-handle-sw" data-handle="sw"></div>
+          <div class="bn-crop-handle bn-crop-handle-se" data-handle="se"></div>
+          <div class="bn-crop-handle bn-crop-handle-n" data-handle="n"></div>
+          <div class="bn-crop-handle bn-crop-handle-s" data-handle="s"></div>
+          <div class="bn-crop-handle bn-crop-handle-e" data-handle="e"></div>
+          <div class="bn-crop-handle bn-crop-handle-w" data-handle="w"></div>
         </div>
-        <div class="bn-crop-controls">
-          <div class="bn-crop-btns-browse">
-            <button data-act="catalog">目录</button>
-            <button data-act="prev">上一帧</button>
-            <button data-act="next">下一帧</button>
-            <button data-act="crop">裁剪</button>
-            <button data-act="download">下载</button>
-            <button data-act="clipboard">复制</button>
-          </div>
-          <div class="bn-crop-btns-crop" style="display:none;">
-            <select class="bn-crop-ratio">
-              <option value="0">自由</option>
-              <option value="1.7778">16:9</option>
-              <option value="1.3333">4:3</option>
-              <option value="1">1:1</option>
-            </select>
-            <button data-act="crop-done">完成</button>
-            <button data-act="crop-cancel">取消</button>
-          </div>
+      </div>
+      <div class="bn-crop-controls">
+        <button class="bn-crop-catalog-btn" data-act="catalog" title="截图目录">目录</button>
+        <div class="bn-crop-btns-browse">
+          <button data-act="prev">上一帧</button>
+          <button data-act="next">下一帧</button>
+          <button data-act="crop">裁剪</button>
+          <button data-act="download">下载</button>
+          <button data-act="clipboard">复制</button>
+        </div>
+        <div class="bn-crop-btns-crop" style="display:none;">
+          <select class="bn-crop-ratio">
+            <option value="0">自由</option>
+            <option value="1.7778">16:9</option>
+            <option value="1.3333">4:3</option>
+            <option value="1">1:1</option>
+          </select>
+          <button data-act="crop-done">完成</button>
+          <button data-act="crop-cancel">取消</button>
         </div>
       </div>
     `;
@@ -146,7 +155,6 @@
     cropFrameEl = overlayEl.querySelector('.bn-crop-frame');
     sidebarEl = overlayEl.querySelector('.bn-crop-sidebar');
 
-    // 事件绑定
     overlayEl.querySelector('.bn-crop-controls').addEventListener('click', onControlClick);
     overlayEl.querySelector('.bn-crop-close-btn').addEventListener('click', close);
     overlayEl.querySelector('.bn-crop-nav-prev').addEventListener('click', () => navigateTo(-1));
@@ -175,25 +183,19 @@
   function navigateTo(direction) {
     const list = getScreenshotList();
     if (list.length < 2) return;
-
     const idx = getCurrentIndex();
     const newIdx = idx + direction;
-    if (newIdx < 0 || newIdx >= list.length) return; // 边界停止
-
+    if (newIdx < 0 || newIdx >= list.length) return;
     switchToScreenshot(list[newIdx].key);
   }
 
   function switchToScreenshot(snapKey) {
-    const s = window.BiViNote.state;
-    const snap = s.screenshots.get(snapKey);
+    const snap = window.BiViNote.state.screenshots.get(snapKey);
     if (!snap) return;
-
     if (cropMode) exitCropMode(false);
-
     currentSnapKey = snapKey;
     currentBlob = snap.blob;
     currentUrl = snap.url;
-
     loadImage(snap.url);
     updateNavButtons();
     updateSidebarHighlight();
@@ -214,19 +216,12 @@
   function toggleSidebar() {
     sidebarVisible = !sidebarVisible;
     if (!sidebarEl) return;
-
     if (sidebarVisible) {
       sidebarEl.style.display = '';
-      overlayEl.querySelector('.bn-crop-body').style.marginLeft = SIDEBAR_WIDTH + 'px';
       renderSidebar();
     } else {
       sidebarEl.style.display = 'none';
-      overlayEl.querySelector('.bn-crop-body').style.marginLeft = '0';
     }
-    // 重新适应画布尺寸
-    setTimeout(() => {
-      if (img) { fitImageToCanvas(); render(); }
-    }, 50);
   }
 
   function renderSidebar() {
@@ -243,9 +238,9 @@
       div.dataset.key = item.key;
 
       const text = getSnapText(item.key);
-      const timeCode = item.timeCode || '0000';
+      const timeCode = getSnapTimeCode(item.key);
       div.innerHTML = `
-        <img class="bn-crop-sidebar-thumb" src="${item.url}" alt="${timeCode}">
+        <img class="bn-crop-sidebar-thumb" src="${item.url}" alt="">
         <div class="bn-crop-sidebar-info">
           <div class="bn-crop-sidebar-time">${timeCode}</div>
           <div class="bn-crop-sidebar-text">${escapeHtml(text)}</div>
@@ -261,7 +256,6 @@
     sidebarEl.querySelectorAll('.bn-crop-sidebar-item').forEach(el => {
       el.classList.toggle('bn-crop-sidebar-active', el.dataset.key === String(currentSnapKey));
     });
-    // 滚动到当前项
     const activeEl = sidebarEl.querySelector('.bn-crop-sidebar-active');
     if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
@@ -279,13 +273,10 @@
 
   function fitImageToCanvas() {
     if (!img || !canvasEl) return;
-    const wrap = overlayEl.querySelector('.bn-crop-canvas-wrap');
-    const wrapW = wrap.clientWidth;
-    const wrapH = wrap.clientHeight;
-
+    const wrapW = canvasEl.parentElement.clientWidth;
+    const wrapH = canvasEl.parentElement.clientHeight;
     canvasEl.width = wrapW;
     canvasEl.height = wrapH;
-
     const scaleX = wrapW / img.width;
     const scaleY = wrapH / img.height;
     imgScale = Math.min(scaleX, scaleY, 1);
@@ -310,10 +301,8 @@
     const rect = canvasEl.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     const newScale = Math.max(0.1, Math.min(10, imgScale * delta));
-
     imgX = mouseX - (mouseX - imgX) * (newScale / imgScale);
     imgY = mouseY - (mouseY - imgY) * (newScale / imgScale);
     imgScale = newScale;
@@ -336,9 +325,7 @@
       imgY = e.clientY - dragStartY;
       render();
     }
-    if (isDraggingCrop) {
-      handleCropDrag(e);
-    }
+    if (isDraggingCrop) handleCropDrag(e);
   }
 
   function onDocMouseUp() {
@@ -358,14 +345,14 @@
 
   function enterCropMode() {
     cropMode = true;
+    // 关闭目录
+    if (sidebarVisible) { sidebarVisible = false; sidebarEl.style.display = 'none'; }
     fitImageToCanvas();
     render();
 
     const imgRect = getImageDisplayRect();
-    cropX = imgRect.x;
-    cropY = imgRect.y;
-    cropW = imgRect.w;
-    cropH = imgRect.h;
+    cropX = imgRect.x; cropY = imgRect.y;
+    cropW = imgRect.w; cropH = imgRect.h;
 
     cropFrameEl.style.display = '';
     renderCropFrame();
@@ -374,6 +361,7 @@
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = '';
     overlayEl.querySelector('.bn-crop-nav-prev').style.display = 'none';
     overlayEl.querySelector('.bn-crop-nav-next').style.display = 'none';
+    overlayEl.querySelector('.bn-crop-catalog-btn').style.display = 'none';
   }
 
   function exitCropMode(save) {
@@ -382,6 +370,7 @@
     cropFrameEl.style.display = 'none';
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = '';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = 'none';
+    overlayEl.querySelector('.bn-crop-catalog-btn').style.display = '';
     updateNavButtons();
   }
 
@@ -409,8 +398,7 @@
   function onCropMouseDown(e) {
     if (!cropMode) return;
     e.stopPropagation();
-    const handle = e.target.dataset?.handle;
-    cropDragType = handle || 'move';
+    cropDragType = e.target.dataset?.handle || 'move';
     isDraggingCrop = true;
     cropDragStartX = e.clientX;
     cropDragStartY = e.clientY;
@@ -432,22 +420,10 @@
       let newW = cropStartRect.w, newY2 = cropStartRect.y + cropStartRect.h;
       let newX2 = cropStartRect.x + cropStartRect.w;
 
-      if (cropDragType.includes('w')) {
-        newX = clamp(cropStartRect.x + dx, minX, newX2 - MIN_CROP);
-        newW = newX2 - newX;
-      }
-      if (cropDragType.includes('e')) {
-        newX2 = clamp(cropStartRect.x + cropStartRect.w + dx, newX + MIN_CROP, maxX);
-        newW = newX2 - newX;
-      }
-      if (cropDragType.includes('n')) {
-        newY = clamp(cropStartRect.y + dy, minY, newY2 - MIN_CROP);
-        var newH = newY2 - newY;
-      }
-      if (cropDragType.includes('s')) {
-        newY2 = clamp(cropStartRect.y + cropStartRect.h + dy, newY + MIN_CROP, maxY);
-        var newH = newY2 - newY;
-      }
+      if (cropDragType.includes('w')) { newX = clamp(cropStartRect.x + dx, minX, newX2 - MIN_CROP); newW = newX2 - newX; }
+      if (cropDragType.includes('e')) { newX2 = clamp(cropStartRect.x + cropStartRect.w + dx, newX + MIN_CROP, maxX); newW = newX2 - newX; }
+      if (cropDragType.includes('n')) { newY = clamp(cropStartRect.y + dy, minY, newY2 - MIN_CROP); var newH = newY2 - newY; }
+      if (cropDragType.includes('s')) { newY2 = clamp(cropStartRect.y + cropStartRect.h + dy, newY + MIN_CROP, maxY); var newH = newY2 - newY; }
 
       if (cropRatio > 0) {
         if (cropDragType === 'se' || cropDragType === 'e' || cropDragType === 's') {
@@ -461,12 +437,10 @@
         }
       }
 
-      cropX = newX;
-      cropY = newY;
+      cropX = newX; cropY = newY;
       cropW = Math.max(MIN_CROP, newW);
       cropH = Math.max(MIN_CROP, newH || cropH);
     }
-
     renderCropFrame();
   }
 
@@ -478,7 +452,6 @@
     const sy = Math.max(0, Math.round((cropY - imgY) / imgScale));
     const sw = Math.min(Math.round(cropW / imgScale), img.width - sx);
     const sh = Math.min(Math.round(cropH / imgScale), img.height - sy);
-
     if (sw <= 0 || sh <= 0) return;
 
     const offscreen = new OffscreenCanvas(sw, sh);
@@ -488,18 +461,12 @@
       const s = window.BiViNote.state;
       const old = s.screenshots.get(currentSnapKey);
       if (old?.url) URL.revokeObjectURL(old.url);
-
       const url = URL.createObjectURL(blob);
       s.screenshots.set(currentSnapKey, {
-        blob, url,
-        timeCode: old?.timeCode || '0000',
-        timeSeconds: old?.timeSeconds || 0
+        blob, url, timeCode: old?.timeCode || '0000', timeSeconds: old?.timeSeconds || 0
       });
-
-      currentBlob = blob;
-      currentUrl = url;
+      currentBlob = blob; currentUrl = url;
       loadImage(url);
-
       window.BiViNote.subtitle.renderSubtitleList();
       window.BiViNote.chapter.render();
       window.BiViNote.panel.renderPrompt();
@@ -512,7 +479,6 @@
   async function doFrameStep(direction) {
     const video = window.BiViNote.subtitle?.getVideoElement();
     if (!video) return;
-
     const step = window.BiViNote.state.settings.frameStep || 0.2;
     video.currentTime = direction === 'prev'
       ? Math.max(0, video.currentTime - step)
@@ -521,10 +487,8 @@
 
     const newBlob = await window.BiViNote.capture.captureFrame(video);
     const newUrl = URL.createObjectURL(newBlob);
-
     if (currentUrl) URL.revokeObjectURL(currentUrl);
-    currentBlob = newBlob;
-    currentUrl = newUrl;
+    currentBlob = newBlob; currentUrl = newUrl;
     loadImage(newUrl);
 
     const s = window.BiViNote.state;
@@ -568,17 +532,12 @@
     document.removeEventListener('mousemove', onDocMouseMove);
     document.removeEventListener('mouseup', onDocMouseUp);
     document.removeEventListener('keydown', onKeyDown);
-    cropMode = false;
-    img = null;
-    sidebarVisible = false;
+    cropMode = false; img = null; sidebarVisible = false;
   }
-
-  // ── 窗口大小变化 ──
 
   function onResize() {
     if (!overlayEl || !img) return;
-    fitImageToCanvas();
-    render();
+    fitImageToCanvas(); render();
     if (cropMode) {
       const imgRect = getImageDisplayRect();
       cropX = clamp(cropX, imgRect.x, imgRect.x + imgRect.w - MIN_CROP);
@@ -589,13 +548,8 @@
     }
   }
 
-  function clamp(val, min, max) {
-    return Math.max(min, Math.min(val, max));
-  }
-
-  function escapeHtml(str) {
-    return String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-  }
+  function clamp(val, min, max) { return Math.max(min, Math.min(val, max)); }
+  function escapeHtml(str) { return String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
 
   window.BiViNote.cropViewer = { open, close };
 })();
