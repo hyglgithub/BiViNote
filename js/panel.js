@@ -107,6 +107,7 @@
     collapseBtnEl = document.createElement('div');
     collapseBtnEl.className = 'bn-collapse-btn bn-hidden';
     collapseBtnEl.title = '展开';
+    collapseBtnEl.setAttribute('data-bn-theme', s.settings.darkMode ? 'dark' : '');
     const iconUrl = chrome.runtime.getURL('icons/icon-32.png');
     collapseBtnEl.innerHTML = '<img src="' + iconUrl + '" alt="BiViNote">';
     setupCollapseDrag(collapseBtnEl);
@@ -262,7 +263,9 @@
     if (darkModeEl) {
       darkModeEl.addEventListener('change', () => {
         window.BiViNote.state.settings.darkMode = darkModeEl.checked;
-        panelEl.setAttribute('data-bn-theme', darkModeEl.checked ? 'dark' : '');
+        const theme = darkModeEl.checked ? 'dark' : '';
+        panelEl.setAttribute('data-bn-theme', theme);
+        if (collapseBtnEl) collapseBtnEl.setAttribute('data-bn-theme', theme);
         window.BiViNote.settings.save();
       });
     }
@@ -274,8 +277,9 @@
         window.BiViNote.settings.resetDefaults();
         loadSettingsToUI();
         applyDisplaySettings();
-        // 同步暗色模式到面板
+        // 同步暗色模式到面板和折叠按钮
         panelEl.setAttribute('data-bn-theme', '');
+        if (collapseBtnEl) collapseBtnEl.setAttribute('data-bn-theme', '');
         // 重新渲染视频信息页（恢复默认勾选）
         if (window.BiViNote.videoInfo) {
           window.BiViNote.videoInfo.render();
@@ -384,6 +388,7 @@
   }
 
   function renderPrompt() {
+    if (!panelEl) return;
     const s = window.BiViNote.state;
     const type = getPromptType();
     const template = type === 'img'
@@ -473,8 +478,10 @@
       // 折叠：隐藏面板，显示圆形按钮（在面板右上角）
       // 优先使用用户之前设定的位置，否则从面板右上角初始化
       if (savedIconLeft !== null) {
-        collapseBtnEl.style.left = savedIconLeft + 'px';
-        collapseBtnEl.style.top = savedIconTop + 'px';
+        const x = clamp(savedIconLeft, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
+        const y = clamp(savedIconTop, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
+        collapseBtnEl.style.left = x + 'px';
+        collapseBtnEl.style.top = y + 'px';
       } else {
         const rect = panelEl.getBoundingClientRect();
         // icon 在面板右上角：右边缘 - icon宽度 - 8px内边距，顶部 + 8px
@@ -505,8 +512,6 @@
 
   // ── 折叠按钮拖动 ──
 
-  let isDraggingCollapse = false;
-
   function setupCollapseDrag(el) {
     let isDragging = false;
     let hasMoved = false;
@@ -524,15 +529,12 @@
     document.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
       hasMoved = true;
-      isDraggingCollapse = true;
       let x = e.clientX - offsetX;
       let y = e.clientY - offsetY;
-      // 边界限制：图标完整在页面内，右边留余量
       x = clamp(x, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
       y = clamp(y, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
       el.style.left = x + 'px';
       el.style.top = y + 'px';
-      // 保存用户拖动后的位置
       savedIconLeft = x;
       savedIconTop = y;
     });
@@ -540,10 +542,8 @@
     document.addEventListener('mouseup', () => {
       if (isDragging) {
         if (!hasMoved) {
-          // 没有移动，视为点击 → 展开
           toggleCollapse();
         }
-        isDraggingCollapse = false;
       }
       isDragging = false;
       hasMoved = false;

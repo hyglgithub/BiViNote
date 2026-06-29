@@ -219,7 +219,7 @@
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 
   function sanitize(str) {
