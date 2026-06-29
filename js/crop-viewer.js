@@ -24,9 +24,6 @@
   // 图片变换矩阵 [a, b, c, d, e, f]
   let matrix = [1, 0, 0, 1, 0, 0];
 
-  // 交互模式
-  let mode = 'translate'; // 'translate' | 'select'
-
   // 拖动状态
   let isDragging = false;
   let dragStartX = 0;
@@ -283,9 +280,6 @@
           <button data-act="clipboard">复制</button>
         </div>
         <div class="bn-crop-btns-crop" style="display:none;">
-          <button data-act="mode-translate" class="bn-crop-mode-btn bn-crop-mode-active" title="平移模式">平移</button>
-          <button data-act="mode-select" class="bn-crop-mode-btn" title="裁剪模式">裁剪</button>
-          <span class="bn-crop-divider"></span>
           <button data-act="zoom-in" title="放大">＋</button>
           <button data-act="zoom-out" title="缩小">－</button>
           <button data-act="rotate-left" title="左旋45°">↺</button>
@@ -333,15 +327,6 @@
       if (isNaN(selAspectRatio)) selAspectRatio = NaN;
       applyAspectRatio();
       renderSelection();
-    });
-
-    // 模式切换按钮高亮
-    overlayEl.querySelectorAll('.bn-crop-mode-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        mode = btn.dataset.act === 'mode-select' ? 'select' : 'translate';
-        updateModeButtons();
-        updateCursor();
-      });
     });
 
     document.body.appendChild(overlayEl);
@@ -438,24 +423,9 @@
 
   // ── 模式切换 ──
 
-  function updateModeButtons() {
-    if (!overlayEl) return;
-    overlayEl.querySelectorAll('.bn-crop-mode-btn').forEach(btn => {
-      const isActive = (btn.dataset.act === 'mode-select' && mode === 'select') ||
-                       (btn.dataset.act === 'mode-translate' && mode === 'translate');
-      btn.classList.toggle('bn-crop-mode-active', isActive);
-    });
-  }
-
-  function updateCursor() {
-    if (!canvasWrapEl) return;
-    canvasWrapEl.style.cursor = mode === 'select' ? 'crosshair' : 'grab';
-  }
-
   // ── 裁剪模式 ──
 
   function enterCropMode() {
-    mode = 'translate';
     if (sidebarVisible) { sidebarVisible = false; sidebarEl.style.display = 'none'; }
 
     // 恢复图片原比例和位置
@@ -470,12 +440,10 @@
 
     selectionEl.style.display = '';
     initSelection();
-    updateModeButtons();
-    updateCursor();
+    canvasWrapEl.style.cursor = 'grab';
   }
 
   function exitCropMode() {
-    mode = 'translate';
     selectionEl.style.display = 'none';
 
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = '';
@@ -593,22 +561,7 @@
   }
 
   function onPointerDown(e) {
-    if (mode === 'select') {
-      const rect = canvasWrapEl.getBoundingClientRect();
-      const b = getImageBounds();
-      isDragging = true;
-      dragType = 'new-selection';
-      dragStartX = clamp(e.clientX - rect.left, b.left, b.right);
-      dragStartY = clamp(e.clientY - rect.top, b.top, b.bottom);
-      selX = dragStartX;
-      selY = dragStartY;
-      selW = 0;
-      selH = 0;
-      selectionEl.style.display = '';
-      renderSelection();
-      return;
-    }
-    // 平移模式
+    // 始终允许拖动图片
     isDragging = true;
     dragType = 'image';
     dragStartX = e.clientX;
@@ -625,31 +578,6 @@
       moveImage(dx, dy);
       dragStartX = e.clientX;
       dragStartY = e.clientY;
-    } else if (dragType === 'new-selection') {
-      const rect = canvasWrapEl.getBoundingClientRect();
-      const b = getImageBounds();
-      const curX = clamp(e.clientX - rect.left, b.left, b.right);
-      const curY = clamp(e.clientY - rect.top, b.top, b.bottom);
-      selW = Math.abs(curX - dragStartX);
-      selH = Math.abs(curY - dragStartY);
-      selX = Math.min(curX, dragStartX);
-      selY = Math.min(curY, dragStartY);
-      if (!isNaN(selAspectRatio)) {
-        selH = selW / selAspectRatio;
-      }
-      // 限制在图片范围内
-      selX = clamp(selX, b.left, b.right - selW);
-      selY = clamp(selY, b.top, b.bottom - selH);
-      renderSelection();
-    } else if (dragType === 'selection-move') {
-      const dx = e.clientX - dragStartX;
-      const dy = e.clientY - dragStartY;
-      const b = getImageBounds();
-      selX = clamp(selX + dx, b.left, b.right - selW);
-      selY = clamp(selY + dy, b.top, b.bottom - selH);
-      dragStartX = e.clientX;
-      dragStartY = e.clientY;
-      renderSelection();
     } else if (dragType) {
       // resize handles
       handleResize(e);
@@ -677,11 +605,8 @@
   function onSelectionMouseDown(e) {
     e.stopPropagation();
     const handle = e.target.dataset?.handle;
-    if (handle) {
-      dragType = handle;
-    } else {
-      dragType = 'selection-move';
-    }
+    if (!handle) return; // 选区本身不可拖动，只有手柄可以
+    dragType = handle;
     isDragging = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
