@@ -17,7 +17,7 @@
     downloadDir: '',
     promptNoImage: '',
     promptWithImage: '',
-    defaultOpen: 'panel'
+    lastOpenMode: 'panel'
   };
 
   const DEFAULT_CHECKED = {

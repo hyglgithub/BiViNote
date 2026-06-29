@@ -243,11 +243,6 @@
         <input type="checkbox" id="bn-dark-mode">
         <label class="bn-switch-track" for="bn-dark-mode"></label>
       </div>
-      <div class="bn-setting-label">默认打开方式</div>
-      <div class="bn-chip-group" data-setting="defaultOpen">
-        <input type="radio" name="bn-defaultOpen" id="bn-do-panel" value="panel" checked><label for="bn-do-panel">字幕面板</label>
-        <input type="radio" name="bn-defaultOpen" id="bn-do-menu" value="menu"><label for="bn-do-menu">功能菜单</label>
-      </div>
       <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
     `;
   }
@@ -301,14 +296,6 @@
         window.BiViNote.settings.save();
       });
     }
-
-    // 默认打开方式
-    panelEl.querySelectorAll('input[name="bn-defaultOpen"]').forEach(r => {
-      r.addEventListener('change', () => {
-        window.BiViNote.state.settings.defaultOpen = r.value;
-        window.BiViNote.settings.save();
-      });
-    });
 
     // 恢复默认
     const resetBtn = panelEl.querySelector('#bn-reset-btn');
@@ -459,7 +446,6 @@
     setRadio('bn-fontSize', s.fontSize);
     setRadio('bn-lineHeight', s.lineHeight);
     setRadio('bn-frameStep', String(s.frameStep));
-    setRadio('bn-defaultOpen', s.defaultOpen || 'panel');
 
     const autoScrollEl = panelEl.querySelector('#bn-auto-scroll');
     if (autoScrollEl) autoScrollEl.checked = s.autoScroll;
@@ -552,6 +538,9 @@
       }
       panelEl.classList.add('bn-hidden');
       collapseContainerEl.classList.remove('bn-hidden');
+      // 记住用户选择的模式
+      window.BiViNote.state.settings.lastOpenMode = 'menu';
+      window.BiViNote.settings.save();
     } else {
       // 展开：隐藏浮动组件，显示面板
       const iconRect = collapseContainerEl.getBoundingClientRect();
@@ -724,6 +713,9 @@
     panelEl.classList.remove('bn-hidden');
     if (collapseContainerEl) collapseContainerEl.classList.add('bn-hidden');
     window.BiViNote.state.panelVisible = true;
+    // 记住用户选择的模式
+    window.BiViNote.state.settings.lastOpenMode = 'panel';
+    window.BiViNote.settings.save();
     loadSettingsToUI();
     applyDisplaySettings();
     // 自动加载字幕：无数据或 URL 变化时刷新

@@ -27,9 +27,9 @@
             BN.panel.hideCollapse();
             return;
           }
-          // 都没显示，按默认方式打开
-          const defaultOpen = s.settings.defaultOpen || 'panel';
-          if (defaultOpen === 'menu') {
+          // 都没显示，按上次使用的模式打开
+          const lastMode = s.settings.lastOpenMode || 'panel';
+          if (lastMode === 'menu') {
             BN.panel.toggleCollapse();
           } else {
             BN.panel.show();
