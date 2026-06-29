@@ -60,8 +60,6 @@
 
   // ── 创建 DOM ──
 
-  let cropOverlayEl = null; // 裁剪模式交互层
-
   function createOverlay() {
     if (overlayEl) overlayEl.remove();
 
@@ -72,16 +70,15 @@
     overlayEl.innerHTML = `
       <div class="bn-crop-canvas-wrap">
         <canvas class="bn-crop-canvas"></canvas>
-        <div class="bn-crop-interaction" style="display:none;"></div>
         <div class="bn-crop-frame" style="display:none;">
-          <div class="bn-crop-handle" data-handle="nw" style="top:-5px;left:-5px;cursor:nw-resize;"></div>
-          <div class="bn-crop-handle" data-handle="ne" style="top:-5px;right:-5px;cursor:ne-resize;"></div>
-          <div class="bn-crop-handle" data-handle="sw" style="bottom:-5px;left:-5px;cursor:sw-resize;"></div>
-          <div class="bn-crop-handle" data-handle="se" style="bottom:-5px;right:-5px;cursor:se-resize;"></div>
-          <div class="bn-crop-handle" data-handle="n" style="top:-5px;left:50%;margin-left:-5px;cursor:n-resize;"></div>
-          <div class="bn-crop-handle" data-handle="s" style="bottom:-5px;left:50%;margin-left:-5px;cursor:s-resize;"></div>
-          <div class="bn-crop-handle" data-handle="e" style="top:50%;right:-5px;margin-top:-5px;cursor:e-resize;"></div>
-          <div class="bn-crop-handle" data-handle="w" style="top:50%;left:-5px;margin-top:-5px;cursor:w-resize;"></div>
+          <div class="bn-crop-handle bn-crop-handle-nw" data-handle="nw"></div>
+          <div class="bn-crop-handle bn-crop-handle-ne" data-handle="ne"></div>
+          <div class="bn-crop-handle bn-crop-handle-sw" data-handle="sw"></div>
+          <div class="bn-crop-handle bn-crop-handle-se" data-handle="se"></div>
+          <div class="bn-crop-handle bn-crop-handle-n" data-handle="n"></div>
+          <div class="bn-crop-handle bn-crop-handle-s" data-handle="s"></div>
+          <div class="bn-crop-handle bn-crop-handle-e" data-handle="e"></div>
+          <div class="bn-crop-handle bn-crop-handle-w" data-handle="w"></div>
         </div>
       </div>
       <div class="bn-crop-controls">
@@ -109,20 +106,23 @@
     canvasEl = overlayEl.querySelector('.bn-crop-canvas');
     ctx = canvasEl.getContext('2d');
     cropFrameEl = overlayEl.querySelector('.bn-crop-frame');
-    cropOverlayEl = overlayEl.querySelector('.bn-crop-interaction');
 
-    // 浏览模式事件（canvas）
+    // 事件绑定
+    overlayEl.querySelector('.bn-crop-controls').addEventListener('click', onControlClick);
     canvasEl.addEventListener('wheel', onWheel, { passive: false });
     canvasEl.addEventListener('mousedown', onCanvasMouseDown);
-
-    // 裁剪模式事件（interaction 层）
-    cropOverlayEl.addEventListener('mousedown', onInteractionMouseDown);
-    cropOverlayEl.addEventListener('wheel', onWheel, { passive: false });
-
-    // 全局事件
     document.addEventListener('mousemove', onDocMouseMove);
     document.addEventListener('mouseup', onDocMouseUp);
-    overlayEl.querySelector('.bn-crop-controls').addEventListener('click', onControlClick);
+    document.addEventListener('keydown', onKeyDown);
+    cropFrameEl.addEventListener('mousedown', onCropMouseDown);
+
+    // 点击黑色背景关闭（非裁剪模式下）
+    overlayEl.addEventListener('click', (e) => {
+      if (cropMode) return;
+      if (e.target === overlayEl || e.target.classList.contains('bn-crop-canvas-wrap')) {
+        close();
+      }
+    });
 
     // 裁剪比例
     overlayEl.querySelector('.bn-crop-ratio').addEventListener('change', (e) => {
@@ -207,8 +207,6 @@
     canvasEl.style.cursor = 'grabbing';
   }
 
-  let rafId = 0;
-
   function onDocMouseMove(e) {
     if (isDraggingImg) {
       imgX = e.clientX - dragStartX;
@@ -216,12 +214,7 @@
       render();
     }
     if (isDraggingCrop) {
-      // 节流：用 requestAnimationFrame 避免卡顿
-      if (rafId) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = 0;
-        handleCropDrag(e);
-      });
+      handleCropDrag(e);
     }
   }
 
@@ -231,10 +224,21 @@
     if (canvasEl) canvasEl.style.cursor = '';
   }
 
+  function onKeyDown(e) {
+    if (e.key === 'Escape') {
+      if (cropMode) {
+        exitCropMode(false);
+      } else {
+        close();
+      }
+    }
+  }
+
   // ── 裁剪框 ──
 
   function enterCropMode() {
     cropMode = true;
+    // 默认裁剪框 = 图片显示区域
     const imgRect = getImageDisplayRect();
     cropX = imgRect.x;
     cropY = imgRect.y;
@@ -242,20 +246,19 @@
     cropH = imgRect.h;
 
     cropFrameEl.style.display = '';
-    cropOverlayEl.style.display = '';
-    canvasEl.style.pointerEvents = 'none';
     renderCropFrame();
 
+    // 切换按钮
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = 'none';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = '';
   }
 
   function exitCropMode(save) {
-    if (save) applyCrop();
+    if (save) {
+      applyCrop();
+    }
     cropMode = false;
     cropFrameEl.style.display = 'none';
-    cropOverlayEl.style.display = 'none';
-    canvasEl.style.pointerEvents = '';
     overlayEl.querySelector('.bn-crop-btns-browse').style.display = '';
     overlayEl.querySelector('.bn-crop-btns-crop').style.display = 'none';
   }
@@ -285,28 +288,17 @@
     cropW = cropH * cropRatio;
   }
 
-  // ── 裁剪模式交互层事件 ──
+  // ── 裁剪框拖动 ──
 
-  function onInteractionMouseDown(e) {
+  function onCropMouseDown(e) {
     if (!cropMode) return;
-    e.preventDefault();
-
+    e.stopPropagation();
     const handle = e.target.dataset?.handle;
     if (handle) {
-      // 点击在手柄上
       cropDragType = handle;
     } else {
-      // 判断是否在裁剪框内部
-      const rect = cropFrameEl.getBoundingClientRect();
-      const inFrame = e.clientX >= rect.left && e.clientX <= rect.right &&
-                      e.clientY >= rect.top && e.clientY <= rect.bottom;
-      if (inFrame) {
-        cropDragType = 'move';
-      } else {
-        return; // 点击在裁剪框外部，忽略
-      }
+      cropDragType = 'move';
     }
-
     isDraggingCrop = true;
     cropDragStartX = e.clientX;
     cropDragStartY = e.clientY;
@@ -326,45 +318,54 @@
       cropX = clamp(cropStartRect.x + dx, minX, maxX - cropW);
       cropY = clamp(cropStartRect.y + dy, minY, maxY - cropH);
     } else {
-      let left = cropStartRect.x;
-      let top = cropStartRect.y;
-      let right = cropStartRect.x + cropStartRect.w;
-      let bottom = cropStartRect.y + cropStartRect.h;
+      let newX = cropStartRect.x;
+      let newY = cropStartRect.y;
+      let newW = cropStartRect.w;
+      let newY2 = cropStartRect.y + cropStartRect.h;
+      let newX2 = cropStartRect.x + cropStartRect.w;
 
-      if (cropDragType.includes('w')) left = clamp(cropStartRect.x + dx, minX, right - MIN_CROP);
-      if (cropDragType.includes('e')) right = clamp(cropStartRect.x + cropStartRect.w + dx, left + MIN_CROP, maxX);
-      if (cropDragType.includes('n')) top = clamp(cropStartRect.y + dy, minY, bottom - MIN_CROP);
-      if (cropDragType.includes('s')) bottom = clamp(cropStartRect.y + cropStartRect.h + dy, top + MIN_CROP, maxY);
-
-      let newW = right - left;
-      let newH = bottom - top;
+      if (cropDragType.includes('w')) {
+        newX = clamp(cropStartRect.x + dx, minX, newX2 - MIN_CROP);
+        newW = newX2 - newX;
+      }
+      if (cropDragType.includes('e')) {
+        newX2 = clamp(cropStartRect.x + cropStartRect.w + dx, newX + MIN_CROP, maxX);
+        newW = newX2 - newX;
+      }
+      if (cropDragType.includes('n')) {
+        newY = clamp(cropStartRect.y + dy, minY, newY2 - MIN_CROP);
+        newH = newY2 - newY;
+      }
+      if (cropDragType.includes('s')) {
+        newY2 = clamp(cropStartRect.y + cropStartRect.h + dy, newY + MIN_CROP, maxY);
+        var newH = newY2 - newY;
+      }
 
       // 裁剪比例约束
       if (cropRatio > 0) {
         if (cropDragType === 'se' || cropDragType === 'e' || cropDragType === 's') {
           newH = newW / cropRatio;
-          if (top + newH > maxY) {
-            newH = maxY - top;
+          if (newY + newH > maxY) {
+            newH = maxY - newY;
             newW = newH * cropRatio;
           }
-          bottom = top + newH;
-          right = left + newW;
         } else if (cropDragType === 'nw' || cropDragType === 'w' || cropDragType === 'n') {
-          newW = newH * cropRatio;
-          left = right - newW;
-          if (left < minX) {
-            left = minX;
-            newW = right - left;
-            newH = newW / cropRatio;
-            top = bottom - newH;
+          const targetW = (cropStartRect.y + cropStartRect.h - newY) * cropRatio;
+          newW = targetW;
+          newX = newX2 - newW;
+          if (newX < minX) {
+            newX = minX;
+            newW = newX2 - newX;
           }
+          newH = newW / cropRatio;
+          newY = newY2 - newH;
         }
       }
 
-      cropX = left;
-      cropY = top;
+      cropX = newX;
+      cropY = newY;
       cropW = Math.max(MIN_CROP, newW);
-      cropH = Math.max(MIN_CROP, newH);
+      cropH = Math.max(MIN_CROP, newH || cropH);
     }
 
     renderCropFrame();
@@ -493,6 +494,7 @@
     window.removeEventListener('resize', onResize);
     document.removeEventListener('mousemove', onDocMouseMove);
     document.removeEventListener('mouseup', onDocMouseUp);
+    document.removeEventListener('keydown', onKeyDown);
     cropMode = false;
     img = null;
   }

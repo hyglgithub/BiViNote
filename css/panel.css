@@ -701,19 +701,10 @@
   width: 100%;
   height: 100%;
   cursor: grab;
-  display: block;
 }
 
 .bn-crop-canvas:active {
   cursor: grabbing;
-}
-
-/* 裁剪模式交互层（覆盖在 canvas 上方） */
-.bn-crop-interaction {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  cursor: crosshair;
 }
 
 /* 裁剪框 */
@@ -722,7 +713,6 @@
   border: 2px dashed #fff;
   box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
   cursor: move;
-  z-index: 2;
 }
 
 .bn-crop-handle {
@@ -731,8 +721,16 @@
   height: 10px;
   background: #fff;
   border: 1px solid #333;
-  z-index: 3;
 }
+
+.bn-crop-handle-nw { top: -5px; left: -5px; cursor: nw-resize; }
+.bn-crop-handle-ne { top: -5px; right: -5px; cursor: ne-resize; }
+.bn-crop-handle-sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+.bn-crop-handle-se { bottom: -5px; right: -5px; cursor: se-resize; }
+.bn-crop-handle-n { top: -5px; left: 50%; margin-left: -5px; cursor: n-resize; }
+.bn-crop-handle-s { bottom: -5px; left: 50%; margin-left: -5px; cursor: s-resize; }
+.bn-crop-handle-e { top: 50%; right: -5px; margin-top: -5px; cursor: e-resize; }
+.bn-crop-handle-w { top: 50%; left: -5px; margin-top: -5px; cursor: w-resize; }
 
 /* 控制栏 */
 .bn-crop-controls {
