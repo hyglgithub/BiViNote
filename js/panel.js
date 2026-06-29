@@ -564,6 +564,14 @@
       panelEl.style.right = 'auto';
       collapseContainerEl.classList.add('bn-hidden');
       panelEl.classList.remove('bn-hidden');
+      s.panelVisible = true;
+      loadSettingsToUI();
+      applyDisplaySettings();
+      // 自动加载字幕
+      const currentBvid = window.BiViNote.subtitle?.extractBvid(location.href) || '';
+      if (window.BiViNote.subtitle && (!s.bvid || s.bvid !== currentBvid)) {
+        window.BiViNote.subtitle.refresh();
+      }
     }
   }
 
