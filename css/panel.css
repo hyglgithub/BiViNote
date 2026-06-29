@@ -74,9 +74,35 @@
   display: none;
 }
 
-.bn-panel.bn-collapsed {
-  height: 42px;
-  overflow: hidden;
+.bn-collapse-btn {
+  position: fixed;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bn-card);
+  border: 2px solid var(--bn-border);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  cursor: pointer;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.2s;
+}
+
+.bn-collapse-btn:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.bn-collapse-btn img {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.bn-collapse-btn.bn-hidden {
+  display: none;
 }
 
 /* Header */
