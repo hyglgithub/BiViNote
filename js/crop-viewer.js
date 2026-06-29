@@ -185,8 +185,11 @@
         cropper: !!cropper,
         image: !!cropperImage,
         selection: !!cropperSelection,
-        imageType: typeof cropperImage,
-        hasZoom: typeof cropperImage?.$zoom,
+        imageTag: cropperImage?.tagName,
+        imageProto: cropperImage?.constructor?.name,
+        imageMethods: cropperImage ? Object.getOwnPropertyNames(Object.getPrototypeOf(cropperImage)).filter(k => k.startsWith('$')).slice(0, 10) : [],
+        selectionTag: cropperSelection?.tagName,
+        selectionMethods: cropperSelection ? Object.getOwnPropertyNames(Object.getPrototypeOf(cropperSelection)).filter(k => k.startsWith('$')).slice(0, 10) : [],
       });
     };
   }
