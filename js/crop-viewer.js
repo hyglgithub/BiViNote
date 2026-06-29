@@ -142,7 +142,7 @@
     imgEl.onload = () => {
       if (cropper) cropper.destroy();
 
-      cropper = new Cropper(imgEl, {
+      cropper = new window.Cropper.Cropper(imgEl, {
         template: [
           '<cropper-canvas background>',
           '  <cropper-image rotatable scalable skewable translatable></cropper-image>',

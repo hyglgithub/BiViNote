@@ -1,9 +1,9 @@
-/*! Cropper.js v2.1.1 | (c) 2015-present Chen Fengyuan | MIT */
+/*! Cropper.js v2.1.1 | (c) 2015-present Chen Fengyuan | MIT | patched for content script */
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
     typeof define === 'function' && define.amd ? define(['exports'], factory) :
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.Cropper = {}));
-})(this, (function (exports) { 'use strict';
+})(typeof window !== 'undefined' ? window : this, (function (exports) { 'use strict';
 
     const IS_BROWSER = typeof window !== 'undefined' && typeof window.document !== 'undefined';
     const WINDOW = IS_BROWSER ? window : {};
@@ -3034,6 +3034,7 @@
     exports.CROPPER_SELECTION = CROPPER_SELECTION;
     exports.CROPPER_SHADE = CROPPER_SHADE;
     exports.CROPPER_VIEWER = CROPPER_VIEWER;
+    exports.Cropper = Cropper;
     exports.CropperCanvas = CropperCanvas;
     exports.CropperCrosshair = CropperCrosshair;
     exports.CropperElement = CropperElement;
