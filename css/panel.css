@@ -161,6 +161,63 @@
   margin: 0 auto;
 }
 
+/* 裁剪浏览面板 */
+.bn-crop-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bn-crop-container {
+  width: 90vw;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.bn-crop-canvas {
+  flex: 1;
+  width: 100%;
+  cursor: grab;
+}
+
+.bn-crop-canvas:active {
+  cursor: grabbing;
+}
+
+.bn-crop-handle {
+  position: absolute;
+  cursor: move;
+  pointer-events: auto;
+}
+
+.bn-crop-btns {
+  height: 50px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+.bn-crop-btns button {
+  padding: 6px 16px;
+  border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.bn-crop-btns button:hover {
+  background: rgba(255,255,255,0.2);
+}
+
 /* Header */
 .bn-header {
   background: var(--bn-header-bg);
