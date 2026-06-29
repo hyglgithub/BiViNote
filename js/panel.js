@@ -455,31 +455,44 @@
   // ── 折叠/展开 ──
 
   const BTN_SIZE = 36;
+  const EDGE_MARGIN = 20; // 距右边界的距离，避免覆盖滚动条
 
   function clamp(val, min, max) {
     return Math.max(min, Math.min(val, max));
   }
+
+  // 保存/恢复 icon 位置
+  let savedIconLeft = null;
+  let savedIconTop = null;
 
   function toggleCollapse() {
     const s = window.BiViNote.state;
     s.collapsed = !s.collapsed;
 
     if (s.collapsed) {
-      // 折叠：隐藏面板，显示圆形按钮（在面板当前位置）
-      const rect = panelEl.getBoundingClientRect();
-      const x = clamp(rect.left, 0, window.innerWidth - BTN_SIZE);
-      const y = clamp(rect.top, 0, window.innerHeight - BTN_SIZE);
-      collapseBtnEl.style.left = x + 'px';
-      collapseBtnEl.style.top = y + 'px';
+      // 折叠：隐藏面板，显示圆形按钮
+      // 优先使用用户之前设定的位置，否则从面板位置初始化
+      if (savedIconLeft !== null) {
+        collapseBtnEl.style.left = savedIconLeft + 'px';
+        collapseBtnEl.style.top = savedIconTop + 'px';
+      } else {
+        const rect = panelEl.getBoundingClientRect();
+        const x = clamp(rect.left, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
+        const y = clamp(rect.top, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
+        collapseBtnEl.style.left = x + 'px';
+        collapseBtnEl.style.top = y + 'px';
+        savedIconLeft = x;
+        savedIconTop = y;
+      }
       panelEl.classList.add('bn-hidden');
       collapseBtnEl.classList.remove('bn-hidden');
     } else {
-      // 展开：隐藏圆形按钮，显示面板（在按钮当前位置，限制在页面内）
+      // 展开：隐藏圆形按钮，显示面板（在按钮位置，限制在页面内）
       const rect = collapseBtnEl.getBoundingClientRect();
       const panelW = 400;
       const panelH = 600;
-      const x = clamp(rect.left, 0, window.innerWidth - panelW);
-      const y = clamp(rect.top, 0, window.innerHeight - panelH);
+      const x = clamp(rect.left, EDGE_MARGIN, window.innerWidth - panelW - EDGE_MARGIN);
+      const y = clamp(rect.top, EDGE_MARGIN, window.innerHeight - panelH - EDGE_MARGIN);
       panelEl.style.left = x + 'px';
       panelEl.style.top = y + 'px';
       panelEl.style.right = 'auto';
@@ -512,11 +525,14 @@
       isDraggingCollapse = true;
       let x = e.clientX - offsetX;
       let y = e.clientY - offsetY;
-      // 边界限制：图标完整在页面内
-      x = clamp(x, 0, window.innerWidth - BTN_SIZE);
-      y = clamp(y, 0, window.innerHeight - BTN_SIZE);
+      // 边界限制：图标完整在页面内，右边留余量
+      x = clamp(x, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
+      y = clamp(y, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
       el.style.left = x + 'px';
       el.style.top = y + 'px';
+      // 保存用户拖动后的位置
+      savedIconLeft = x;
+      savedIconTop = y;
     });
 
     document.addEventListener('mouseup', () => {
@@ -552,8 +568,8 @@
       let x = e.clientX - offsetX;
       let y = e.clientY - offsetY;
       const rect = panelEl.getBoundingClientRect();
-      x = Math.max(0, Math.min(x, window.innerWidth - rect.width));
-      y = Math.max(0, Math.min(y, window.innerHeight - rect.height));
+      x = Math.max(EDGE_MARGIN, Math.min(x, window.innerWidth - rect.width - EDGE_MARGIN));
+      y = Math.max(EDGE_MARGIN, Math.min(y, window.innerHeight - rect.height - EDGE_MARGIN));
       panelEl.style.left = x + 'px';
       panelEl.style.top = y + 'px';
       panelEl.style.right = 'auto';
