@@ -154,23 +154,20 @@
   // ── 加载图片 ──
 
   function loadImage(url) {
-    // 先销毁旧 Cropper 实例
-    if (cropper) {
-      cropper.destroy();
-      cropper = null;
-    }
-
-    // 预加载新图片，加载完成后再初始化 Cropper
-    const tempImg = new Image();
-    tempImg.onload = () => {
-      imgNatW = tempImg.naturalWidth;
-      imgNatH = tempImg.naturalHeight;
-      cropperEl.src = url;
-      // 图片已缓存，src 设置后立即可用
-      initCropper();
+    // 先预加载图片，加载完再替换 Cropper，避免闪烁
+    const img = new Image();
+    img.onload = () => {
+      imgNatW = img.naturalWidth;
+      imgNatH = img.naturalHeight;
+      if (cropper) {
+        cropper.replace(url);
+      } else {
+        cropperEl.src = url;
+        initCropper();
+      }
       renderSidebar();
     };
-    tempImg.src = url;
+    img.src = url;
   }
 
   function initCropper() {
