@@ -153,32 +153,14 @@
 
   // ── 加载图片 ──
 
-  let isFirstLoad = true;
-
   function loadImage(url) {
-    if (isFirstLoad || !cropper) {
-      // 首次加载：创建 Cropper
-      cropperEl.onload = () => {
-        imgNatW = cropperEl.naturalWidth;
-        imgNatH = cropperEl.naturalHeight;
-        initCropper();
-        renderSidebar();
-        isFirstLoad = false;
-      };
-      cropperEl.src = url;
-    } else {
-      // 后续加载：替换图片，不销毁 Cropper（避免闪烁）
-      imgNatW = 0;
-      imgNatH = 0;
-      cropper.replace(url);
-      // replace 完成后更新尺寸
-      setTimeout(() => {
-        imgNatW = cropperEl.naturalWidth;
-        imgNatH = cropperEl.naturalHeight;
-        renderSidebar();
-        setCropperVisible(false);
-      }, 50);
-    }
+    cropperEl.onload = () => {
+      imgNatW = cropperEl.naturalWidth;
+      imgNatH = cropperEl.naturalHeight;
+      initCropper();
+      renderSidebar();
+    };
+    cropperEl.src = url;
   }
 
   function initCropper() {
@@ -199,6 +181,7 @@
       cropBoxResizable: true,
       toggleDragModeOnDblclick: false,
       ready() {
+        // 默认隐藏裁剪框和遮罩
         setCropperVisible(false);
       }
     });
@@ -284,9 +267,9 @@
     const display = visible ? '' : 'none';
     const cropBox = overlayEl.querySelector('.cropper-crop-box');
     const modal = overlayEl.querySelector('.cropper-modal');
+    // dragBox 保持可见，否则浏览模式下无法拖动图片
     if (cropBox) cropBox.style.display = display;
     if (modal) modal.style.display = display;
-    // drag-box 始终显示（拖动事件靠它捕获）
   }
 
   function enterCropMode() {
@@ -424,7 +407,6 @@
     if (overlayEl) { overlayEl.remove(); overlayEl = null; }
     window.removeEventListener('resize', onResize);
     document.removeEventListener('keydown', onKeyDown);
-    isFirstLoad = true;
     flipH = false;
     flipV = false;
     currentRotation = 0;
