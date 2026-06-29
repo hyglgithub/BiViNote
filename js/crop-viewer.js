@@ -159,6 +159,8 @@
   function resetTransform() {
     resetMatrix();
     resetImageDisplay();
+    // 重置裁剪框到图片区域
+    initSelection();
   }
 
   function resetImageDisplay() {
@@ -168,6 +170,20 @@
     imgEl.style.height = display.h + 'px';
     imgEl.style.marginLeft = (display.x - canvasWrapEl.clientWidth / 2) + 'px';
     imgEl.style.marginTop = (display.y - canvasWrapEl.clientHeight / 2) + 'px';
+  }
+
+  // 将选区限制在图片范围内（图片移动后调用）
+  function clampSelectionToBounds() {
+    const b = getImageBounds();
+    const imgW = b.right - b.left;
+    const imgH = b.bottom - b.top;
+    // 如果选区比图片大，缩小选区
+    if (selW > imgW) { selW = imgW; }
+    if (selH > imgH) { selH = imgH; }
+    // 限制选区不超出图片
+    selX = clamp(selX, b.left, b.right - selW);
+    selY = clamp(selY, b.top, b.bottom - selH);
+    renderSelection();
   }
 
   // ── 选区操作 ──
@@ -322,8 +338,8 @@
         <div class="bn-crop-btns-crop" style="display:none;">
           <button data-act="zoom-in" title="放大">＋</button>
           <button data-act="zoom-out" title="缩小">－</button>
-          <button data-act="rotate-left" title="左旋45°">↺</button>
-          <button data-act="rotate-right" title="右旋45°">↻</button>
+          <button data-act="rotate-left" title="左旋90°">↺</button>
+          <button data-act="rotate-right" title="右旋90°">↻</button>
           <button data-act="flip-h" title="水平翻转">⇔</button>
           <button data-act="flip-v" title="垂直翻转">⇕</button>
           <button data-act="reset" title="重置">重置</button>
@@ -577,8 +593,8 @@
     else if (act === 'crop-cancel') exitCropMode();
     else if (act === 'zoom-in') zoomImage(0.1);
     else if (act === 'zoom-out') zoomImage(-0.1);
-    else if (act === 'rotate-left') rotateImage(-45);
-    else if (act === 'rotate-right') rotateImage(45);
+    else if (act === 'rotate-left') rotateImage(-90);
+    else if (act === 'rotate-right') rotateImage(90);
     else if (act === 'flip-h') flipImage(true);
     else if (act === 'flip-v') flipImage(false);
     else if (act === 'reset') resetTransform();
@@ -618,6 +634,10 @@
       moveImage(dx, dy);
       dragStartX = e.clientX;
       dragStartY = e.clientY;
+      // 图片移动后，裁剪框要限制在图片范围内
+      if (selectionEl && selectionEl.style.display !== 'none') {
+        clampSelectionToBounds();
+      }
     } else if (dragType) {
       // resize handles
       handleResize(e);
