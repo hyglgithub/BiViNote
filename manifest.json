@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "BiViNote",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "B站视频字幕笔记工具 - 截图+字幕+Markdown",
   "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "host_permissions": [
     "https://api.bilibili.com/*",
-    "https://*.bilibili.com/*"
+    "https://*.bilibili.com/*",
+    "*://chat.deepseek.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -17,7 +18,7 @@
         "*://*.bilibili.com/video/*",
         "*://*.bilibili.com/list/*"
       ],
-      "js": ["libs/jszip.min.js", "libs/cropper.min.js", "js/state.js", "js/panel.js", "js/subtitle.js", "js/chapter.js", "js/video-info.js", "js/capture.js", "js/export.js", "js/settings.js", "js/crop-viewer.js", "content.js"],
+      "js": ["libs/jszip.min.js", "libs/cropper.min.js", "libs/wasm-solver.js", "js/state.js", "js/panel.js", "js/subtitle.js", "js/chapter.js", "js/video-info.js", "js/capture.js", "js/export.js", "js/settings.js", "js/crop-viewer.js", "js/deepseek.js", "content.js"],
       "css": ["libs/cropper.min.css", "css/panel.css"],
       "run_at": "document_idle"
     }

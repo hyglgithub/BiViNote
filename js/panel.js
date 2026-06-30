@@ -20,7 +20,7 @@
     { id: 'subtitle', label: '字幕', footer: true },
     { id: 'chapter', label: '章节', footer: false },
     { id: 'video', label: '视频信息', footer: false },
-    { id: 'prompt', label: '提示词', footer: false },
+    { id: 'doc', label: '文档整理', footer: false },
     { id: 'setting', label: '设置', footer: false }
   ];
 
@@ -80,8 +80,8 @@
         view.innerHTML = '<div id="bn-video-info"></div>';
       } else if (def.id === 'setting') {
         view.innerHTML = buildSettingHTML();
-      } else if (def.id === 'prompt') {
-        view.innerHTML = buildPromptHTML();
+      } else if (def.id === 'doc') {
+        view.innerHTML = buildDocHTML();
       }
       scrollWrap.appendChild(view);
       views[def.id] = view;
@@ -190,20 +190,53 @@
 10. 若存在 Frontmatter，完整保留
 11. 不要总结、解释、扩展，禁止添加原文不存在的内容`;
 
-  // ── 提示词页 HTML ──
+  // ── 文档整理页 HTML ──
 
-  function buildPromptHTML() {
+  const DEFAULT_DEEPSEEK_PROMPT = `你是一个视频笔记整理助手。请整理用户发送的 Markdown 文档。
+
+要求：
+1. 删除口语化表达和语气词
+2. 合并字幕断行，保持语义完整
+3. 删除时间戳标记
+4. 修正语音识别错误
+5. 保留专业术语和代码
+6. 保留 YAML frontmatter
+7. 保留所有图片引用（assets/ 目录）
+8. 不要新增原文没有的内容
+9. 只输出整理后的 Markdown，不要解释`;
+
+  function buildDocHTML() {
+    const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
+    if (mode === 'auto') return buildDocAutoHTML();
+    return buildDocManualHTML();
+  }
+
+  function buildDocManualHTML() {
     return `
-      <div class="bn-setting-label">路径前缀</div>
-      <input type="text" id="bn-download-dir" class="bn-select" placeholder="不填则保留占位符，如填 C:\\Users\\xxx\\Downloads">
-      <div class="bn-setting-label" id="bn-prompt-label">提示词</div>
-      <div class="bn-prompt-actions">
-        <button id="bn-prompt-copy">复制</button>
-        <button id="bn-prompt-edit">修改</button>
-        <button id="bn-prompt-reset">恢复默认</button>
-      </div>
+      <div class="bn-label">路径前缀</div>
+      <input type="text" id="bn-download-dir" class="bn-input" placeholder="例如: D:\\Notes\\Bilibili">
+      <div class="bn-hint">提示词中 {download_dir} 会替换为此值</div>
       <pre id="bn-prompt-display" class="bn-prompt-pre"></pre>
-      <textarea class="bn-prompt-textarea" id="bn-prompt-text"></textarea>
+      <div class="bn-doc-actions">
+        <button id="bn-prompt-copy" class="bn-btn-primary">复制提示词</button>
+      </div>
+    `;
+  }
+
+  function buildDocAutoHTML() {
+    return `
+      <div class="bn-doc-header">
+        <div class="bn-doc-title">DeepSeek 文档整理</div>
+        <span id="bn-ds-status" class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>未登录</span>
+      </div>
+      <pre id="bn-ds-prompt" class="bn-prompt-pre"></pre>
+      <div id="bn-ds-result" class="bn-result-area" style="display:none"></div>
+      <div class="bn-doc-actions">
+        <button id="bn-ds-action" class="bn-btn-primary">打开 DeepSeek 登录</button>
+        <button id="bn-ds-download" class="bn-btn-primary" style="display:none">下载 Markdown</button>
+        <button id="bn-ds-copy" style="display:none">复制</button>
+        <button id="bn-ds-clear" style="display:none">清除</button>
+      </div>
     `;
   }
 
@@ -211,6 +244,37 @@
 
   function buildSettingHTML() {
     return `
+      <div class="bn-setting-label">文档整理模式</div>
+      <div class="bn-chip-group" data-setting="docOrganizeMode">
+        <input type="radio" name="bn-docMode" id="bn-dm-manual" value="manual" checked><label for="bn-dm-manual">手动整理</label>
+        <input type="radio" name="bn-docMode" id="bn-dm-auto" value="auto"><label for="bn-dm-auto">自动整理</label>
+      </div>
+      <div class="bn-hint" style="margin-bottom:8px">手动: 复制提示词自行处理 · 自动: 调用 DeepSeek</div>
+      <div class="bn-setting-label">提示词管理</div>
+      <div class="bn-accordion">
+        <div class="bn-accordion-item">
+          <div class="bn-accordion-header" data-acc="noimg">📄 手动 · 无截图 <span class="bn-acc-arrow">▶</span></div>
+          <div class="bn-accordion-body" id="bn-acc-noimg">
+            <textarea class="bn-prompt-textarea" id="bn-prompt-noimg"></textarea>
+            <div class="bn-doc-actions"><button id="bn-save-noimg" class="bn-btn-primary">保存</button><button id="bn-reset-noimg">重置</button></div>
+          </div>
+        </div>
+        <div class="bn-accordion-item">
+          <div class="bn-accordion-header" data-acc="img">🖼️ 手动 · 有截图 <span class="bn-acc-arrow">▶</span></div>
+          <div class="bn-accordion-body" id="bn-acc-img">
+            <textarea class="bn-prompt-textarea" id="bn-prompt-img"></textarea>
+            <div class="bn-doc-actions"><button id="bn-save-img" class="bn-btn-primary">保存</button><button id="bn-reset-img">重置</button></div>
+          </div>
+        </div>
+        <div class="bn-accordion-item">
+          <div class="bn-accordion-header" data-acc="ds">🤖 自动 · DeepSeek <span class="bn-acc-arrow">▶</span></div>
+          <div class="bn-accordion-body" id="bn-acc-ds">
+            <textarea class="bn-prompt-textarea" id="bn-prompt-ds"></textarea>
+            <div class="bn-doc-actions"><button id="bn-save-ds" class="bn-btn-primary">保存</button><button id="bn-reset-ds">重置</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="bn-divider"></div>
       <div class="bn-setting-label">字幕语言</div>
       <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
       <div class="bn-setting-label">字体大小</div>
@@ -297,6 +361,79 @@
       });
     }
 
+    // 文档整理模式
+    panelEl.querySelectorAll('input[name="bn-docMode"]').forEach(r => {
+      r.addEventListener('change', () => {
+        window.BiViNote.state.settings.docOrganizeMode = r.value;
+        window.BiViNote.settings.save();
+        // 重新构建文档整理页
+        const docView = views['doc'];
+        if (docView) {
+          docView.innerHTML = buildDocHTML();
+          bindDocEvents();
+        }
+      });
+    });
+
+    // 手风琴展开/折叠
+    panelEl.querySelectorAll('.bn-accordion-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const item = header.parentElement;
+        item.classList.toggle('open');
+      });
+    });
+
+    // 提词管理 - 填充 textarea
+    const noimgTextarea = panelEl.querySelector('#bn-prompt-noimg');
+    if (noimgTextarea) noimgTextarea.value = window.BiViNote.state.settings.promptNoImage || DEFAULT_PROMPT_NO_IMAGE;
+    const imgTextarea = panelEl.querySelector('#bn-prompt-img');
+    if (imgTextarea) imgTextarea.value = window.BiViNote.state.settings.promptWithImage || DEFAULT_PROMPT_WITH_IMAGE;
+    const dsTextarea = panelEl.querySelector('#bn-prompt-ds');
+    if (dsTextarea) dsTextarea.value = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
+
+    // 保存/重置按钮
+    const saveNoimg = panelEl.querySelector('#bn-save-noimg');
+    if (saveNoimg) saveNoimg.addEventListener('click', () => {
+      window.BiViNote.state.settings.promptNoImage = panelEl.querySelector('#bn-prompt-noimg').value;
+      window.BiViNote.settings.save();
+      showToast('已保存');
+    });
+    const resetNoimg = panelEl.querySelector('#bn-reset-noimg');
+    if (resetNoimg) resetNoimg.addEventListener('click', () => {
+      window.BiViNote.state.settings.promptNoImage = '';
+      panelEl.querySelector('#bn-prompt-noimg').value = DEFAULT_PROMPT_NO_IMAGE;
+      window.BiViNote.settings.save();
+      showToast('已重置');
+    });
+
+    const saveImg = panelEl.querySelector('#bn-save-img');
+    if (saveImg) saveImg.addEventListener('click', () => {
+      window.BiViNote.state.settings.promptWithImage = panelEl.querySelector('#bn-prompt-img').value;
+      window.BiViNote.settings.save();
+      showToast('已保存');
+    });
+    const resetImg = panelEl.querySelector('#bn-reset-img');
+    if (resetImg) resetImg.addEventListener('click', () => {
+      window.BiViNote.state.settings.promptWithImage = '';
+      panelEl.querySelector('#bn-prompt-img').value = DEFAULT_PROMPT_WITH_IMAGE;
+      window.BiViNote.settings.save();
+      showToast('已重置');
+    });
+
+    const saveDs = panelEl.querySelector('#bn-save-ds');
+    if (saveDs) saveDs.addEventListener('click', () => {
+      window.BiViNote.state.settings.deepseekPrompt = panelEl.querySelector('#bn-prompt-ds').value;
+      window.BiViNote.settings.save();
+      showToast('已保存');
+    });
+    const resetDs = panelEl.querySelector('#bn-reset-ds');
+    if (resetDs) resetDs.addEventListener('click', () => {
+      window.BiViNote.state.settings.deepseekPrompt = '';
+      panelEl.querySelector('#bn-prompt-ds').value = DEFAULT_DEEPSEEK_PROMPT;
+      window.BiViNote.settings.save();
+      showToast('已重置');
+    });
+
     // 恢复默认
     const resetBtn = panelEl.querySelector('#bn-reset-btn');
     if (resetBtn) {
@@ -327,11 +464,11 @@
       });
     }
 
-    // 提示词页事件
-    bindPromptEvents();
+    // 文档整理页事件
+    bindDocEvents();
   }
 
-  // ── 提示词页事件 ──
+  // ── 文档整理页事件 ──
 
   function hasScreenshots() {
     return window.BiViNote.state.screenshots.size > 0;
@@ -341,98 +478,204 @@
     return hasScreenshots() ? 'img' : 'noimg';
   }
 
-  function bindPromptEvents() {
+  function bindDocEvents() {
+    const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
+    if (mode === 'auto') bindDocAutoEvents();
+    else bindDocManualEvents();
+  }
+
+  function bindDocManualEvents() {
     const s = window.BiViNote.state.settings;
 
-    // 下载目录
     const dirInput = panelEl.querySelector('#bn-download-dir');
     if (dirInput) {
       dirInput.value = s.downloadDir || '';
       dirInput.addEventListener('change', () => {
         s.downloadDir = dirInput.value.trim();
         window.BiViNote.settings.save();
-        renderPrompt();
+        renderDoc();
       });
     }
 
-    // 渲染提示词
-    renderPrompt();
+    renderDoc();
 
-    // 复制按钮
     const copyBtn = panelEl.querySelector('#bn-prompt-copy');
     if (copyBtn) copyBtn.addEventListener('click', () => {
       const displayEl = panelEl.querySelector('#bn-prompt-display');
       if (displayEl) navigator.clipboard.writeText(displayEl.textContent).then(() => showToast('已复制提示词'));
     });
-
-    // 修改按钮
-    const editBtn = panelEl.querySelector('#bn-prompt-edit');
-    if (editBtn) editBtn.addEventListener('click', () => {
-      const displayEl = panelEl.querySelector('#bn-prompt-display');
-      const textareaEl = panelEl.querySelector('#bn-prompt-text');
-      if (!displayEl || !textareaEl) return;
-
-      if (textareaEl.style.display === 'none') {
-        // 进入编辑模式：隐藏展示区，显示编辑框（原始模板）
-        const type = getPromptType();
-        const raw = type === 'img'
-          ? (s.promptWithImage || DEFAULT_PROMPT_WITH_IMAGE)
-          : (s.promptNoImage || DEFAULT_PROMPT_NO_IMAGE);
-        textareaEl.value = raw;
-        displayEl.style.display = 'none';
-        textareaEl.style.display = 'block';
-        editBtn.textContent = '保存';
-      } else {
-        // 保存：隐藏编辑框，显示展示区
-        const type = getPromptType();
-        if (type === 'img') {
-          s.promptWithImage = textareaEl.value;
-        } else {
-          s.promptNoImage = textareaEl.value;
-        }
-        window.BiViNote.settings.save();
-        textareaEl.style.display = 'none';
-        displayEl.style.display = '';
-        editBtn.textContent = '修改';
-        renderPrompt();
-        showToast('提示词已保存');
-      }
-    });
-
-    // 恢复默认按钮
-    const resetBtn = panelEl.querySelector('#bn-prompt-reset');
-    if (resetBtn) resetBtn.addEventListener('click', () => {
-      const type = getPromptType();
-      if (type === 'img') {
-        s.promptWithImage = DEFAULT_PROMPT_WITH_IMAGE;
-      } else {
-        s.promptNoImage = DEFAULT_PROMPT_NO_IMAGE;
-      }
-      window.BiViNote.settings.save();
-      renderPrompt();
-      showToast('已恢复默认提示词');
-    });
   }
 
-  function renderPrompt() {
-    if (!panelEl) return;
+  function bindDocAutoEvents() {
+    const ds = window.BiViNote.deepseek;
+    if (!ds) return;
+
+    const statusEl = panelEl.querySelector('#bn-ds-status');
+    const actionBtn = panelEl.querySelector('#bn-ds-action');
+    const promptEl = panelEl.querySelector('#bn-ds-prompt');
+    const resultEl = panelEl.querySelector('#bn-ds-result');
+    const downloadBtn = panelEl.querySelector('#bn-ds-download');
+    const copyBtn = panelEl.querySelector('#bn-ds-copy');
+    const clearBtn = panelEl.querySelector('#bn-ds-clear');
+
+    if (promptEl) {
+      const stored = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
+      promptEl.textContent = stored;
+    }
+
+    function updateUI(dsState) {
+      if (!statusEl) return;
+      const stateMap = {
+        'not_logged_in': { cls: 'bn-status-off', dot: 'bn-dot-red', text: '未登录', action: '打开 DeepSeek 登录' },
+        'ready': { cls: 'bn-status-ok', dot: 'bn-dot-green', text: '已登录', action: '开始整理' },
+        'reading': { cls: 'bn-status-warn', dot: 'bn-spinner', text: '读取中', action: null },
+        'responding': { cls: 'bn-status-warn', dot: 'bn-spinner', text: '整理中', action: null },
+        'done': { cls: 'bn-status-ok', dot: 'bn-dot-green', text: '已完成', action: null },
+        'error': { cls: 'bn-status-off', dot: 'bn-dot-red', text: '错误', action: '重试' },
+      };
+      const info = stateMap[dsState] || stateMap['not_logged_in'];
+      statusEl.className = `bn-status ${info.cls}`;
+      statusEl.innerHTML = `<span class="${info.dot}"></span>${info.text}`;
+
+      if (actionBtn) {
+        if (info.action) {
+          actionBtn.textContent = info.action;
+          actionBtn.style.display = '';
+          actionBtn.disabled = false;
+        } else {
+          actionBtn.style.display = 'none';
+        }
+      }
+
+      if (dsState === 'reading' || dsState === 'responding' || dsState === 'done') {
+        if (promptEl) promptEl.style.display = 'none';
+        if (resultEl) resultEl.style.display = '';
+      } else {
+        if (promptEl) promptEl.style.display = '';
+        if (resultEl) resultEl.style.display = 'none';
+      }
+
+      if (dsState === 'done') {
+        if (downloadBtn) downloadBtn.style.display = '';
+        if (copyBtn) copyBtn.style.display = '';
+        if (clearBtn) clearBtn.style.display = '';
+      } else {
+        if (downloadBtn) downloadBtn.style.display = 'none';
+        if (copyBtn) copyBtn.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
+      }
+    }
+
+    ds.onStateChange(updateUI);
+    updateUI(ds.getState());
+
+    ds.onChunk((chunk) => {
+      if (resultEl) {
+        resultEl.textContent += chunk.text;
+        resultEl.scrollTop = resultEl.scrollHeight;
+      }
+    });
+
+    if (actionBtn) {
+      actionBtn.addEventListener('click', () => {
+        const currentState = ds.getState();
+        if (currentState === 'not_logged_in') {
+          ds.openLogin();
+          let attempts = 0;
+          const poll = setInterval(async () => {
+            attempts++;
+            await ds.checkLogin();
+            if (ds.getState() === 'ready' || attempts >= 15) clearInterval(poll);
+          }, 2000);
+        } else if (currentState === 'ready' || currentState === 'error') {
+          const md = buildExportMarkdown();
+          const prompt = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
+          ds.sendMarkdown(md, prompt);
+        }
+      });
+    }
+
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', () => {
+        const result = ds.getResult();
+        if (!result.response) return;
+        const blob = new Blob([result.response], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = extractFilename(result.response);
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        const result = ds.getResult();
+        if (result.response) navigator.clipboard.writeText(result.response).then(() => showToast('已复制'));
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        ds.clear();
+        if (resultEl) resultEl.textContent = '';
+      });
+    }
+
+    ds.checkLogin();
+  }
+
+  function extractFilename(text) {
+    const fmMatch = text.match(/^---\s*\n[\s\S]*?title:\s*["']?(.+?)["']?\s*\n[\s\S]*?---/);
+    if (fmMatch) {
+      const title = fmMatch[1].trim().replace(/[<>:"/\\|?*]/g, '_');
+      if (title) return title + '.md';
+    }
+    const h1Match = text.match(/^#\s+(.+)$/m);
+    if (h1Match) {
+      const title = h1Match[1].trim().replace(/[<>:"/\\|?*]/g, '_');
+      if (title) return title + '.md';
+    }
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `整理结果_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.md`;
+  }
+
+  function buildExportMarkdown() {
+    // 构建导出的 markdown 内容
     const s = window.BiViNote.state;
+    let md = '';
+    if (s.title) md += `# ${s.title}\n\n`;
+    // 从字幕列表获取内容
+    const subtitleList = document.getElementById('bn-subtitle-list');
+    if (subtitleList) {
+      const items = subtitleList.querySelectorAll('.bn-sub-item');
+      items.forEach(item => {
+        const time = item.querySelector('.bn-sub-time')?.textContent || '';
+        const text = item.querySelector('.bn-sub-text')?.textContent || '';
+        if (text) md += (time ? `[${time}] ` : '') + text + '\n';
+      });
+    }
+    return md || '(无内容)';
+  }
+
+  function renderDoc() {
+    const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
+    if (mode === 'auto') return;
+
     const type = getPromptType();
-    const template = type === 'img'
-      ? (s.settings.promptWithImage || DEFAULT_PROMPT_WITH_IMAGE)
-      : (s.settings.promptNoImage || DEFAULT_PROMPT_NO_IMAGE);
-
-    // 更新标签
-    const label = panelEl.querySelector('#bn-prompt-label');
-    if (label) label.textContent = type === 'img' ? '提示词（有截图）' : '提示词（无截图）';
-
-    // 填充变量并显示
-    const dir = s.settings.downloadDir || '{download_dir}';
-    const title = s.title || '{title}';
-    const filled = template.replace(/\{download_dir\}/g, dir).replace(/\{title\}/g, title);
+    const stored = type === 'img'
+      ? window.BiViNote.state.settings.promptWithImage
+      : window.BiViNote.state.settings.promptNoImage;
+    const template = stored || (type === 'img' ? DEFAULT_PROMPT_WITH_IMAGE : DEFAULT_PROMPT_NO_IMAGE);
 
     const displayEl = panelEl.querySelector('#bn-prompt-display');
-    if (displayEl) displayEl.textContent = filled;
+    if (displayEl) {
+      displayEl.textContent = template
+        .replace(/\{download_dir\}/g, window.BiViNote.state.settings.downloadDir || '{download_dir}')
+        .replace(/\{title\}/g, window.BiViNote.state.title || '{title}');
+    }
   }
 
   // ── 加载设置到 UI ──
@@ -446,6 +689,7 @@
     setRadio('bn-fontSize', s.fontSize);
     setRadio('bn-lineHeight', s.lineHeight);
     setRadio('bn-frameStep', String(s.frameStep));
+    setRadio('bn-docMode', s.docOrganizeMode || 'manual');
 
     const autoScrollEl = panelEl.querySelector('#bn-auto-scroll');
     if (autoScrollEl) autoScrollEl.checked = s.autoScroll;
@@ -808,7 +1052,7 @@
     switchTab,
     updateSubtitleSelect,
     showToast,
-    renderPrompt,
+    renderDoc,
     getPanelEl: () => panelEl,
     getScrollWrap: () => panelEl?.querySelector('.bn-scroll'),
     loadSettingsToUI

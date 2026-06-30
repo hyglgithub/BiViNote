@@ -909,3 +909,136 @@
 .bn-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--bn-text-sub);
 }
+
+/* ── 文档整理 ── */
+
+.bn-label {
+  font-size: 12px; color: var(--bn-text-sub); margin-bottom: 4px;
+}
+
+.bn-hint {
+  font-size: 11px; color: var(--bn-text-sub); margin-bottom: 8px; opacity: 0.7;
+}
+
+.bn-input {
+  width: 100%; padding: 5px 8px; font-size: 12px;
+  border: 1px solid var(--bn-border); border-radius: 4px;
+  background: var(--bn-card); color: var(--bn-text);
+  margin-bottom: 4px;
+}
+
+.bn-doc-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+
+.bn-doc-title {
+  font-size: 13px; font-weight: 600; color: var(--bn-text);
+}
+
+.bn-doc-actions {
+  display: flex; gap: 6px; margin-top: 8px;
+}
+
+.bn-btn-primary {
+  padding: 5px 12px; font-size: 12px;
+  background: var(--bn-accent); color: #fff; border: none; border-radius: 4px;
+  cursor: pointer;
+}
+
+.bn-btn-primary:hover { opacity: 0.85; }
+.bn-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* 状态徽章 */
+.bn-status {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 10px; font-size: 11px;
+}
+
+.bn-status-ok { background: #e6f7e6; color: #2d8a2d; }
+.bn-status-warn { background: #fff3e0; color: #e67e00; }
+.bn-status-off { background: #fce4ec; color: #c62828; }
+
+[data-bn-theme="dark"] .bn-status-ok { background: #1a3a1a; color: #4caf50; }
+[data-bn-theme="dark"] .bn-status-warn { background: #3a2a1a; color: #ff9800; }
+[data-bn-theme="dark"] .bn-status-off { background: #3a1a1a; color: #ef5350; }
+
+.bn-dot {
+  width: 6px; height: 6px; border-radius: 50%; display: inline-block;
+}
+
+.bn-dot-green { background: #4caf50; }
+.bn-dot-orange { background: #ff9800; }
+.bn-dot-red { background: #ef5350; }
+
+.bn-spinner {
+  display: inline-block; width: 12px; height: 12px;
+  border: 2px solid #e0e0e0; border-top-color: #0066cc;
+  border-radius: 50%; animation: bn-spin 0.6s linear infinite;
+}
+
+[data-bn-theme="dark"] .bn-spinner { border-color: #555; border-top-color: #4fc1ff; }
+
+@keyframes bn-spin { to { transform: rotate(360deg); } }
+
+/* 结果区域 */
+.bn-result-area {
+  background: var(--bn-card); border: 1px solid var(--bn-border); border-radius: 4px;
+  padding: 8px; font-size: 12px; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-all;
+  color: var(--bn-text); min-height: 150px; max-height: 400px; overflow-y: auto;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  margin-top: 4px;
+}
+
+/* 手风琴 */
+.bn-accordion { margin-bottom: 8px; }
+
+.bn-accordion-item {
+  border: 1px solid var(--bn-border); border-radius: 6px;
+  margin-bottom: 6px; overflow: hidden;
+}
+
+.bn-accordion-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; cursor: pointer; background: var(--bn-header-bg);
+  font-size: 12px; font-weight: 500; user-select: none;
+}
+
+.bn-accordion-header:hover { background: var(--bn-hover); }
+
+.bn-acc-arrow {
+  font-size: 10px; color: var(--bn-text-sub); transition: transform 0.2s;
+}
+
+.bn-accordion-item.open .bn-acc-arrow { transform: rotate(90deg); }
+
+.bn-accordion-body {
+  padding: 0 10px; max-height: 0; overflow: hidden;
+  transition: max-height 0.2s ease, padding 0.2s ease;
+}
+
+.bn-accordion-item.open .bn-accordion-body {
+  padding: 8px 10px; max-height: 500px;
+}
+
+.bn-divider {
+  border-top: 1px solid var(--bn-border); margin: 10px 0; opacity: 0.3;
+}
+
+.bn-prompt-pre {
+  background: var(--bn-header-bg); border: 1px solid var(--bn-border); border-radius: 4px;
+  padding: 8px; font-size: 12px; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-all;
+  color: var(--bn-text); max-height: 400px; overflow-y: auto;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  margin: 0;
+}
+
+.bn-prompt-textarea {
+  width: 100%; min-height: 100px; padding: 6px 8px; font-size: 12px;
+  border: 1px solid var(--bn-border); border-radius: 4px;
+  background: var(--bn-card); color: var(--bn-text);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  resize: vertical; line-height: 1.5;
+}

@@ -17,7 +17,9 @@
     downloadDir: '',
     promptNoImage: '',
     promptWithImage: '',
-    lastOpenMode: 'panel'
+    lastOpenMode: 'panel',
+    docOrganizeMode: 'manual',
+    deepseekPrompt: ''
   };
 
   const DEFAULT_CHECKED = {
