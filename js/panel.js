@@ -255,18 +255,18 @@
       <div class="bn-setting-label">字幕语言</div>
       <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
       <div class="bn-setting-label">提示词管理</div>
-      <div class="bn-setting-label bn-sub-label" id="bn-toggle-noimg" style="cursor:pointer;font-weight:normal">▸ 手动 · 无截图</div>
-      <div id="bn-section-noimg" style="display:none">
+      <div class="bn-setting-label" style="cursor:pointer;font-weight:normal" onclick="var s=this.nextElementSibling;s.style.display=s.style.display==='none'?'block':'none';this.textContent=(s.style.display==='none'?'▸':'▾')+this.textContent.slice(1)">▸ 手动 · 无截图</div>
+      <div style="display:none">
         <textarea class="bn-prompt-textarea" id="bn-prompt-noimg"></textarea>
         <div class="bn-doc-actions"><button id="bn-save-noimg" class="bn-btn-primary">保存</button><button id="bn-reset-noimg">重置</button></div>
       </div>
-      <div class="bn-setting-label bn-sub-label" id="bn-toggle-img" style="cursor:pointer;font-weight:normal">▸ 手动 · 有截图</div>
-      <div id="bn-section-img" style="display:none">
+      <div class="bn-setting-label" style="cursor:pointer;font-weight:normal" onclick="var s=this.nextElementSibling;s.style.display=s.style.display==='none'?'block':'none';this.textContent=(s.style.display==='none'?'▸':'▾')+this.textContent.slice(1)">▸ 手动 · 有截图</div>
+      <div style="display:none">
         <textarea class="bn-prompt-textarea" id="bn-prompt-img"></textarea>
         <div class="bn-doc-actions"><button id="bn-save-img" class="bn-btn-primary">保存</button><button id="bn-reset-img">重置</button></div>
       </div>
-      <div class="bn-setting-label bn-sub-label" id="bn-toggle-ds" style="cursor:pointer;font-weight:normal">▸ 自动 · DeepSeek</div>
-      <div id="bn-section-ds" style="display:none">
+      <div class="bn-setting-label" style="cursor:pointer;font-weight:normal" onclick="var s=this.nextElementSibling;s.style.display=s.style.display==='none'?'block':'none';this.textContent=(s.style.display==='none'?'▸':'▾')+this.textContent.slice(1)">▸ 自动 · DeepSeek</div>
+      <div style="display:none">
         <textarea class="bn-prompt-textarea" id="bn-prompt-ds"></textarea>
         <div class="bn-doc-actions"><button id="bn-save-ds" class="bn-btn-primary">保存</button><button id="bn-reset-ds">重置</button></div>
       </div>
@@ -378,66 +378,53 @@
       });
     });
 
-    // 提示词展开/折叠
-    ['noimg', 'img', 'ds'].forEach(key => {
-      const toggle = panelEl.querySelector(`#bn-toggle-${key}`);
-      const section = panelEl.querySelector(`#bn-section-${key}`);
-      if (toggle && section) {
-        toggle.addEventListener('click', () => {
-          const hidden = section.style.display === 'none';
-          section.style.display = hidden ? 'block' : 'none';
-          toggle.textContent = (hidden ? '▾' : '▸') + toggle.textContent.slice(1);
-        });
-      }
-    });
-
     // 提词管理 - 填充 textarea
-    const noimgTextarea = panelEl.querySelector('#bn-prompt-noimg');
+    const noimgTextarea = document.getElementById('bn-prompt-noimg');
     if (noimgTextarea) noimgTextarea.value = window.BiViNote.state.settings.promptNoImage || DEFAULT_PROMPT_NO_IMAGE;
-    const imgTextarea = panelEl.querySelector('#bn-prompt-img');
+    const imgTextarea = document.getElementById('bn-prompt-img');
     if (imgTextarea) imgTextarea.value = window.BiViNote.state.settings.promptWithImage || DEFAULT_PROMPT_WITH_IMAGE;
-    const dsTextarea = panelEl.querySelector('#bn-prompt-ds');
+    const dsTextarea = document.getElementById('bn-prompt-ds');
     if (dsTextarea) dsTextarea.value = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
 
     // 保存/重置按钮
-    const saveNoimg = panelEl.querySelector('#bn-save-noimg');
+    const saveNoimg = document.getElementById('bn-save-noimg');
     if (saveNoimg) saveNoimg.addEventListener('click', () => {
-      window.BiViNote.state.settings.promptNoImage = panelEl.querySelector('#bn-prompt-noimg').value;
+      window.BiViNote.state.settings.promptNoImage = document.getElementById('bn-prompt-noimg').value;
       window.BiViNote.settings.save();
       showToast('已保存');
     });
-    const resetNoimg = panelEl.querySelector('#bn-reset-noimg');
+    const resetNoimg = document.getElementById('bn-reset-noimg');
     if (resetNoimg) resetNoimg.addEventListener('click', () => {
       window.BiViNote.state.settings.promptNoImage = '';
-      panelEl.querySelector('#bn-prompt-noimg').value = DEFAULT_PROMPT_NO_IMAGE;
+      document.getElementById('bn-prompt-noimg').value = DEFAULT_PROMPT_NO_IMAGE;
       window.BiViNote.settings.save();
       showToast('已重置');
     });
 
-    const saveImg = panelEl.querySelector('#bn-save-img');
+    const saveImg = document.getElementById('bn-save-img');
     if (saveImg) saveImg.addEventListener('click', () => {
-      window.BiViNote.state.settings.promptWithImage = panelEl.querySelector('#bn-prompt-img').value;
+      window.BiViNote.state.settings.promptWithImage = document.getElementById('bn-prompt-img').value;
       window.BiViNote.settings.save();
       showToast('已保存');
     });
-    const resetImg = panelEl.querySelector('#bn-reset-img');
+    const resetImg = document.getElementById('bn-reset-img');
     if (resetImg) resetImg.addEventListener('click', () => {
       window.BiViNote.state.settings.promptWithImage = '';
-      panelEl.querySelector('#bn-prompt-img').value = DEFAULT_PROMPT_WITH_IMAGE;
+      document.getElementById('bn-prompt-img').value = DEFAULT_PROMPT_WITH_IMAGE;
       window.BiViNote.settings.save();
       showToast('已重置');
     });
 
-    const saveDs = panelEl.querySelector('#bn-save-ds');
+    const saveDs = document.getElementById('bn-save-ds');
     if (saveDs) saveDs.addEventListener('click', () => {
-      window.BiViNote.state.settings.deepseekPrompt = panelEl.querySelector('#bn-prompt-ds').value;
+      window.BiViNote.state.settings.deepseekPrompt = document.getElementById('bn-prompt-ds').value;
       window.BiViNote.settings.save();
       showToast('已保存');
     });
-    const resetDs = panelEl.querySelector('#bn-reset-ds');
+    const resetDs = document.getElementById('bn-reset-ds');
     if (resetDs) resetDs.addEventListener('click', () => {
       window.BiViNote.state.settings.deepseekPrompt = '';
-      panelEl.querySelector('#bn-prompt-ds').value = DEFAULT_DEEPSEEK_PROMPT;
+      document.getElementById('bn-prompt-ds').value = DEFAULT_DEEPSEEK_PROMPT;
       window.BiViNote.settings.save();
       showToast('已重置');
     });
