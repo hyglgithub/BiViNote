@@ -6,8 +6,8 @@
 - Task 2: 创建核心消息总线 - completed (4f7cc4e)
 - Task 3: 提取核心 background.js - completed (5a8f056)
 - Task 4: 提取核心 panel.js - completed (37cb5b7)
-- Task 5: 移动核心功能文件 - pending
-- Task 6: 提取 DeepSeek 模块 - pending
+- Task 5: 移动核心功能文件 - completed (18f4c2a)
+- Task 6: 提取 DeepSeek 模块 - completed (7497b6c)
 - Task 7: 创建 manifest 文件 - pending
 - Task 8: 创建构建脚本 - pending
 - Task 9: 测试 main 版本 - pending
@@ -17,5 +17,7 @@
 
 ## 完成记录
 
+- Task 6: 提取 DeepSeek 模块 - 7497b6c - 提取 DeepSeek 后台逻辑，创建面板模块，复制客户端文件，58 个测试通过
+- Task 5: 移动核心功能文件 - 18f4c2a - 复制 8 个核心功能文件到 src/core/，170 个测试通过
 - Task 4: 提取核心 panel.js - 37cb5b7 - 提取核心面板逻辑，实现动态标签页注册机制，62 个测试通过
 - Task 3: 提取核心 background.js - 5a8f056 - 提取核心后台逻辑，移除 DeepSeek 代码，87 个测试通过
