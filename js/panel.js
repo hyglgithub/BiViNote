@@ -103,6 +103,22 @@
     panelEl.appendChild(mainWrapEl);
     document.body.appendChild(panelEl);
 
+    // 阻止滚轮事件穿透到背景网页
+    panelEl.addEventListener('wheel', (e) => {
+      const el = e.target;
+      // 找到最近的可滚动祖先
+      const scrollable = el.closest('.bn-scroll, .bn-result-area, .bn-doc-think, .bn-prompt-textarea, .bn-prompt-pre, .bn-sub-list, textarea, [style*="overflow"]');
+      if (scrollable) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollable;
+        const atTop = scrollTop <= 0 && e.deltaY < 0;
+        const atBottom = scrollTop + clientHeight >= scrollHeight - 1 && e.deltaY > 0;
+        // 可滚动元素在中间时，不阻止（让它自己滚动）
+        if (!atTop && !atBottom) return;
+      }
+      // 不可滚动或已到边界，阻止默认行为防止背景滚动
+      e.preventDefault();
+    }, { passive: false });
+
     // 折叠浮动组件（icon + 快捷菜单）
     collapseContainerEl = document.createElement('div');
     collapseContainerEl.className = 'bn-collapse-container bn-hidden';
@@ -202,7 +218,7 @@
 4. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、英文大小写错误，请结合上下文修正，并统一技术术语写法。
 5. 若文档存在章节结构，严格按原始章节整理；若无章节，则按内容自然分段。
 6. 不要新增原文不存在的标题、章节或目录层级，不要改变原始内容顺序。
-7. 所有图片均为相对路径资源（如 \`![截图](assets/1.png)\`），默认与前一句字幕内容相关；必须保留所有图片，禁止修改图片 Markdown 语法、alt 文本、路径、文件名，不得遗漏任何图片，可根据整理后的内容适当调整图片在当前语义块中的位置。
+7. 文档中形如 ![xxx](assets/数字.png) 的 Markdown 标记属于特殊文本块，() 内为相对资源路径且默认与前一句字幕内容关联；必须保留全部此类标记，禁止修改语法、alt 文本、路径或文件名，不得遗漏，可根据整理后的内容适当调整其在当前语义块中的位置。
 8. 保留所有技术名词、工具名、框架名、产品名，不要删除、替换或省略。
 9. 若存在 Frontmatter（文档开头 YAML），必须完整原样保留，禁止修改字段、字段值和字段顺序。
 10. 仅整理原文，禁止总结、解释、扩展原文不存在的信息或补充额外知识。
@@ -221,29 +237,39 @@
 
   function buildDocManualHTML() {
     return `
-      <div class="bn-label">路径前缀</div>
-      <input type="text" id="bn-download-dir" class="bn-input" placeholder="例如: D:\\Notes\\Bilibili">
-      <div class="bn-hint">提示词中 {download_dir} 会替换为此值</div>
-      <pre id="bn-prompt-display" class="bn-prompt-pre"></pre>
-      <div class="bn-doc-actions">
-        <button id="bn-prompt-copy" class="bn-btn-primary">复制提示词</button>
+      <div class="bn-doc-auto">
+        <div class="bn-label">路径前缀</div>
+        <input type="text" id="bn-download-dir" class="bn-input" placeholder="例如: D:\\Notes\\Bilibili">
+        <div class="bn-hint">提示词中 {download_dir} 会替换为此值</div>
+        <div class="bn-doc-body">
+          <pre id="bn-prompt-display" class="bn-prompt-pre"></pre>
+        </div>
+        <div class="bn-doc-actions">
+          <button id="bn-prompt-copy" class="bn-btn-primary">复制提示词</button>
+        </div>
       </div>
     `;
   }
 
   function buildDocAutoHTML() {
     return `
-      <div class="bn-doc-header">
-        <div class="bn-doc-title">DeepSeek 文档整理</div>
-        <span id="bn-ds-status" class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>未登录</span>
-      </div>
-      <pre id="bn-ds-prompt" class="bn-prompt-pre"></pre>
-      <div id="bn-ds-result" class="bn-result-area" style="display:none"></div>
-      <div class="bn-doc-actions">
-        <button id="bn-ds-action" class="bn-btn-primary">打开 DeepSeek 登录</button>
-        <button id="bn-ds-download" class="bn-btn-primary" style="display:none">下载 Markdown</button>
-        <button id="bn-ds-copy" style="display:none">复制</button>
-        <button id="bn-ds-clear" style="display:none">清除</button>
+      <div class="bn-doc-auto">
+        <div class="bn-doc-header">
+          <div class="bn-doc-title">DeepSeek 文档整理</div>
+          <span id="bn-ds-status" class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>未登录</span>
+        </div>
+        <div class="bn-doc-body">
+          <pre id="bn-ds-prompt" class="bn-prompt-pre"></pre>
+          <div id="bn-ds-think" class="bn-doc-think" style="display:none"></div>
+          <div id="bn-ds-result" class="bn-result-area" style="display:none"></div>
+        </div>
+        <div class="bn-doc-actions">
+          <button id="bn-ds-action" class="bn-btn-primary">打开 DeepSeek 登录</button>
+          <button id="bn-ds-download" class="bn-btn-primary" style="display:none">下载 Markdown</button>
+          <button id="bn-ds-copy" style="display:none">复制</button>
+          <button id="bn-ds-clear" style="display:none">清除</button>
+          <button id="bn-ds-continue" style="display:none">继续询问</button>
+        </div>
       </div>
     `;
   }
@@ -252,65 +278,63 @@
 
   function buildSettingHTML() {
     return `
-      <div class="bn-setting-label">字幕语言</div>
-      <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
-      <div class="bn-setting-label">提示词管理</div>
-      <div class="bn-prompt-toggle" data-target="bn-psection-noimg">▸ 手动 · 无截图</div>
-      <div class="bn-prompt-section" id="bn-psection-noimg" style="display:none">
-        <textarea class="bn-prompt-textarea" id="bn-prompt-noimg"></textarea>
-        <div class="bn-doc-actions"><button id="bn-save-noimg" class="bn-btn-primary">保存</button><button id="bn-reset-noimg">重置</button></div>
+      <div id="bn-settings-main">
+        <div class="bn-setting-label">字幕语言</div>
+        <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
+        <div class="bn-setting-label">文档整理方式</div>
+        <label class="bn-radio-line">
+          <input type="radio" name="bn-docMode" id="bn-dm-manual" value="manual" checked>
+          <div><div class="bn-radio-title">手动整理</div><div class="bn-radio-desc">复制提示词，自行处理</div></div>
+        </label>
+        <label class="bn-radio-line">
+          <input type="radio" name="bn-docMode" id="bn-dm-auto" value="auto">
+          <div><div class="bn-radio-title">自动整理</div><div class="bn-radio-desc">调用 DeepSeek</div></div>
+        </label>
+        <div class="bn-setting-label">提示词管理</div>
+        <div class="bn-prompt-toggle" data-prompt="noimg">▸ 手动 · 无截图</div>
+        <div class="bn-prompt-toggle" data-prompt="img">▸ 手动 · 有截图</div>
+        <div class="bn-prompt-toggle" data-prompt="ds">▸ 自动 · DeepSeek</div>
+        <div class="bn-setting-label">字体大小</div>
+        <div class="bn-chip-group" data-setting="fontSize">
+          <input type="radio" name="bn-fontSize" id="bn-fs-s" value="small"><label for="bn-fs-s">小</label>
+          <input type="radio" name="bn-fontSize" id="bn-fs-d" value="default" checked><label for="bn-fs-d">默认</label>
+          <input type="radio" name="bn-fontSize" id="bn-fs-m" value="medium"><label for="bn-fs-m">中</label>
+          <input type="radio" name="bn-fontSize" id="bn-fs-l" value="large"><label for="bn-fs-l">大</label>
+        </div>
+        <div class="bn-setting-label">行高</div>
+        <div class="bn-chip-group" data-setting="lineHeight">
+          <input type="radio" name="bn-lineHeight" id="bn-lh-n" value="narrow"><label for="bn-lh-n">窄</label>
+          <input type="radio" name="bn-lineHeight" id="bn-lh-s" value="standard" checked><label for="bn-lh-s">标准</label>
+          <input type="radio" name="bn-lineHeight" id="bn-lh-w" value="wide"><label for="bn-lh-w">宽</label>
+        </div>
+        <div class="bn-setting-label">帧步长</div>
+        <div class="bn-chip-group" data-setting="frameStep">
+          <input type="radio" name="bn-frameStep" id="bn-fs1" value="1" checked><label for="bn-fs1">1/1</label>
+          <input type="radio" name="bn-frameStep" id="bn-fs5" value="0.2"><label for="bn-fs5">1/5</label>
+          <input type="radio" name="bn-frameStep" id="bn-fs15" value="0.066667"><label for="bn-fs15">1/15</label>
+          <input type="radio" name="bn-frameStep" id="bn-fs30" value="0.033333"><label for="bn-fs30">1/30</label>
+        </div>
+        <div class="bn-switch">
+          <span>自动滚动</span>
+          <input type="checkbox" id="bn-auto-scroll" checked>
+          <label class="bn-switch-track" for="bn-auto-scroll"></label>
+        </div>
+        <div class="bn-switch">
+          <span>夜间模式</span>
+          <input type="checkbox" id="bn-dark-mode">
+          <label class="bn-switch-track" for="bn-dark-mode"></label>
+        </div>
+        <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
       </div>
-      <div class="bn-prompt-toggle" data-target="bn-psection-img">▸ 手动 · 有截图</div>
-      <div class="bn-prompt-section" id="bn-psection-img" style="display:none">
-        <textarea class="bn-prompt-textarea" id="bn-prompt-img"></textarea>
-        <div class="bn-doc-actions"><button id="bn-save-img" class="bn-btn-primary">保存</button><button id="bn-reset-img">重置</button></div>
+      <div id="bn-settings-editor" style="display:none">
+        <div class="bn-editor-title">提示词管理</div>
+        <div class="bn-prompt-toggle bn-editor-back" id="bn-editor-back">▾ 手动 · 无截图</div>
+        <textarea class="bn-prompt-textarea" id="bn-editor-textarea"></textarea>
+        <div class="bn-doc-actions">
+          <button id="bn-editor-save" class="bn-btn-primary">保存</button>
+          <button id="bn-editor-reset">重置</button>
+        </div>
       </div>
-      <div class="bn-prompt-toggle" data-target="bn-psection-ds">▸ 自动 · DeepSeek</div>
-      <div class="bn-prompt-section" id="bn-psection-ds" style="display:none">
-        <textarea class="bn-prompt-textarea" id="bn-prompt-ds"></textarea>
-        <div class="bn-doc-actions"><button id="bn-save-ds" class="bn-btn-primary">保存</button><button id="bn-reset-ds">重置</button></div>
-      </div>
-      <div class="bn-divider"></div>
-      <div class="bn-setting-label">文档整理方式</div>
-      <label class="bn-radio-line">
-        <input type="radio" name="bn-docMode" id="bn-dm-manual" value="manual" checked>
-        <div><div class="bn-radio-title">手动整理</div><div class="bn-radio-desc">复制提示词，自行处理</div></div>
-      </label>
-      <label class="bn-radio-line">
-        <input type="radio" name="bn-docMode" id="bn-dm-auto" value="auto">
-        <div><div class="bn-radio-title">自动整理</div><div class="bn-radio-desc">调用 DeepSeek</div></div>
-      </label>
-      <div class="bn-setting-label">字体大小</div>
-      <div class="bn-chip-group" data-setting="fontSize">
-        <input type="radio" name="bn-fontSize" id="bn-fs-s" value="small"><label for="bn-fs-s">小</label>
-        <input type="radio" name="bn-fontSize" id="bn-fs-d" value="default" checked><label for="bn-fs-d">默认</label>
-        <input type="radio" name="bn-fontSize" id="bn-fs-m" value="medium"><label for="bn-fs-m">中</label>
-        <input type="radio" name="bn-fontSize" id="bn-fs-l" value="large"><label for="bn-fs-l">大</label>
-      </div>
-      <div class="bn-setting-label">行高</div>
-      <div class="bn-chip-group" data-setting="lineHeight">
-        <input type="radio" name="bn-lineHeight" id="bn-lh-n" value="narrow"><label for="bn-lh-n">窄</label>
-        <input type="radio" name="bn-lineHeight" id="bn-lh-s" value="standard" checked><label for="bn-lh-s">标准</label>
-        <input type="radio" name="bn-lineHeight" id="bn-lh-w" value="wide"><label for="bn-lh-w">宽</label>
-      </div>
-      <div class="bn-setting-label">帧步长</div>
-      <div class="bn-chip-group" data-setting="frameStep">
-        <input type="radio" name="bn-frameStep" id="bn-fs1" value="1" checked><label for="bn-fs1">1/1</label>
-        <input type="radio" name="bn-frameStep" id="bn-fs5" value="0.2"><label for="bn-fs5">1/5</label>
-        <input type="radio" name="bn-frameStep" id="bn-fs15" value="0.066667"><label for="bn-fs15">1/15</label>
-        <input type="radio" name="bn-frameStep" id="bn-fs30" value="0.033333"><label for="bn-fs30">1/30</label>
-      </div>
-      <div class="bn-switch">
-        <span>自动滚动</span>
-        <input type="checkbox" id="bn-auto-scroll" checked>
-        <label class="bn-switch-track" for="bn-auto-scroll"></label>
-      </div>
-      <div class="bn-switch">
-        <span>夜间模式</span>
-        <input type="checkbox" id="bn-dark-mode">
-        <label class="bn-switch-track" for="bn-dark-mode"></label>
-      </div>
-      <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
     `;
   }
 
@@ -378,76 +402,73 @@
       });
     });
 
-    // 提示词展开/折叠（手风琴：打开一个自动关闭其余）
+    // 提示词管理 - 全屏编辑模式
+    const PROMPT_MAP = {
+      noimg: { key: 'promptNoImage', default: DEFAULT_PROMPT_NO_IMAGE, label: '手动 · 无截图' },
+      img:   { key: 'promptWithImage', default: DEFAULT_PROMPT_WITH_IMAGE, label: '手动 · 有截图' },
+      ds:    { key: 'deepseekPrompt', default: DEFAULT_DEEPSEEK_PROMPT, label: '自动 · DeepSeek' },
+    };
+    let editingType = null;
+
+    function openEditor(type) {
+      const info = PROMPT_MAP[type];
+      if (!info) return;
+      editingType = type;
+      const mainEl = document.getElementById('bn-settings-main');
+      const editorEl = document.getElementById('bn-settings-editor');
+      const textarea = document.getElementById('bn-editor-textarea');
+      const backBtn = document.getElementById('bn-editor-back');
+      if (mainEl) mainEl.style.display = 'none';
+      if (editorEl) editorEl.style.display = '';
+      if (textarea) textarea.value = window.BiViNote.state.settings[info.key] || info.default;
+      if (backBtn) backBtn.textContent = '▾ ' + info.label;
+    }
+
+    function closeEditor() {
+      editingType = null;
+      const mainEl = document.getElementById('bn-settings-main');
+      const editorEl = document.getElementById('bn-settings-editor');
+      if (mainEl) mainEl.style.display = '';
+      if (editorEl) editorEl.style.display = 'none';
+    }
+
     const settingView = views['setting'];
     if (settingView) {
       settingView.addEventListener('click', (e) => {
         const toggle = e.target.closest('.bn-prompt-toggle');
         if (!toggle) return;
-        const targetId = toggle.dataset.target;
-        const section = document.getElementById(targetId);
-        if (!section) return;
-        const hidden = section.style.display === 'none';
-        // 关闭所有
-        settingView.querySelectorAll('.bn-prompt-section').forEach(s => { s.style.display = 'none'; });
-        settingView.querySelectorAll('.bn-prompt-toggle').forEach(t => { t.textContent = '▸' + t.textContent.slice(1); });
-        // 打开点击的
-        if (hidden) {
-          section.style.display = 'block';
-          toggle.textContent = '▾' + toggle.textContent.slice(1);
-        }
+        const type = toggle.dataset.prompt;
+        if (type) openEditor(type);
       });
     }
 
-    // 提词管理 - 填充 textarea
-    const noimgTextarea = document.getElementById('bn-prompt-noimg');
-    if (noimgTextarea) noimgTextarea.value = window.BiViNote.state.settings.promptNoImage || DEFAULT_PROMPT_NO_IMAGE;
-    const imgTextarea = document.getElementById('bn-prompt-img');
-    if (imgTextarea) imgTextarea.value = window.BiViNote.state.settings.promptWithImage || DEFAULT_PROMPT_WITH_IMAGE;
-    const dsTextarea = document.getElementById('bn-prompt-ds');
-    if (dsTextarea) dsTextarea.value = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
+    const editorBack = document.getElementById('bn-editor-back');
+    if (editorBack) editorBack.addEventListener('click', closeEditor);
 
-    // 保存/重置按钮
-    const saveNoimg = document.getElementById('bn-save-noimg');
-    if (saveNoimg) saveNoimg.addEventListener('click', () => {
-      window.BiViNote.state.settings.promptNoImage = document.getElementById('bn-prompt-noimg').value;
-      window.BiViNote.settings.save();
-      showToast('已保存');
-    });
-    const resetNoimg = document.getElementById('bn-reset-noimg');
-    if (resetNoimg) resetNoimg.addEventListener('click', () => {
-      window.BiViNote.state.settings.promptNoImage = '';
-      document.getElementById('bn-prompt-noimg').value = DEFAULT_PROMPT_NO_IMAGE;
-      window.BiViNote.settings.save();
-      showToast('已重置');
+    const editorSave = document.getElementById('bn-editor-save');
+    if (editorSave) editorSave.addEventListener('click', () => {
+      if (!editingType) return;
+      const info = PROMPT_MAP[editingType];
+      const textarea = document.getElementById('bn-editor-textarea');
+      if (info && textarea) {
+        window.BiViNote.state.settings[info.key] = textarea.value;
+        window.BiViNote.settings.save();
+        showToast('已保存');
+      }
+      closeEditor();
     });
 
-    const saveImg = document.getElementById('bn-save-img');
-    if (saveImg) saveImg.addEventListener('click', () => {
-      window.BiViNote.state.settings.promptWithImage = document.getElementById('bn-prompt-img').value;
-      window.BiViNote.settings.save();
-      showToast('已保存');
-    });
-    const resetImg = document.getElementById('bn-reset-img');
-    if (resetImg) resetImg.addEventListener('click', () => {
-      window.BiViNote.state.settings.promptWithImage = '';
-      document.getElementById('bn-prompt-img').value = DEFAULT_PROMPT_WITH_IMAGE;
-      window.BiViNote.settings.save();
-      showToast('已重置');
-    });
-
-    const saveDs = document.getElementById('bn-save-ds');
-    if (saveDs) saveDs.addEventListener('click', () => {
-      window.BiViNote.state.settings.deepseekPrompt = document.getElementById('bn-prompt-ds').value;
-      window.BiViNote.settings.save();
-      showToast('已保存');
-    });
-    const resetDs = document.getElementById('bn-reset-ds');
-    if (resetDs) resetDs.addEventListener('click', () => {
-      window.BiViNote.state.settings.deepseekPrompt = '';
-      document.getElementById('bn-prompt-ds').value = DEFAULT_DEEPSEEK_PROMPT;
-      window.BiViNote.settings.save();
-      showToast('已重置');
+    const editorReset = document.getElementById('bn-editor-reset');
+    if (editorReset) editorReset.addEventListener('click', () => {
+      if (!editingType) return;
+      const info = PROMPT_MAP[editingType];
+      const textarea = document.getElementById('bn-editor-textarea');
+      if (info && textarea) {
+        window.BiViNote.state.settings[info.key] = '';
+        textarea.value = info.default;
+        window.BiViNote.settings.save();
+        showToast('已重置');
+      }
     });
 
     // 恢复默认
@@ -463,6 +484,12 @@
         // 重新渲染视频信息页（恢复默认勾选）
         if (window.BiViNote.videoInfo) {
           window.BiViNote.videoInfo.render();
+        }
+        // 重新渲染文档整理页面
+        const docView = views['doc'];
+        if (docView) {
+          docView.innerHTML = buildDocHTML();
+          bindDocEvents();
         }
         showToast('已恢复默认设置');
       });
@@ -529,10 +556,13 @@
     const statusEl = panelEl.querySelector('#bn-ds-status');
     const actionBtn = panelEl.querySelector('#bn-ds-action');
     const promptEl = panelEl.querySelector('#bn-ds-prompt');
+    const thinkEl = panelEl.querySelector('#bn-ds-think');
     const resultEl = panelEl.querySelector('#bn-ds-result');
     const downloadBtn = panelEl.querySelector('#bn-ds-download');
     const copyBtn = panelEl.querySelector('#bn-ds-copy');
     const clearBtn = panelEl.querySelector('#bn-ds-clear');
+    const continueBtn = panelEl.querySelector('#bn-ds-continue');
+    let savedScreenshots = null;
 
     if (promptEl) {
       const stored = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
@@ -544,8 +574,8 @@
       const stateMap = {
         'not_logged_in': { cls: 'bn-status-off', dot: 'bn-dot-red', text: '未登录', action: '打开 DeepSeek 登录' },
         'ready': { cls: 'bn-status-ok', dot: 'bn-dot-green', text: '已登录', action: '开始整理' },
-        'reading': { cls: 'bn-status-warn', dot: 'bn-spinner', text: '读取中', action: null },
-        'responding': { cls: 'bn-status-warn', dot: 'bn-spinner', text: '整理中', action: null },
+        'reading': { cls: 'bn-status-warn', dot: 'bn-spinner', text: '读取中', action: '停止整理' },
+        'responding': { cls: 'bn-status-warn', dot: 'bn-spinner', text: '整理中', action: '停止整理' },
         'done': { cls: 'bn-status-ok', dot: 'bn-dot-green', text: '已完成', action: null },
         'error': { cls: 'bn-status-off', dot: 'bn-dot-red', text: '错误', action: '重试' },
       };
@@ -565,30 +595,53 @@
 
       if (dsState === 'reading' || dsState === 'responding' || dsState === 'done') {
         if (promptEl) promptEl.style.display = 'none';
-        if (resultEl) resultEl.style.display = '';
       } else {
         if (promptEl) promptEl.style.display = '';
+        if (thinkEl) thinkEl.style.display = 'none';
         if (resultEl) resultEl.style.display = 'none';
+      }
+
+      if (dsState === 'reading') {
+        if (thinkEl) { thinkEl.style.display = ''; thinkEl.textContent = ''; }
+        if (resultEl) { resultEl.style.display = 'none'; resultEl.textContent = ''; }
+      } else if (dsState === 'responding' || dsState === 'done') {
+        if (thinkEl) thinkEl.style.display = 'none';
+        if (resultEl) resultEl.style.display = '';
       }
 
       if (dsState === 'done') {
         if (downloadBtn) downloadBtn.style.display = '';
         if (copyBtn) copyBtn.style.display = '';
         if (clearBtn) clearBtn.style.display = '';
+        if (continueBtn) continueBtn.style.display = '';
       } else {
         if (downloadBtn) downloadBtn.style.display = 'none';
         if (copyBtn) copyBtn.style.display = 'none';
         if (clearBtn) clearBtn.style.display = 'none';
+        if (continueBtn) continueBtn.style.display = 'none';
       }
     }
 
     ds.onStateChange(updateUI);
     updateUI(ds.getState());
 
+    // 自动滚动：离开底部暂停，回到底部恢复
+    let autoScroll = true;
+    const isAtBottom = (el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 5;
+    if (thinkEl) {
+      thinkEl.addEventListener('scroll', () => { autoScroll = isAtBottom(thinkEl); }, { passive: true });
+    }
+    if (resultEl) {
+      resultEl.addEventListener('scroll', () => { autoScroll = isAtBottom(resultEl); }, { passive: true });
+    }
+
     ds.onChunk((chunk) => {
-      if (resultEl) {
+      if (chunk.type === 'think' && thinkEl) {
+        thinkEl.textContent += chunk.text;
+        if (autoScroll) thinkEl.scrollTop = thinkEl.scrollHeight;
+      } else if (chunk.type === 'response' && resultEl) {
         resultEl.textContent += chunk.text;
-        resultEl.scrollTop = resultEl.scrollHeight;
+        if (autoScroll) resultEl.scrollTop = resultEl.scrollHeight;
       }
     });
 
@@ -603,25 +656,53 @@
             await ds.checkLogin();
             if (ds.getState() === 'ready' || attempts >= 15) clearInterval(poll);
           }, 2000);
+        } else if (currentState === 'reading' || currentState === 'responding') {
+          ds.abort();
+          if (thinkEl) thinkEl.textContent = '';
+          if (resultEl) resultEl.textContent = '';
         } else if (currentState === 'ready' || currentState === 'error') {
-          const md = buildExportMarkdown();
-          const prompt = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
+          autoScroll = true;
+          // 快照当前截图，防止整理过程中用户调整图片
+          const s = window.BiViNote.state;
+          savedScreenshots = s.screenshots ? new Map(s.screenshots) : null;
+          const md = window.BiViNote.exportUtil
+            ? window.BiViNote.exportUtil.buildMarkdown(s)
+            : buildExportMarkdown();
+          const prompt = s.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
           ds.sendMarkdown(md, prompt);
         }
       });
     }
 
     if (downloadBtn) {
-      downloadBtn.addEventListener('click', () => {
+      downloadBtn.addEventListener('click', async () => {
         const result = ds.getResult();
         if (!result.response) return;
-        const blob = new Blob([result.response], { type: 'text/markdown;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = extractFilename(result.response);
-        a.click();
-        URL.revokeObjectURL(url);
+        const shots = savedScreenshots;
+        const hasScreenshots = shots && shots.size > 0;
+        if (hasScreenshots && typeof JSZip !== 'undefined') {
+          const zip = new JSZip();
+          zip.file('note.md', result.response);
+          for (const [index, { blob, timeCode }] of shots) {
+            const tc = timeCode || '0000';
+            zip.file(`assets/${tc}.png`, blob);
+          }
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          const url = URL.createObjectURL(zipBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = extractFilename(result.response).replace(/\.md$/, '.zip');
+          a.click();
+          URL.revokeObjectURL(url);
+        } else {
+          const blob = new Blob([result.response], { type: 'text/markdown;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = extractFilename(result.response);
+          a.click();
+          URL.revokeObjectURL(url);
+        }
       });
     }
 
@@ -635,11 +716,22 @@
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
         ds.clear();
+        savedScreenshots = null;
+        if (thinkEl) thinkEl.textContent = '';
         if (resultEl) resultEl.textContent = '';
       });
     }
 
-    ds.checkLogin();
+    // 继续询问：跳转到 DeepSeek 会话页面
+    if (continueBtn) {
+      continueBtn.addEventListener('click', () => {
+        const chatId = ds.getChatId();
+        const url = chatId ? `https://chat.deepseek.com/a/chat/s/${chatId}` : 'https://chat.deepseek.com';
+        chrome.runtime.sendMessage({ type: 'ds-open-chat', url });
+      });
+    }
+
+    // 登录检测延迟到用户点击文档整理标签时触发（见 switchTab）
   }
 
   function extractFilename(text) {
@@ -674,6 +766,15 @@
       });
     }
     return md || '(无内容)';
+  }
+
+  function resetDocAuto() {
+    const ds = window.BiViNote.deepseek;
+    if (ds) ds.abort();
+    const thinkEl = panelEl?.querySelector('#bn-ds-think');
+    const resultEl = panelEl?.querySelector('#bn-ds-result');
+    if (thinkEl) thinkEl.textContent = '';
+    if (resultEl) resultEl.textContent = '';
   }
 
   function renderDoc() {
@@ -742,6 +843,15 @@
     // footer 只在字幕和章节页显示
     const tabDef = TAB_DEFS.find(d => d.id === tabId);
     footerEl.classList.toggle('bn-show', tabDef?.footer || false);
+
+    // 点击文档整理标签时检测 DeepSeek 登录状态（仅空闲时检测）
+    if (tabId === 'doc' && s.settings.docOrganizeMode === 'auto') {
+      const ds = window.BiViNote.deepseek;
+      const st = ds?.getState?.();
+      if (ds?.checkLogin && (st === 'not_logged_in' || st === 'ready')) {
+        ds.checkLogin();
+      }
+    }
   }
 
   // ── 工具函数 ──
@@ -1069,6 +1179,7 @@
     updateSubtitleSelect,
     showToast,
     renderDoc,
+    resetDocAuto,
     getPanelEl: () => panelEl,
     getScrollWrap: () => panelEl?.querySelector('.bn-scroll'),
     loadSettingsToUI

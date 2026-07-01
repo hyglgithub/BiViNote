@@ -413,14 +413,43 @@
     }
   }
 
+  // ========== 终止流式响应 ==========
+
+  async function stopStream(chatId, messageId) {
+    const token = getToken();
+    if (!token || !chatId) return;
+    const { clientVersion, appVersion } = getPageVersions();
+    try {
+      await fetch("https://chat.deepseek.com/api/v0/chat/stop_stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "*/*",
+          Referer: "https://chat.deepseek.com/",
+          Origin: "https://chat.deepseek.com",
+          "x-client-platform": "web",
+          "x-client-version": clientVersion,
+          "x-app-version": appVersion,
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify({ chat_session_id: chatId, message_id: messageId }),
+      });
+    } catch {}
+  }
+
   // ========== 监听来自 content script 的消息 ==========
 
   window.addEventListener("message", (event) => {
     if (event.source !== window) return;
     const msg = event.data;
-    if (!msg || msg.type !== "DEEPSEEK_SEND") return;
+    if (!msg) return;
 
-    const { prompt, chatId, requestId } = msg;
-    sendDeepSeekMessage(prompt, chatId, requestId || crypto.randomUUID());
+    if (msg.type === "DEEPSEEK_SEND") {
+      const { prompt, chatId, requestId } = msg;
+      sendDeepSeekMessage(prompt, chatId, requestId || crypto.randomUUID());
+    } else if (msg.type === "DEEPSEEK_ABORT") {
+      stopStream(msg.chatId, msg.messageId);
+    }
   });
 })();

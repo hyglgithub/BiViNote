@@ -187,7 +187,7 @@
   border: 1px solid var(--bn-btn-border);
   background: var(--bn-tab-bg);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 0.92em;
   color: var(--bn-text);
   border-radius: 3px;
   white-space: nowrap;
@@ -253,6 +253,18 @@
 .bn-scroll {
   flex: 1;
   overflow-y: auto;
+}
+
+#bn-view-doc.bn-show {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+#bn-view-setting.bn-show {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
 /* View panels */
@@ -368,7 +380,7 @@
 }
 
 .bn-btns button {
-  font-size: 11px;
+  font-size: 0.85em;
   padding: 2px 6px;
   border: 1px solid var(--bn-btn-border);
   background: var(--bn-btn-bg);
@@ -398,7 +410,7 @@
 }
 
 .bn-footer button {
-  font-size: 12px;
+  font-size: 0.92em;
   padding: 3px 10px;
   border: 1px solid var(--bn-btn-border);
   background: var(--bn-btn-bg);
@@ -462,7 +474,7 @@
   padding: 3px 10px;
   border: 1px solid var(--bn-btn-border);
   background: var(--bn-btn-bg);
-  font-size: 12px;
+  font-size: 0.92em;
   cursor: pointer;
   color: var(--bn-text);
   border-radius: 3px;
@@ -523,7 +535,7 @@
 }
 
 .bn-prompt-actions button {
-  font-size: 11px;
+  font-size: 0.85em;
   padding: 2px 8px;
   border: 1px solid var(--bn-btn-border);
   background: var(--bn-btn-bg);
@@ -540,7 +552,7 @@
   width: calc(100% - 24px);
   margin: 0 12px 12px;
   padding: 8px;
-  font-size: 11px;
+  font-size: 0.85em;
   background: var(--bn-header-bg);
   border: 1px solid var(--bn-btn-border);
   border-radius: 3px;
@@ -549,7 +561,7 @@
   max-height: 300px;
   overflow-y: auto;
   font-family: monospace;
-  line-height: 1.5;
+  line-height: var(--bn-line-height);
   user-select: text;
   color: var(--bn-text);
 }
@@ -559,7 +571,7 @@
   width: calc(100% - 24px);
   margin: 0 12px;
   padding: 4px;
-  font-size: 12px;
+  font-size: 0.92em;
   background: var(--bn-card);
   color: var(--bn-text);
   border: 1px solid var(--bn-btn-border);
@@ -593,7 +605,7 @@
   color: var(--bn-toast-text);
   padding: 8px 20px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 1em;
   z-index: 2147483647;
   pointer-events: none;
   animation: bnToastIn 0.2s ease, bnToastOut 0.3s ease 1.7s forwards;
@@ -650,7 +662,7 @@
   cursor: pointer;
   color: var(--bn-text);
   border-radius: 3px;
-  font-size: 12px;
+  font-size: 0.92em;
 }
 
 .bn-preview-btns button:hover {
@@ -732,11 +744,13 @@
   overflow-y: auto;
   z-index: 2;
   border-right: 1px solid var(--bn-border);
+  font-size: var(--bn-font-size);
+  line-height: var(--bn-line-height);
 }
 
 .bn-crop-sidebar-title {
   padding: 12px 10px;
-  font-size: 13px;
+  font-size: 1em;
   color: var(--bn-text);
   text-align: center;
   border-bottom: 1px solid var(--bn-border);
@@ -776,13 +790,13 @@
 }
 
 .bn-crop-sidebar-time {
-  font-size: 11px;
+  font-size: 0.85em;
   color: var(--bn-text-sub);
   margin-bottom: 2px;
 }
 
 .bn-crop-sidebar-text {
-  font-size: 11px;
+  font-size: 0.85em;
   color: var(--bn-text);
   white-space: nowrap;
   overflow: hidden;
@@ -846,11 +860,13 @@
   gap: 6px;
   position: relative;
   flex-shrink: 0;
+  font-size: var(--bn-font-size);
+  line-height: var(--bn-line-height);
 }
 
 .bn-crop-controls button,
 .bn-crop-controls select {
-  font-size: 12px;
+  font-size: 0.92em;
   padding: 4px 10px;
   border: 1px solid var(--bn-btn-border);
   background: var(--bn-btn-bg);
@@ -915,15 +931,15 @@
 /* ── 文档整理 ── */
 
 .bn-label {
-  font-size: 12px; color: var(--bn-text-sub); margin: 12px 12px 4px;
+  font-size: 0.92em; color: var(--bn-text-sub); margin: 12px 12px 4px;
 }
 
 .bn-hint {
-  font-size: 11px; color: var(--bn-text-sub); margin: 0 12px 8px; opacity: 0.7;
+  font-size: 0.85em; color: var(--bn-text-sub); margin: 0 12px 8px; opacity: 0.7;
 }
 
 .bn-input {
-  width: calc(100% - 24px); padding: 5px 8px; font-size: 12px;
+  width: calc(100% - 24px); padding: 5px 8px; font-size: 0.92em;
   border: 1px solid var(--bn-border); border-radius: 4px;
   background: var(--bn-card); color: var(--bn-text);
   margin: 0 12px 4px;
@@ -934,16 +950,77 @@
   margin: 8px 12px 8px;
 }
 
+.bn-doc-auto {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.bn-doc-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.bn-doc-body .bn-prompt-pre,
+.bn-doc-body .bn-doc-think,
+.bn-doc-body .bn-result-area {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
 .bn-doc-title {
-  font-size: 13px; font-weight: 600; color: var(--bn-text);
+  font-size: 1em; font-weight: 600; color: var(--bn-text);
 }
 
 .bn-doc-actions {
-  display: flex; gap: 6px; margin: 8px 12px 0;
+  display: flex; gap: 6px; margin: 8px 12px 12px;
+}
+
+.bn-doc-actions button:not(.bn-btn-primary) {
+  padding: 5px 12px; font-size: 0.92em;
+  border: 1px solid var(--bn-btn-border);
+  background: var(--bn-btn-bg);
+  color: var(--bn-text);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#bn-ds-continue {
+  background: none; border: none; color: var(--bn-accent);
+  padding: 5px 8px; font-size: 0.92em; cursor: pointer;
+}
+
+#bn-settings-editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.bn-editor-title {
+  font-size: 1.15em;
+  font-weight: 600;
+  color: var(--bn-text);
+  margin: 8px 12px 4px;
+}
+
+.bn-editor-back {
+  margin: 0 12px 8px;
+}
+
+#bn-settings-editor .bn-prompt-textarea {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  width: calc(100% - 24px);
+  margin: 0 12px;
+  resize: none;
 }
 
 .bn-btn-primary {
-  padding: 5px 12px; font-size: 12px;
+  padding: 5px 12px; font-size: 0.92em;
   background: var(--bn-accent); color: #fff; border: none; border-radius: 4px;
   cursor: pointer;
 }
@@ -954,7 +1031,7 @@
 /* 状态徽章 */
 .bn-status {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 8px; border-radius: 10px; font-size: 11px;
+  padding: 2px 8px; border-radius: 10px; font-size: 0.85em;
 }
 
 .bn-status-ok { background: #e6f7e6; color: #2d8a2d; }
@@ -984,13 +1061,46 @@
 @keyframes bn-spin { to { transform: rotate(360deg); } }
 
 /* 结果区域 */
+.bn-doc-think {
+  font-size: 0.85em;
+  color: var(--bn-text-sub);
+  padding: 8px 12px;
+  margin: 4px 12px 0;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--bn-card);
+  border-radius: 4px;
+  border: 1px dashed var(--bn-border);
+  line-height: var(--bn-line-height);
+}
+
 .bn-result-area {
   background: var(--bn-card); border: 1px solid var(--bn-border); border-radius: 4px;
-  padding: 8px; font-size: 12px; line-height: 1.5;
+  padding: 8px; font-size: 0.92em; line-height: var(--bn-line-height);
   white-space: pre-wrap; word-break: break-all;
   color: var(--bn-text); min-height: 150px; max-height: 400px; overflow-y: auto;
   font-family: "Cascadia Code", "Consolas", monospace;
   margin: 4px 12px 0;
+}
+
+.bn-result-area::-webkit-scrollbar,
+.bn-doc-think::-webkit-scrollbar {
+  width: 6px;
+}
+.bn-result-area::-webkit-scrollbar-track,
+.bn-doc-think::-webkit-scrollbar-track {
+  background: var(--bn-header-bg);
+}
+.bn-result-area::-webkit-scrollbar-thumb,
+.bn-doc-think::-webkit-scrollbar-thumb {
+  background: var(--bn-btn-border);
+  border-radius: 3px;
+}
+.bn-result-area::-webkit-scrollbar-thumb:hover,
+.bn-doc-think::-webkit-scrollbar-thumb:hover {
+  background: var(--bn-text-sub);
 }
 
 /* 手风琴 */
@@ -1004,13 +1114,13 @@
 .bn-accordion-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 10px; cursor: pointer; background: var(--bn-header-bg);
-  font-size: 12px; font-weight: 500; user-select: none;
+  font-size: 0.92em; font-weight: 500; user-select: none;
 }
 
 .bn-accordion-header:hover { background: var(--bn-hover); }
 
 .bn-acc-arrow {
-  font-size: 10px; color: var(--bn-text-sub); transition: transform 0.2s;
+  font-size: 0.77em; color: var(--bn-text-sub); transition: transform 0.2s;
 }
 
 .bn-accordion-item.open .bn-acc-arrow { transform: rotate(90deg); }
@@ -1038,16 +1148,16 @@
 }
 
 .bn-radio-title {
-  font-size: 12px; font-weight: 500; color: var(--bn-text);
+  font-size: 0.92em; font-weight: 500; color: var(--bn-text);
 }
 
 .bn-radio-desc {
-  font-size: 11px; color: var(--bn-text-sub); margin-top: 1px;
+  font-size: 0.85em; color: var(--bn-text-sub); margin-top: 1px;
 }
 
 .bn-prompt-pre {
   background: var(--bn-header-bg); border: 1px solid var(--bn-border); border-radius: 4px;
-  padding: 8px; font-size: 12px; line-height: 1.5;
+  padding: 8px; font-size: 0.92em; line-height: var(--bn-line-height);
   white-space: pre-wrap; word-break: break-all;
   color: var(--bn-text); max-height: 400px; overflow-y: auto;
   font-family: "Cascadia Code", "Consolas", monospace;
@@ -1055,9 +1165,23 @@
 }
 
 .bn-prompt-textarea {
-  width: 100%; min-height: 100px; padding: 6px 8px; font-size: 12px;
+  width: 100%; min-height: 300px; padding: 6px 8px; font-size: 0.92em;
   border: 1px solid var(--bn-border); border-radius: 4px;
   background: var(--bn-card); color: var(--bn-text);
   font-family: "Cascadia Code", "Consolas", monospace;
-  resize: vertical; line-height: 1.5; box-sizing: border-box;
+  resize: vertical; line-height: var(--bn-line-height); box-sizing: border-box;
+}
+
+.bn-prompt-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+.bn-prompt-textarea::-webkit-scrollbar-track {
+  background: var(--bn-header-bg);
+}
+.bn-prompt-textarea::-webkit-scrollbar-thumb {
+  background: var(--bn-btn-border);
+  border-radius: 3px;
+}
+.bn-prompt-textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--bn-text-sub);
 }

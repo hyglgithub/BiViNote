@@ -147,8 +147,27 @@
       if (cropper) cropper.setAspectRatio(isNaN(val) ? NaN : val);
     });
 
+    // 继承面板的字体/行高设置
+    const panelEl = window.BiViNote.panel?.getPanelEl?.();
+    if (panelEl) {
+      overlayEl.style.setProperty('--bn-font-size', panelEl.style.getPropertyValue('--bn-font-size') || '13px');
+      overlayEl.style.setProperty('--bn-line-height', panelEl.style.getPropertyValue('--bn-line-height') || '1.5');
+    }
+
     document.body.appendChild(overlayEl);
     window.addEventListener('resize', onResize);
+
+    // 阻止滚轮事件穿透到背景网页
+    overlayEl.addEventListener('wheel', (e) => {
+      const scrollable = e.target.closest('.bn-crop-sidebar');
+      if (scrollable) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollable;
+        const atTop = scrollTop <= 0 && e.deltaY < 0;
+        const atBottom = scrollTop + clientHeight >= scrollHeight - 1 && e.deltaY > 0;
+        if (!atTop && !atBottom) return;
+      }
+      e.preventDefault();
+    }, { passive: false });
   }
 
   // ── 加载图片 ──
@@ -381,6 +400,12 @@
       timeCode: old?.timeCode || window.BiViNote.capture.formatTimeCode(video.currentTime),
       timeSeconds: video.currentTime
     });
+
+    // 刷新字幕/章节/截图目录缩略图
+    if (window.BiViNote.subtitle?.renderSubtitleList) window.BiViNote.subtitle.renderSubtitleList();
+    if (window.BiViNote.chapter?.render) window.BiViNote.chapter.render();
+    if (window.BiViNote.panel?.renderDoc) window.BiViNote.panel.renderDoc();
+    renderSidebar();
   }
 
   // ── 按钮事件 ──

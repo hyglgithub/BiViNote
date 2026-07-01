@@ -100,6 +100,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'ds-abort') {
+    // 获取当前请求的 chatId 和 messageId，发送 stop_stream 到 DeepSeek 标签页
+    const processorIds = Object.keys(dsSseProcessors);
+    if (processorIds.length > 0) {
+      const processor = dsSseProcessors[processorIds[0]];
+      const chatId = processor.getChatId();
+      const messageId = processor.getMessageId();
+      chrome.tabs.query({ url: '*://chat.deepseek.com/*' }, (tabs) => {
+        if (tabs[0]?.id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            type: 'ds-abort-stop',
+            chatId,
+            messageId,
+          }).catch(() => {});
+        }
+      });
+    }
+    dsSseProcessors = {};
+    return false;
+  }
+
   if (message.type === 'ds-send') {
     const requestId = message.requestId || crypto.randomUUID();
     dsHandleSend(message.markdown, message.prompt, requestId);
@@ -113,6 +134,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.tabs.update(tabs[0].id, { active: true });
       } else {
         chrome.tabs.create({ url: 'https://chat.deepseek.com' });
+      }
+    });
+    return false;
+  }
+
+  if (message.type === 'ds-open-chat') {
+    const url = message.url || 'https://chat.deepseek.com';
+    const isStreaming = Object.keys(dsSseProcessors).length > 0;
+    chrome.tabs.query({ url: '*://chat.deepseek.com/*' }, (tabs) => {
+      if (isStreaming || tabs.length === 0) {
+        // 流式处理中或无标签页：新建标签页，避免中断正在运行的脚本
+        chrome.tabs.create({ url });
+      } else {
+        // 空闲：复用已有标签页
+        chrome.tabs.update(tabs[0].id, { url, active: true });
       }
     });
     return false;
@@ -395,6 +431,27 @@ function formatDate(timestamp) {
 // ── DeepSeek 文档整理 ──
 
 const DS_URL = 'https://chat.deepseek.com';
+
+const DS_DEFAULT_PROMPT = `你是一个视频笔记整理助手，将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
+
+要求：
+
+1. 删除口语化内容、重复内容、无意义过渡语句，例如：好的、然后、这里呢、兄弟、就是说等。
+2. 删除所有字幕时间戳，例如 \`00:12\`、\`05:30\`。
+3. 不要逐句输出字幕，将连续字幕整理为简洁、连贯、易阅读的知识内容。
+4. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、英文大小写错误，请结合上下文修正，并统一技术术语写法。
+5. 若文档存在章节结构，严格按原始章节整理；若无章节，则按内容自然分段。
+6. 不要新增原文不存在的标题、章节或目录层级，不要改变原始内容顺序。
+7. 文档中形如 ![xxx](assets/数字.png) 的 Markdown 标记属于特殊文本块，() 内为相对资源路径且默认与前一句字幕内容关联；必须保留全部此类标记，禁止修改语法、alt 文本、路径或文件名，不得遗漏，可根据整理后的内容适当调整其在当前语义块中的位置。
+8. 保留所有技术名词、工具名、框架名、产品名，不要删除、替换或省略。
+9. 若存在 Frontmatter（文档开头 YAML），必须完整原样保留，禁止修改字段、字段值和字段顺序。
+10. 仅整理原文，禁止总结、解释、扩展原文不存在的信息或补充额外知识。
+
+待整理文档：
+
+{markdown}
+
+直接输出整理后的 Markdown 文档，不要输出任何额外内容。`;
 let dsInjectedTabs = new Set();
 let dsChatId = null;
 let dsSseProcessors = {};
@@ -441,10 +498,11 @@ chrome.tabs.onRemoved.addListener((tabId) => { dsInjectedTabs.delete(tabId); });
 
 async function dsCheckLogin() {
   try {
-    const tabs = await chrome.tabs.query({ url: '*://chat.deepseek.com/*' });
-    const tab = tabs.length > 0 ? tabs[0] : null;
+    // 自动获取或创建 DeepSeek 标签页
+    const tab = await dsEnsureTab();
     if (!tab?.id) return { loggedIn: false };
 
+    // 主要方式：通过 localStorage token 验证
     try {
       const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
@@ -483,6 +541,12 @@ async function dsCheckLogin() {
       if (r && typeof r.loggedIn === 'boolean') return r;
     } catch {}
 
+    // 降级：cookie 检测
+    const cookies = await chrome.cookies.getAll({ domain: '.deepseek.com' });
+    const cookieMap = Object.fromEntries(cookies.map(c => [c.name, c.value]));
+    const hasSession = ['ds_session_id', 'HWSID'].some(name => !!cookieMap[name]);
+    if (hasSession) return { loggedIn: true, key: 'cookie' };
+
     return { loggedIn: false };
   } catch (e) {
     return { loggedIn: false, reason: String(e) };
@@ -519,16 +583,14 @@ async function dsHandleSend(markdown, prompt, requestId) {
   let fullPrompt = prompt;
   try {
     const stored = await chrome.storage.local.get('deepseekPrompt');
-    const sysPrompt = stored.deepseekPrompt || '';
-    if (sysPrompt && sysPrompt.includes('{markdown}')) {
+    const sysPrompt = stored.deepseekPrompt || DS_DEFAULT_PROMPT;
+    if (sysPrompt.includes('{markdown}')) {
       fullPrompt = sysPrompt.replace('{markdown}', markdown);
-    } else if (sysPrompt) {
-      fullPrompt = sysPrompt + '\n\n' + markdown;
     } else {
-      fullPrompt = markdown;
+      fullPrompt = sysPrompt + '\n\n' + markdown;
     }
   } catch {
-    fullPrompt = markdown;
+    fullPrompt = DS_DEFAULT_PROMPT.replace('{markdown}', markdown);
   }
 
   chrome.tabs.sendMessage(tab.id, {
@@ -552,25 +614,48 @@ async function dsHandleSend(markdown, prompt, requestId) {
 function dsCreateSSEProcessor() {
   let inThink = false;
   let chatId = null;
+  let messageId = null;
+  let dataLineBuf = '';
 
   function processChunk(chunk) {
     let text = '';
-    for (const line of chunk.split('\n')) {
-      if (!line.startsWith('data: ')) continue;
-      const jsonStr = line.slice(6).trim();
-      if (!jsonStr || jsonStr === '[DONE]') continue;
-      try {
-        const data = JSON.parse(jsonStr);
-        if (data.type === 'deepseek:chat_session_id') { chatId = data.chat_session_id; continue; }
-        const result = processEvent(data);
-        if (result) text += result;
-      } catch {}
-    }
+    try {
+      for (const line of chunk.split('\n')) {
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') { dataLineBuf = ''; continue; }
+          try {
+            const data = JSON.parse(jsonStr);
+            dataLineBuf = '';
+            if (data.type === 'deepseek:chat_session_id') { chatId = data.chat_session_id; continue; }
+            if (data.response_message_id != null) messageId = data.response_message_id;
+            const result = processEvent(data);
+            if (result) text += result;
+          } catch {
+            dataLineBuf = line;
+          }
+        } else {
+          if (dataLineBuf) {
+            dataLineBuf += '\n' + line;
+            try {
+              const jsonStr = dataLineBuf.slice(6).trim();
+              const data = JSON.parse(jsonStr);
+              dataLineBuf = '';
+              if (data.type === 'deepseek:chat_session_id') { chatId = data.chat_session_id; continue; }
+              if (data.response_message_id != null) messageId = data.response_message_id;
+              const result = processEvent(data);
+              if (result) text += result;
+            } catch {}
+          }
+        }
+      }
+    } catch {}
     return text;
   }
 
   function processEvent(data) {
     if (data.o === 'SET' || data.o === 'BATCH') return null;
+    const path = Array.isArray(data.p) ? data.p.join('/') : data.p;
     const resp = data.v?.response;
 
     if (resp?.fragments && Array.isArray(resp.fragments)) {
@@ -606,7 +691,22 @@ function dsCreateSSEProcessor() {
       return parts.length > 0 ? parts.join('') : null;
     }
 
-    if (data.o === 'APPEND' && typeof data.v === 'string') return data.v || null;
+    if (data.o === 'APPEND' && typeof data.v === 'string') {
+      return data.v || null;
+    }
+
+    if (path?.includes('reasoning') && typeof data.v === 'string') {
+      if (!data.v) return null;
+      if (!inThink) { inThink = true; return `<think>${data.v}`; }
+      return data.v;
+    }
+
+    if (data.type === 'thinking') {
+      const content = typeof data.v === 'string' ? data.v : data.content || '';
+      if (!content) return null;
+      if (!inThink) { inThink = true; return `<think>${content}`; }
+      return content;
+    }
 
     const delta = data.choices?.[0]?.delta;
     if (delta) {
@@ -624,8 +724,16 @@ function dsCreateSSEProcessor() {
 
     if (typeof data.v === 'string') {
       if (!data.v) return null;
+      if (!path && inThink) return data.v;
       if (inThink) { inThink = false; return `</think>${data.v}`; }
       return data.v;
+    }
+
+    if (data.type === 'text' && typeof data.content === 'string') {
+      const content = data.content.trim();
+      if (!content) return null;
+      if (inThink) { inThink = false; return `</think>${content}`; }
+      return content;
     }
 
     return null;
@@ -636,6 +744,6 @@ function dsCreateSSEProcessor() {
     return '';
   }
 
-  return { processChunk, flush, getChatId: () => chatId };
+  return { processChunk, flush, getChatId: () => chatId, getMessageId: () => messageId };
 }
 

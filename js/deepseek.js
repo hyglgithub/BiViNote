@@ -9,6 +9,7 @@
   let responseText = '';
   let inThink = false;
   let chatId = null;
+  let activeRequestId = null;
 
   const listeners = { chunk: [], state: [], done: [], error: [] };
 
@@ -58,6 +59,7 @@
     setState('reading');
 
     const requestId = crypto.randomUUID();
+    activeRequestId = requestId;
 
     chrome.runtime.sendMessage({
       type: 'ds-send',
@@ -77,12 +79,15 @@
 
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'ds-chunk') {
+      if (msg.requestId && msg.requestId !== activeRequestId) return;
       processChunk(msg.text, msg.chatId);
     } else if (msg.type === 'ds-done') {
+      if (msg.requestId && msg.requestId !== activeRequestId) return;
       flush();
       setState('done');
       emit('done', getResult());
     } else if (msg.type === 'ds-error') {
+      if (msg.requestId && msg.requestId !== activeRequestId) return;
       emit('error', msg.error);
       setState('error');
     }
@@ -147,6 +152,12 @@
     setState('ready');
   }
 
+  function abort() {
+    chrome.runtime.sendMessage({ type: 'ds-abort' });
+    activeRequestId = null;
+    clear();
+  }
+
   function openLogin() {
     chrome.runtime.sendMessage({ type: 'ds-open-login' });
   }
@@ -155,12 +166,14 @@
     checkLogin,
     sendMarkdown,
     getState: () => state,
+    getChatId: () => chatId,
     onChunk: (fn) => listeners.chunk.push(fn),
     onStateChange: (fn) => listeners.state.push(fn),
     onDone: (fn) => listeners.done.push(fn),
     onError: (fn) => listeners.error.push(fn),
     getResult,
     clear,
+    abort,
     openLogin,
   };
 })();

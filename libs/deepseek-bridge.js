@@ -31,6 +31,10 @@ if (!window.__dsBridgeInjected) {
         window.postMessage({ type: 'DEEPSEEK_SEND', ...msg.payload }, window.location.origin);
         sendResponse({ ok: true });
       }
+      if (msg.type === 'ds-abort-stop') {
+        window.postMessage({ type: 'DEEPSEEK_ABORT', chatId: msg.chatId, messageId: msg.messageId }, window.location.origin);
+        sendResponse({ ok: true });
+      }
       return true;
     });
   } catch (e) {

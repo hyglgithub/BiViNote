@@ -72,6 +72,7 @@
         setTimeout(async () => {
           if (BN.state.panelVisible) {
             await BN.subtitle.refresh();
+            BN.panel.resetDocAuto();
             BN.panel.renderDoc();
           }
         }, 1000);

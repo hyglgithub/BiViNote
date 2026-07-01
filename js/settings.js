@@ -18,17 +18,17 @@
     promptNoImage: '',
     promptWithImage: '',
     lastOpenMode: 'panel',
-    docOrganizeMode: 'manual',
+    docOrganizeMode: 'auto',
     deepseekPrompt: ''
   };
 
   const DEFAULT_CHECKED = {
     title: true,
     author: true,
-    date: false,
-    duration: false,
-    url: false,
-    description: false,
+    date: true,
+    duration: true,
+    url: true,
+    description: true,
     chapterTimestamp: false,
     subtitleTimestamp: false
   };
@@ -69,7 +69,13 @@
   }
 
   function resetDefaults() {
-    Object.assign(window.BiViNote.state.settings, { ...DEFAULTS });
+    const s = window.BiViNote.state.settings;
+    const preserved = {
+      promptNoImage: s.promptNoImage,
+      promptWithImage: s.promptWithImage,
+      deepseekPrompt: s.deepseekPrompt,
+    };
+    Object.assign(s, { ...DEFAULTS }, preserved);
     Object.assign(window.BiViNote.state.videoInfoChecked, { ...DEFAULT_CHECKED });
     save();
   }
