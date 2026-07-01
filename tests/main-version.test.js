@@ -251,7 +251,7 @@ test('manifest - web_accessible_resources', () => {
 // ── 测试 5: 内容一致性 ──
 
 test('content.js 内容一致', () => {
-  const srcContent = fs.readFileSync(path.join(ROOT, 'content.js'), 'utf8');
+  const srcContent = fs.readFileSync(path.join(ROOT, 'src', 'core', 'content.js'), 'utf8');
   const buildContent = fs.readFileSync(path.join(MAIN_DIR, 'content.js'), 'utf8');
 
   assert(srcContent === buildContent, '构建的 content.js 应与源文件一致');

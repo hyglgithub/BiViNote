@@ -41,7 +41,7 @@ const CORE_FILES = [
 // Shared resources to copy (relative to ROOT)
 const SHARED_DIRS = ['libs', 'icons', 'css'];
 
-// Root-level files to copy
+// Core files to copy to output root (not js/) - read from src/core/
 const ROOT_FILES = ['content.js'];
 
 // DeepSeek module files (relative to modules/deepseek/) - copied as-is for main version
@@ -135,9 +135,9 @@ function buildMain(outputDir) {
   }
   console.log(`  Copied shared resources: ${SHARED_DIRS.join(', ')}`);
 
-  // 3. Copy root files (content.js)
+  // 3. Copy root files from src/core/ to output root (content.js)
   for (const file of ROOT_FILES) {
-    const src = path.join(ROOT, file);
+    const src = path.join(CORE_DIR, file);
     const dest = path.join(outputDir, file);
     copyFile(src, dest);
   }
@@ -212,9 +212,9 @@ function buildLite(outputDir) {
   }
   console.log(`  Copied shared resources: ${SHARED_DIRS.join(', ')}`);
 
-  // 3. Copy root files (content.js)
+  // 3. Copy root files from src/core/ to output root (content.js)
   for (const file of ROOT_FILES) {
-    const src = path.join(ROOT, file);
+    const src = path.join(CORE_DIR, file);
     const dest = path.join(outputDir, file);
     copyFile(src, dest);
   }

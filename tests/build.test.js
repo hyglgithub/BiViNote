@@ -144,9 +144,9 @@ test('源文件存在性', () => {
     assert(fs.existsSync(path.join(ROOT, dir)), `${dir}/ 目录应存在`);
   }
 
-  // Root files
+  // Root files (now read from src/core/)
   for (const file of build.ROOT_FILES) {
-    assert(fs.existsSync(path.join(ROOT, file)), `${file} 应存在`);
+    assert(fs.existsSync(path.join(build.CORE_DIR, file)), `src/core/${file} 应存在`);
   }
 });
 
