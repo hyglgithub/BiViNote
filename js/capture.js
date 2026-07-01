@@ -80,23 +80,34 @@
     if (!item) return;
 
     try {
-      // 跳转到字幕时间点
       const wasPaused = video.paused;
-      video.currentTime = item.from;
-      await new Promise(r => video.addEventListener('seeked', r, { once: true }));
+      const isActive = window.BiViNote.subtitle.findActiveIndex(video.currentTime) === subtitleIndex;
+      const captureCurrentFrame = !wasPaused && isActive;
 
-      // 截取当前帧
-      const blob = await captureFrame(video);
-      const url = URL.createObjectURL(blob);
+      let blob, url, timeCode, timeSeconds;
+
+      if (captureCurrentFrame) {
+        // 视频播放中 + 当前活跃字幕 → 截取当前帧
+        blob = await captureFrame(video);
+        url = URL.createObjectURL(blob);
+        timeCode = formatTimeCode(video.currentTime);
+        timeSeconds = video.currentTime;
+      } else {
+        // 暂停状态 或 非活跃字幕 → 跳转到 item.from 再截取
+        video.currentTime = item.from;
+        await new Promise(r => video.addEventListener('seeked', r, { once: true }));
+        blob = await captureFrame(video);
+        url = URL.createObjectURL(blob);
+        timeCode = formatTimeCode(item.from);
+        timeSeconds = item.from;
+        if (!wasPaused) video.play().catch(() => {});
+      }
 
       // 如果已有截图，释放旧的
       const old = s.screenshots.get(subtitleIndex);
       if (old?.url) URL.revokeObjectURL(old.url);
 
-      s.screenshots.set(subtitleIndex, { blob, url, timeCode: formatTimeCode(item.from), timeSeconds: item.from });
-
-      // 恢复播放状态
-      if (!wasPaused) video.play().catch(() => {});
+      s.screenshots.set(subtitleIndex, { blob, url, timeCode, timeSeconds });
 
       // 重新渲染字幕列表
       window.BiViNote.subtitle.renderSubtitleList();
