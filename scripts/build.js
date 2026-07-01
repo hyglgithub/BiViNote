@@ -27,6 +27,7 @@ const MANIFESTS_DIR = path.join(ROOT, 'src', 'manifests');
 
 // Core files that map from src/core/ → js/ in the output
 const CORE_FILES = [
+  'message-bus.js',
   'state.js',
   'panel.js',
   'subtitle.js',

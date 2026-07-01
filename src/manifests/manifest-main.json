@@ -21,6 +21,7 @@
       "js": [
         "libs/jszip.min.js",
         "libs/cropper.min.js",
+        "js/message-bus.js",
         "js/state.js",
         "js/panel.js",
         "js/subtitle.js",

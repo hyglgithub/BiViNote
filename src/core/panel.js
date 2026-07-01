@@ -45,6 +45,13 @@
     return Object.values(tabRegistry);
   }
 
+  // ── 注册核心标签页 ──
+
+  registerTab({ id: 'subtitle', label: '字幕', footer: true, buildHTML: () => '<div id="bn-subtitle-list"></div>' });
+  registerTab({ id: 'chapter', label: '章节', footer: false, buildHTML: () => '<div id="bn-chapter-list"></div>' });
+  registerTab({ id: 'video', label: '视频信息', footer: false, buildHTML: () => '<div id="bn-video-info"></div>' });
+  registerTab({ id: 'setting', label: '设置', footer: false, buildHTML: buildSettingHTML, bindEvents: bindSettingEvents });
+
   // ── 面板状态 ──
 
   let panelEl = null;
