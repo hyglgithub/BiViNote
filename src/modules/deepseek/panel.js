@@ -1,16 +1,11 @@
 /**
  * BiViNote DeepSeek Panel Module
- * 注册文档整理标签页到核心面板
+ * 文档整理标签页已由核心 panel.js 注册
+ * 此模块仅用于确保 DeepSeek 模块加载完成
  */
 (function() {
   'use strict';
 
-  const panel = window.BiViNote.panel;
-  if (!panel) {
-    console.error('[BiViNote] DeepSeek panel module: core panel not found');
-    return;
-  }
-
-  // 注册文档整理标签页
-  panel.registerTab({ id: 'doc', label: '文档整理', footer: false });
+  // 核心 panel.js 已注册 doc 标签页，无需重复注册
+  // DeepSeek 功能通过 window.BiViNote.deepseek 对象提供
 })();

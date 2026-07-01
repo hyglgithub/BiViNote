@@ -50,6 +50,7 @@
   registerTab({ id: 'subtitle', label: '字幕', footer: true, buildHTML: () => '<div id="bn-subtitle-list"></div>' });
   registerTab({ id: 'chapter', label: '章节', footer: false, buildHTML: () => '<div id="bn-chapter-list"></div>' });
   registerTab({ id: 'video', label: '视频信息', footer: false, buildHTML: () => '<div id="bn-video-info"></div>' });
+  registerTab({ id: 'doc', label: '文档整理', footer: false, buildHTML: buildDocHTML, bindEvents: bindDocEvents });
   registerTab({ id: 'setting', label: '设置', footer: false, buildHTML: buildSettingHTML, bindEvents: bindSettingEvents });
 
   // ── 面板状态 ──
@@ -738,6 +739,31 @@
   }
 
   function buildDocAutoHTML() {
+    const hasDeepSeek = !!window.BiViNote.deepseek;
+
+    if (!hasDeepSeek) {
+      // Lite 版本：显示界面但功能禁用
+      return `
+        <div class="bn-doc-auto">
+          <div class="bn-doc-header">
+            <div class="bn-doc-title">DeepSeek 文档整理</div>
+            <span class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>不可用</span>
+          </div>
+          <div class="bn-doc-body">
+            <pre class="bn-prompt-pre"></pre>
+          </div>
+          <div class="bn-doc-actions">
+            <button class="bn-btn-primary" disabled>开始整理</button>
+            <div class="bn-hint" style="margin-top: 8px; text-align: center;">
+              此功能需要使用增强实验版（Main 版本）<br>
+              请从 GitHub Release 下载完整版本
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Main 版本：正常显示
     return `
       <div class="bn-doc-auto">
         <div class="bn-doc-header">
