@@ -246,14 +246,14 @@
         el.className = 'bn-row-img';
         el.dataset.index = index;
         el.innerHTML = `
-          <img class="bn-snap-thumb" src="${screenshot.url}" alt="截屏" data-index="${index}">
+          <img class="bn-snap-thumb" src="${screenshot.url}" alt="截图" data-index="${index}">
           <div class="bn-text-wrap">
             <div class="bn-time-text">${formatTime(item.from)}</div>
             <div class="bn-sub-text">${escapeHtml(text)}</div>
           </div>
           <div class="bn-btns">
             <button data-action="copy">复制</button>
-            <button data-action="cancel-snap">取消截屏</button>
+            <button data-action="cancel-snap">取消截图</button>
           </div>
         `;
       } else {
@@ -264,7 +264,7 @@
           <span class="bn-row-text">${escapeHtml(text)}</span>
           <div class="bn-btns">
             <button data-action="copy">复制</button>
-            <button data-action="add-snap">截屏</button>
+            <button data-action="add-snap">截图</button>
           </div>
         `;
       }

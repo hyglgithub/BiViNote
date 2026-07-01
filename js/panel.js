@@ -130,7 +130,7 @@
         <img src="${iconUrl}" alt="BiViNote">
       </div>
       <div class="bn-collapse-menu">
-        <div class="bn-collapse-menu-item" data-action="add-snap" title="添加截屏到字幕">
+        <div class="bn-collapse-menu-item" data-action="add-snap" title="添加截图到字幕">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         </div>
         <div class="bn-collapse-menu-divider"></div>
