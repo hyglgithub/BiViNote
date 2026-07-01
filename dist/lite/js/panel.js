@@ -1,11 +1,59 @@
 /**
- * BiViNote Panel Module
- * 构建 UI 面板 DOM，管理标签页切换、折叠/展开、拖动
+ * BiViNote Core Panel Module
+ * 核心面板逻辑：面板创建、标签页切换、折叠/展开、拖动、设置绑定
+ * 支持动态标签页注册机制
  */
 (function () {
   'use strict';
 
   window.BiViNote = window.BiViNote || {};
+
+  // ── 标签页注册机制 ──
+
+  const tabRegistry = {};
+
+  /**
+   * 注册标签页
+   * @param {Object} tabDef - 标签页定义
+   * @param {string} tabDef.id - 标签页 ID
+   * @param {string} tabDef.label - 标签页标签
+   * @param {boolean} [tabDef.footer=false] - 是否显示 footer
+   * @param {Function} [tabDef.buildHTML] - 构建 HTML 函数
+   * @param {Function} [tabDef.bindEvents] - 绑定事件函数
+   */
+  function registerTab(tabDef) {
+    if (!tabDef || typeof tabDef !== 'object') {
+      console.error('[BiViNote] registerTab: tabDef must be an object');
+      return;
+    }
+    if (!tabDef.id || typeof tabDef.id !== 'string') {
+      console.error('[BiViNote] registerTab: tabDef.id must be a non-empty string');
+      return;
+    }
+    if (!tabDef.label || typeof tabDef.label !== 'string') {
+      console.error('[BiViNote] registerTab: tabDef.label must be a non-empty string');
+      return;
+    }
+    tabRegistry[tabDef.id] = { ...tabDef };
+  }
+
+  /**
+   * 获取所有已注册的标签页
+   * @returns {Array} 标签页定义数组
+   */
+  function getRegisteredTabs() {
+    return Object.values(tabRegistry);
+  }
+
+  // ── 注册核心标签页 ──
+
+  registerTab({ id: 'subtitle', label: '字幕', footer: true, buildHTML: () => '<div id="bn-subtitle-list"></div>' });
+  registerTab({ id: 'chapter', label: '章节', footer: false, buildHTML: () => '<div id="bn-chapter-list"></div>' });
+  registerTab({ id: 'video', label: '视频信息', footer: false, buildHTML: () => '<div id="bn-video-info"></div>' });
+  registerTab({ id: 'doc', label: '文档整理', footer: false, buildHTML: buildDocHTML });
+  registerTab({ id: 'setting', label: '设置', footer: false, buildHTML: buildSettingHTML, bindEvents: bindSettingEvents });
+
+  // ── 面板状态 ──
 
   let panelEl = null;
   let mainWrapEl = null;
@@ -15,19 +63,78 @@
   let collapseContainerEl = null;
   let tabs = [];
   let views = {};
+  let isDraggingCollapse = false;
+  const BTN_SIZE = 36;
+  const EDGE_MARGIN = 20;
+  let savedIconLeft = null;
+  let savedIconTop = null;
 
-  const TAB_DEFS = [
-    { id: 'subtitle', label: '字幕', footer: true },
-    { id: 'chapter', label: '章节', footer: false },
-    { id: 'video', label: '视频信息', footer: false },
-    { id: 'doc', label: '文档整理', footer: false },
-    { id: 'setting', label: '设置', footer: false }
-  ];
+  // ── 提示词模板 ──
+
+  const DEFAULT_PROMPT_NO_IMAGE = `你是一个视频笔记整理助手。将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
+
+输入文件：{download_dir}\\{title}.md
+输出文件：直接覆盖原文件内容。
+
+要求：
+1. 删除口语化内容（如：好的、然后、兄弟、这里呢等）
+2. 删除重复内容和无意义过渡语句
+3. 合并逐句字幕，不保留时间戳
+4. 按原始章节结构整理；若无章节则按内容自然分段
+5. 将相邻字幕整理为简洁、连贯的知识点，不要逐句输出
+6. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、大小写错误，请结合上下文修正，并统一技术术语写法
+7. 保留技术名词、工具名、框架名、产品名，不要省略
+8. 若存在 Frontmatter，完整保留
+9. 不要总结、解释、扩展，禁止添加原文不存在的内容`;
+
+  const DEFAULT_PROMPT_WITH_IMAGE = `你是一个视频笔记整理助手。将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
+
+输入文件：
+{download_dir}\\{title}\\
+├── note.md
+└── assets/
+
+输出文件：直接覆盖原文件内容。
+
+要求：
+1. 只修改 note.md 内容，不得修改 assets/ 中的图片文件
+2. 删除口语化内容（如：好的、然后、兄弟、这里呢等）
+3. 删除重复内容和无意义过渡语句
+4. 合并逐句字幕，不保留时间戳
+5. 按原始章节结构整理；若无章节则按内容自然分段
+6. 将相邻字幕整理为简洁、连贯的知识点，不要逐句输出
+7. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、大小写错误，请结合上下文修正，并统一技术术语写法
+8. 保留技术名词、工具名、框架名、产品名，不要省略
+9. 图片必须保留；保持图片与当前位置内容的对应关系，不要删除、移动或重新排序图片
+10. 若存在 Frontmatter，完整保留
+11. 不要总结、解释、扩展，禁止添加原文不存在的内容`;
+
+  const DEFAULT_DEEPSEEK_PROMPT = `你是一个视频笔记整理助手，将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
+
+要求：
+
+1. 删除口语化内容、重复内容、无意义过渡语句，例如：好的、然后、这里呢、兄弟、就是说等。
+2. 删除所有字幕时间戳，例如 \`00:12\`、\`05:30\`。
+3. 不要逐句输出字幕，将连续字幕整理为简洁、连贯、易阅读的知识内容。
+4. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、英文大小写错误，请结合上下文修正，并统一技术术语写法。
+5. 若文档存在章节结构，严格按原始章节整理；若无章节，则按内容自然分段。
+6. 不要新增原文不存在的标题、章节或目录层级，不要改变原始内容顺序。
+7. 文档中形如 ![xxx](assets/数字.png) 的 Markdown 标记属于特殊文本块，() 内为相对资源路径且默认与前一句字幕内容关联；必须保留全部此类标记，禁止修改语法、alt 文本、路径或文件名，不得遗漏，可根据整理后的内容适当调整其在当前语义块中的位置。
+8. 保留所有技术名词、工具名、框架名、产品名，不要删除、替换或省略。
+9. 若存在 Frontmatter（文档开头 YAML），必须完整原样保留，禁止修改字段、字段值和字段顺序。
+10. 仅整理原文，禁止总结、解释、扩展原文不存在的信息或补充额外知识。
+
+待整理文档：
+
+{markdown}
+
+直接输出整理后的 Markdown 文档，不要输出任何额外内容。`;
 
   // ── 创建面板 ──
 
   function createPanel() {
     const s = window.BiViNote.state;
+    const registeredTabs = getRegisteredTabs();
 
     panelEl = document.createElement('div');
     panelEl.className = 'bn-panel bn-hidden';
@@ -39,9 +146,9 @@
 
     const tabGroup = document.createElement('div');
     tabGroup.className = 'bn-tab-group';
-    tabs = TAB_DEFS.map(def => {
+    tabs = registeredTabs.map(def => {
       const btn = document.createElement('button');
-      btn.className = 'bn-tab' + (def.id === 'subtitle' ? ' bn-active' : '');
+      btn.className = 'bn-tab' + (def.id === registeredTabs[0]?.id ? ' bn-active' : '');
       btn.textContent = def.label;
       btn.dataset.tab = def.id;
       btn.addEventListener('click', () => switchTab(def.id));
@@ -68,20 +175,12 @@
     const scrollWrap = document.createElement('div');
     scrollWrap.className = 'bn-scroll';
 
-    TAB_DEFS.forEach(def => {
+    registeredTabs.forEach(def => {
       const view = document.createElement('div');
-      view.className = 'bn-view' + (def.id === 'subtitle' ? ' bn-show' : '');
+      view.className = 'bn-view' + (def.id === registeredTabs[0]?.id ? ' bn-show' : '');
       view.id = `bn-view-${def.id}`;
-      if (def.id === 'subtitle') {
-        view.innerHTML = '<div id="bn-subtitle-list"></div>';
-      } else if (def.id === 'chapter') {
-        view.innerHTML = '<div id="bn-chapter-list"></div>';
-      } else if (def.id === 'video') {
-        view.innerHTML = '<div id="bn-video-info"></div>';
-      } else if (def.id === 'setting') {
-        view.innerHTML = buildSettingHTML();
-      } else if (def.id === 'doc') {
-        view.innerHTML = buildDocHTML();
+      if (def.buildHTML && typeof def.buildHTML === 'function') {
+        view.innerHTML = def.buildHTML();
       }
       scrollWrap.appendChild(view);
       views[def.id] = view;
@@ -106,16 +205,13 @@
     // 阻止滚轮事件穿透到背景网页
     panelEl.addEventListener('wheel', (e) => {
       const el = e.target;
-      // 找到最近的可滚动祖先
       const scrollable = el.closest('.bn-scroll, .bn-result-area, .bn-doc-think, .bn-prompt-textarea, .bn-prompt-pre, .bn-sub-list, textarea, [style*="overflow"]');
       if (scrollable) {
         const { scrollTop, scrollHeight, clientHeight } = scrollable;
         const atTop = scrollTop <= 0 && e.deltaY < 0;
         const atBottom = scrollTop + clientHeight >= scrollHeight - 1 && e.deltaY > 0;
-        // 可滚动元素在中间时，不阻止（让它自己滚动）
         if (!atTop && !atBottom) return;
       }
-      // 不可滚动或已到边界，阻止默认行为防止背景滚动
       e.preventDefault();
     }, { passive: false });
 
@@ -159,183 +255,15 @@
     // 绑定 footer 按钮
     footerEl.addEventListener('click', onFooterClick);
 
-    // 设置页事件绑定
-    bindSettingEvents();
+    // 绑定各标签页事件
+    registeredTabs.forEach(def => {
+      if (def.bindEvents && typeof def.bindEvents === 'function') {
+        def.bindEvents(views[def.id], panelEl);
+      }
+    });
 
     // 应用字体和行高设置
     applyDisplaySettings();
-  }
-
-  // ── 提示词模板 ──
-
-  const DEFAULT_PROMPT_NO_IMAGE = `你是一个视频笔记整理助手。将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
-
-输入文件：{download_dir}\\{title}.md
-输出文件：直接覆盖原文件内容。
-
-要求：
-1. 删除口语化内容（如：好的、然后、兄弟、这里呢等）
-2. 删除重复内容和无意义过渡语句
-3. 合并逐句字幕，不保留时间戳
-4. 按原始章节结构整理；若无章节则按内容自然分段
-5. 将相邻字幕整理为简洁、连贯的知识点，不要逐句输出
-6. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、大小写错误，请结合上下文修正，并统一技术术语写法
-7. 保留技术名词、工具名、框架名、产品名，不要省略
-8. 若存在 Frontmatter，完整保留
-9. 不要总结、解释、扩展，禁止添加原文不存在的内容`;
-
-  const DEFAULT_PROMPT_WITH_IMAGE = `你是一个视频笔记整理助手。将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
-
-输入文件：
-{download_dir}\\{title}\\
-├── note.md
-└── assets/
-
-输出文件：直接覆盖原文件内容。
-
-要求：
-1. 只修改 note.md 内容，不得修改 assets/ 中的图片文件
-2. 删除口语化内容（如：好的、然后、兄弟、这里呢等）
-3. 删除重复内容和无意义过渡语句
-4. 合并逐句字幕，不保留时间戳
-5. 按原始章节结构整理；若无章节则按内容自然分段
-6. 将相邻字幕整理为简洁、连贯的知识点，不要逐句输出
-7. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、大小写错误，请结合上下文修正，并统一技术术语写法
-8. 保留技术名词、工具名、框架名、产品名，不要省略
-9. 图片必须保留；保持图片与当前位置内容的对应关系，不要删除、移动或重新排序图片
-10. 若存在 Frontmatter，完整保留
-11. 不要总结、解释、扩展，禁止添加原文不存在的内容`;
-
-  // ── 文档整理页 HTML ──
-
-  const DEFAULT_DEEPSEEK_PROMPT = `你是一个视频笔记整理助手，将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
-
-要求：
-
-1. 删除口语化内容、重复内容、无意义过渡语句，例如：好的、然后、这里呢、兄弟、就是说等。
-2. 删除所有字幕时间戳，例如 \`00:12\`、\`05:30\`。
-3. 不要逐句输出字幕，将连续字幕整理为简洁、连贯、易阅读的知识内容。
-4. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、英文大小写错误，请结合上下文修正，并统一技术术语写法。
-5. 若文档存在章节结构，严格按原始章节整理；若无章节，则按内容自然分段。
-6. 不要新增原文不存在的标题、章节或目录层级，不要改变原始内容顺序。
-7. 文档中形如 ![xxx](assets/数字.png) 的 Markdown 标记属于特殊文本块，() 内为相对资源路径且默认与前一句字幕内容关联；必须保留全部此类标记，禁止修改语法、alt 文本、路径或文件名，不得遗漏，可根据整理后的内容适当调整其在当前语义块中的位置。
-8. 保留所有技术名词、工具名、框架名、产品名，不要删除、替换或省略。
-9. 若存在 Frontmatter（文档开头 YAML），必须完整原样保留，禁止修改字段、字段值和字段顺序。
-10. 仅整理原文，禁止总结、解释、扩展原文不存在的信息或补充额外知识。
-
-待整理文档：
-
-{markdown}
-
-直接输出整理后的 Markdown 文档，不要输出任何额外内容。`;
-
-  function buildDocHTML() {
-    const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
-    if (mode === 'auto') return buildDocAutoHTML();
-    return buildDocManualHTML();
-  }
-
-  function buildDocManualHTML() {
-    return `
-      <div class="bn-doc-auto">
-        <div class="bn-label">路径前缀</div>
-        <input type="text" id="bn-download-dir" class="bn-input" placeholder="例如: D:\\Notes\\Bilibili">
-        <div class="bn-hint">提示词中 {download_dir} 会替换为此值</div>
-        <div class="bn-doc-body">
-          <pre id="bn-prompt-display" class="bn-prompt-pre"></pre>
-        </div>
-        <div class="bn-doc-actions">
-          <button id="bn-prompt-copy" class="bn-btn-primary">复制提示词</button>
-        </div>
-      </div>
-    `;
-  }
-
-  function buildDocAutoHTML() {
-    return `
-      <div class="bn-doc-auto">
-        <div class="bn-doc-header">
-          <div class="bn-doc-title">DeepSeek 文档整理</div>
-          <span id="bn-ds-status" class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>未登录</span>
-        </div>
-        <div class="bn-doc-body">
-          <pre id="bn-ds-prompt" class="bn-prompt-pre"></pre>
-          <div id="bn-ds-think" class="bn-doc-think" style="display:none"></div>
-          <div id="bn-ds-result" class="bn-result-area" style="display:none"></div>
-        </div>
-        <div class="bn-doc-actions">
-          <button id="bn-ds-action" class="bn-btn-primary">打开 DeepSeek 登录</button>
-          <button id="bn-ds-download" class="bn-btn-primary" style="display:none">下载 Markdown</button>
-          <button id="bn-ds-copy" style="display:none">复制</button>
-          <button id="bn-ds-clear" style="display:none">清除</button>
-          <button id="bn-ds-continue" style="display:none">继续询问</button>
-        </div>
-      </div>
-    `;
-  }
-
-  // ── 设置页 HTML ──
-
-  function buildSettingHTML() {
-    return `
-      <div id="bn-settings-main">
-        <div class="bn-setting-label">字幕语言</div>
-        <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
-        <div class="bn-setting-label">文档整理方式</div>
-        <label class="bn-radio-line">
-          <input type="radio" name="bn-docMode" id="bn-dm-manual" value="manual" checked>
-          <div><div class="bn-radio-title">手动整理</div><div class="bn-radio-desc">复制提示词，自行处理</div></div>
-        </label>
-        <label class="bn-radio-line">
-          <input type="radio" name="bn-docMode" id="bn-dm-auto" value="auto">
-          <div><div class="bn-radio-title">自动整理</div><div class="bn-radio-desc">调用 DeepSeek</div></div>
-        </label>
-        <div class="bn-setting-label">提示词管理</div>
-        <div class="bn-prompt-toggle" data-prompt="noimg">▸ 手动 · 无截图</div>
-        <div class="bn-prompt-toggle" data-prompt="img">▸ 手动 · 有截图</div>
-        <div class="bn-prompt-toggle" data-prompt="ds">▸ 自动 · DeepSeek</div>
-        <div class="bn-setting-label">字体大小</div>
-        <div class="bn-chip-group" data-setting="fontSize">
-          <input type="radio" name="bn-fontSize" id="bn-fs-s" value="small"><label for="bn-fs-s">小</label>
-          <input type="radio" name="bn-fontSize" id="bn-fs-d" value="default" checked><label for="bn-fs-d">默认</label>
-          <input type="radio" name="bn-fontSize" id="bn-fs-m" value="medium"><label for="bn-fs-m">中</label>
-          <input type="radio" name="bn-fontSize" id="bn-fs-l" value="large"><label for="bn-fs-l">大</label>
-        </div>
-        <div class="bn-setting-label">行高</div>
-        <div class="bn-chip-group" data-setting="lineHeight">
-          <input type="radio" name="bn-lineHeight" id="bn-lh-n" value="narrow"><label for="bn-lh-n">窄</label>
-          <input type="radio" name="bn-lineHeight" id="bn-lh-s" value="standard" checked><label for="bn-lh-s">标准</label>
-          <input type="radio" name="bn-lineHeight" id="bn-lh-w" value="wide"><label for="bn-lh-w">宽</label>
-        </div>
-        <div class="bn-setting-label">帧步长</div>
-        <div class="bn-chip-group" data-setting="frameStep">
-          <input type="radio" name="bn-frameStep" id="bn-fs1" value="1" checked><label for="bn-fs1">1/1</label>
-          <input type="radio" name="bn-frameStep" id="bn-fs5" value="0.2"><label for="bn-fs5">1/5</label>
-          <input type="radio" name="bn-frameStep" id="bn-fs15" value="0.066667"><label for="bn-fs15">1/15</label>
-          <input type="radio" name="bn-frameStep" id="bn-fs30" value="0.033333"><label for="bn-fs30">1/30</label>
-        </div>
-        <div class="bn-switch">
-          <span>自动滚动</span>
-          <input type="checkbox" id="bn-auto-scroll" checked>
-          <label class="bn-switch-track" for="bn-auto-scroll"></label>
-        </div>
-        <div class="bn-switch">
-          <span>夜间模式</span>
-          <input type="checkbox" id="bn-dark-mode">
-          <label class="bn-switch-track" for="bn-dark-mode"></label>
-        </div>
-        <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
-      </div>
-      <div id="bn-settings-editor" style="display:none">
-        <div class="bn-editor-title">提示词管理</div>
-        <div class="bn-prompt-toggle bn-editor-back" id="bn-editor-back">▾ 手动 · 无截图</div>
-        <textarea class="bn-prompt-textarea" id="bn-editor-textarea"></textarea>
-        <div class="bn-doc-actions">
-          <button id="bn-editor-save" class="bn-btn-primary">保存</button>
-          <button id="bn-editor-reset">重置</button>
-        </div>
-      </div>
-    `;
   }
 
   // ── 设置页事件 ──
@@ -478,14 +406,11 @@
         window.BiViNote.settings.resetDefaults();
         loadSettingsToUI();
         applyDisplaySettings();
-        // 同步暗色模式到面板和折叠按钮
         panelEl.setAttribute('data-bn-theme', '');
         if (collapseContainerEl) collapseContainerEl.setAttribute('data-bn-theme', '');
-        // 重新渲染视频信息页（恢复默认勾选）
         if (window.BiViNote.videoInfo) {
           window.BiViNote.videoInfo.render();
         }
-        // 重新渲染文档整理页面
         const docView = views['doc'];
         if (docView) {
           docView.innerHTML = buildDocHTML();
@@ -551,7 +476,6 @@
 
   function bindDocAutoEvents() {
     const ds = window.BiViNote.deepseek;
-    if (!ds) return;
 
     const statusEl = panelEl.querySelector('#bn-ds-status');
     const actionBtn = panelEl.querySelector('#bn-ds-action');
@@ -564,10 +488,14 @@
     const continueBtn = panelEl.querySelector('#bn-ds-continue');
     let savedScreenshots = null;
 
+    // 设置提示词（两个版本都需要）
     if (promptEl) {
       const stored = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
       promptEl.textContent = stored;
     }
+
+    // Lite 版本：没有 DeepSeek 模块，只显示提示词，不绑定事件
+    if (!ds) return;
 
     function updateUI(dsState) {
       if (!statusEl) return;
@@ -662,7 +590,6 @@
           if (resultEl) resultEl.textContent = '';
         } else if (currentState === 'ready' || currentState === 'error') {
           autoScroll = true;
-          // 快照当前截图，防止整理过程中用户调整图片
           const s = window.BiViNote.state;
           savedScreenshots = s.screenshots ? new Map(s.screenshots) : null;
           const md = window.BiViNote.exportUtil
@@ -722,7 +649,6 @@
       });
     }
 
-    // 继续询问：跳转到 DeepSeek 会话页面
     if (continueBtn) {
       continueBtn.addEventListener('click', () => {
         const chatId = ds.getChatId();
@@ -730,8 +656,6 @@
         chrome.runtime.sendMessage({ type: 'ds-open-chat', url });
       });
     }
-
-    // 登录检测延迟到用户点击文档整理标签时触发（见 switchTab）
   }
 
   function extractFilename(text) {
@@ -751,11 +675,9 @@
   }
 
   function buildExportMarkdown() {
-    // 构建导出的 markdown 内容
     const s = window.BiViNote.state;
     let md = '';
     if (s.title) md += `# ${s.title}\n\n`;
-    // 从字幕列表获取内容
     const subtitleList = document.getElementById('bn-subtitle-list');
     if (subtitleList) {
       const items = subtitleList.querySelectorAll('.bn-sub-item');
@@ -793,6 +715,123 @@
         .replace(/\{download_dir\}/g, window.BiViNote.state.settings.downloadDir || '{download_dir}')
         .replace(/\{title\}/g, window.BiViNote.state.title || '{title}');
     }
+  }
+
+  // ── 文档整理页 HTML ──
+
+  function buildDocHTML() {
+    const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
+    if (mode === 'auto') return buildDocAutoHTML();
+    return buildDocManualHTML();
+  }
+
+  function buildDocManualHTML() {
+    return `
+      <div class="bn-doc-auto">
+        <div class="bn-label">路径前缀</div>
+        <input type="text" id="bn-download-dir" class="bn-input" placeholder="例如: D:\\Notes\\Bilibili">
+        <div class="bn-hint">提示词中 {download_dir} 会替换为此值</div>
+        <div class="bn-doc-body">
+          <pre id="bn-prompt-display" class="bn-prompt-pre"></pre>
+        </div>
+        <div class="bn-doc-actions">
+          <button id="bn-prompt-copy" class="bn-btn-primary">复制提示词</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildDocAutoHTML() {
+    const hasDeepSeek = !!window.BiViNote.deepseek;
+
+    // 两个版本界面完全一致
+    const html = `
+      <div class="bn-doc-auto">
+        <div class="bn-doc-header">
+          <div class="bn-doc-title">DeepSeek 文档整理</div>
+          <span id="bn-ds-status" class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>${hasDeepSeek ? '未登录' : '不可用'}</span>
+        </div>
+        <div class="bn-doc-body">
+          <pre id="bn-ds-prompt" class="bn-prompt-pre"></pre>
+          <div id="bn-ds-think" class="bn-doc-think" style="display:none"></div>
+          <div id="bn-ds-result" class="bn-result-area" style="display:none"></div>
+        </div>
+        <div class="bn-doc-actions">
+          <button id="bn-ds-action" class="bn-btn-primary"${hasDeepSeek ? '' : ' disabled'}>${hasDeepSeek ? '打开 DeepSeek 登录' : '开始整理'}</button>
+          <button id="bn-ds-download" class="bn-btn-primary" style="display:none">下载 Markdown</button>
+          <button id="bn-ds-copy" style="display:none">复制</button>
+          <button id="bn-ds-clear" style="display:none">清除</button>
+          <button id="bn-ds-continue" style="display:none">继续询问</button>
+          ${hasDeepSeek ? '' : '<div class="bn-hint" style="margin-top: 8px; text-align: center;">此功能需要使用增强实验版（Main 版本）<br>请从 GitHub Release 下载完整版本</div>'}
+        </div>
+      </div>
+    `;
+
+    return html;
+  }
+
+  // ── 设置页 HTML ──
+
+  function buildSettingHTML() {
+    return `
+      <div id="bn-settings-main">
+        <div class="bn-setting-label">字幕语言</div>
+        <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
+        <div class="bn-setting-label">文档整理方式</div>
+        <label class="bn-radio-line">
+          <input type="radio" name="bn-docMode" id="bn-dm-manual" value="manual" checked>
+          <div><div class="bn-radio-title">手动整理</div><div class="bn-radio-desc">复制提示词，自行处理</div></div>
+        </label>
+        <label class="bn-radio-line">
+          <input type="radio" name="bn-docMode" id="bn-dm-auto" value="auto">
+          <div><div class="bn-radio-title">自动整理</div><div class="bn-radio-desc">调用 DeepSeek</div></div>
+        </label>
+        <div class="bn-setting-label">提示词管理</div>
+        <div class="bn-prompt-toggle" data-prompt="noimg">▸ 手动 · 无截图</div>
+        <div class="bn-prompt-toggle" data-prompt="img">▸ 手动 · 有截图</div>
+        <div class="bn-prompt-toggle" data-prompt="ds">▸ 自动 · DeepSeek</div>
+        <div class="bn-setting-label">字体大小</div>
+        <div class="bn-chip-group" data-setting="fontSize">
+          <input type="radio" name="bn-fontSize" id="bn-fs-s" value="small"><label for="bn-fs-s">小</label>
+          <input type="radio" name="bn-fontSize" id="bn-fs-d" value="default" checked><label for="bn-fs-d">默认</label>
+          <input type="radio" name="bn-fontSize" id="bn-fs-m" value="medium"><label for="bn-fs-m">中</label>
+          <input type="radio" name="bn-fontSize" id="bn-fs-l" value="large"><label for="bn-fs-l">大</label>
+        </div>
+        <div class="bn-setting-label">行高</div>
+        <div class="bn-chip-group" data-setting="lineHeight">
+          <input type="radio" name="bn-lineHeight" id="bn-lh-n" value="narrow"><label for="bn-lh-n">窄</label>
+          <input type="radio" name="bn-lineHeight" id="bn-lh-s" value="standard" checked><label for="bn-lh-s">标准</label>
+          <input type="radio" name="bn-lineHeight" id="bn-lh-w" value="wide"><label for="bn-lh-w">宽</label>
+        </div>
+        <div class="bn-setting-label">帧步长</div>
+        <div class="bn-chip-group" data-setting="frameStep">
+          <input type="radio" name="bn-frameStep" id="bn-fs1" value="1" checked><label for="bn-fs1">1/1</label>
+          <input type="radio" name="bn-frameStep" id="bn-fs5" value="0.2"><label for="bn-fs5">1/5</label>
+          <input type="radio" name="bn-frameStep" id="bn-fs15" value="0.066667"><label for="bn-fs15">1/15</label>
+          <input type="radio" name="bn-frameStep" id="bn-fs30" value="0.033333"><label for="bn-fs30">1/30</label>
+        </div>
+        <div class="bn-switch">
+          <span>自动滚动</span>
+          <input type="checkbox" id="bn-auto-scroll" checked>
+          <label class="bn-switch-track" for="bn-auto-scroll"></label>
+        </div>
+        <div class="bn-switch">
+          <span>夜间模式</span>
+          <input type="checkbox" id="bn-dark-mode">
+          <label class="bn-switch-track" for="bn-dark-mode"></label>
+        </div>
+        <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
+      </div>
+      <div id="bn-settings-editor" style="display:none">
+        <div class="bn-editor-title">提示词管理</div>
+        <div class="bn-prompt-toggle bn-editor-back" id="bn-editor-back">▾ 手动 · 无截图</div>
+        <textarea class="bn-prompt-textarea" id="bn-editor-textarea"></textarea>
+        <div class="bn-doc-actions">
+          <button id="bn-editor-save" class="bn-btn-primary">保存</button>
+          <button id="bn-editor-reset">重置</button>
+        </div>
+      </div>
+    `;
   }
 
   // ── 加载设置到 UI ──
@@ -840,8 +879,8 @@
       views[id].classList.toggle('bn-show', id === tabId);
     });
 
-    // footer 只在字幕和章节页显示
-    const tabDef = TAB_DEFS.find(d => d.id === tabId);
+    // footer 只在指定标签页显示
+    const tabDef = tabRegistry[tabId];
     footerEl.classList.toggle('bn-show', tabDef?.footer || false);
 
     // 点击文档整理标签时检测 DeepSeek 登录状态（仅空闲时检测）
@@ -865,19 +904,11 @@
     return h > 0 ? `${pad(h)}${pad(m)}${pad(s)}` : `${pad(m)}${pad(s)}`;
   }
 
-  // ── 折叠/展开 ──
-
-  let isDraggingCollapse = false;
-  const BTN_SIZE = 36;
-  const EDGE_MARGIN = 20; // 距右边界的距离，避免覆盖滚动条
-
   function clamp(val, min, max) {
     return Math.max(min, Math.min(val, max));
   }
 
-  // 保存/恢复 icon 位置
-  let savedIconLeft = null;
-  let savedIconTop = null;
+  // ── 折叠/展开 ──
 
   function toggleCollapse() {
     if (!panelEl) createPanel();
@@ -885,9 +916,7 @@
     s.collapsed = !s.collapsed;
 
     if (s.collapsed) {
-      // 折叠：隐藏面板，显示浮动组件
       if (savedIconLeft !== null) {
-        // 先显示以获取实际尺寸
         collapseContainerEl.style.left = savedIconLeft + 'px';
         collapseContainerEl.style.top = savedIconTop + 'px';
         collapseContainerEl.classList.remove('bn-hidden');
@@ -897,7 +926,6 @@
         collapseContainerEl.style.left = x + 'px';
         collapseContainerEl.style.top = y + 'px';
       } else {
-        // 默认位置：右上角（与面板 CSS 默认 right:20px top:100px 对齐）
         const panelRight = window.innerWidth - 20;
         const x = clamp(panelRight - BTN_SIZE - 8, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
         const y = clamp(100 + 2, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
@@ -908,11 +936,9 @@
       }
       panelEl.classList.add('bn-hidden');
       collapseContainerEl.classList.remove('bn-hidden');
-      // 记住用户选择的模式
       window.BiViNote.state.settings.lastOpenMode = 'menu';
       window.BiViNote.settings.save();
     } else {
-      // 展开：隐藏浮动组件，显示面板
       const iconRect = collapseContainerEl.getBoundingClientRect();
       const panelW = 400;
       const panelH = 600;
@@ -924,12 +950,10 @@
       collapseContainerEl.classList.add('bn-hidden');
       panelEl.classList.remove('bn-hidden');
       s.panelVisible = true;
-      // 记住用户选择的模式
       window.BiViNote.state.settings.lastOpenMode = 'panel';
       window.BiViNote.settings.save();
       loadSettingsToUI();
       applyDisplaySettings();
-      // 自动加载字幕
       const currentBvid = window.BiViNote.subtitle?.extractBvid(location.href) || '';
       if (window.BiViNote.subtitle && (!s.bvid || s.bvid !== currentBvid)) {
         window.BiViNote.subtitle.refresh();
@@ -955,12 +979,10 @@
     }
 
     if (action === 'add-snap') {
-      // 如果字幕未加载，先刷新
       if (!window.BiViNote.state.subtitleBody.length) {
         showToast('正在获取字幕...');
         await subtitle.refresh();
       }
-      // 找到当前时间对应的字幕
       const activeIndex = subtitle.findActiveIndex(video.currentTime);
       if (activeIndex >= 0) {
         await capture.addScreenshot(activeIndex);
@@ -995,7 +1017,6 @@
     let startX = 0, startY = 0;
 
     el.addEventListener('mousedown', (e) => {
-      // 只有点击 icon 区域才触发拖动
       if (!e.target.closest('.bn-collapse-icon')) return;
       isDragging = true;
       hasMoved = false;
@@ -1088,17 +1109,14 @@
 
   function show() {
     if (!panelEl) createPanel();
-    // 确保非折叠状态
     window.BiViNote.state.collapsed = false;
     panelEl.classList.remove('bn-hidden');
     if (collapseContainerEl) collapseContainerEl.classList.add('bn-hidden');
     window.BiViNote.state.panelVisible = true;
-    // 记住用户选择的模式
     window.BiViNote.state.settings.lastOpenMode = 'panel';
     window.BiViNote.settings.save();
     loadSettingsToUI();
     applyDisplaySettings();
-    // 自动加载字幕：无数据或 URL 变化时刷新
     const s = window.BiViNote.state;
     const currentBvid = window.BiViNote.subtitle?.extractBvid(location.href) || '';
     const currentBvidChanged = currentBvid && s.bvid !== currentBvid;
@@ -1176,6 +1194,8 @@
   // ── 公开接口 ──
 
   window.BiViNote.panel = {
+    registerTab,
+    getRegisteredTabs,
     create: createPanel,
     show,
     hide,
@@ -1189,6 +1209,12 @@
     resetDocAuto,
     getPanelEl: () => panelEl,
     getScrollWrap: () => panelEl?.querySelector('.bn-scroll'),
-    loadSettingsToUI
+    loadSettingsToUI,
+    // 导出内部函数供测试使用
+    _tabRegistry: tabRegistry,
+    _buildSettingHTML: buildSettingHTML,
+    _buildDocHTML: buildDocHTML,
+    _bindSettingEvents: bindSettingEvents,
+    _applyDisplaySettings: applyDisplaySettings
   };
 })();
