@@ -554,19 +554,7 @@
   color: var(--bn-text);
 }
 
-.bn-prompt-textarea {
-  display: none;
-  width: calc(100% - 24px);
-  margin: 0 12px 12px;
-  height: 240px;
-  padding: 8px;
-  font-size: 11px;
-  background: var(--bn-card);
-  color: var(--bn-text);
-  border: 1px solid var(--bn-accent);
-  border-radius: 3px;
-  resize: vertical;
-  font-family: monospace;
+/* (old prompt textarea styles removed - see .bn-prompt-textarea below) */
 }
 
 /* 下拉选择 */
