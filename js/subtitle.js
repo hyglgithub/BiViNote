@@ -356,8 +356,28 @@
       }
     };
 
+    // seek 完成后立即更新高亮（解决暂停状态跳转后高亮不更新的问题）
+    const onSeeked = () => {
+      const s = window.BiViNote.state;
+      if (s.activeTab !== 'subtitle') return;
+
+      const currentTime = video.currentTime;
+      const activeIndex = findActiveIndex(currentTime);
+
+      if (activeIndex !== lastActiveIndex) {
+        updateHighlight(activeIndex);
+        lastActiveIndex = activeIndex;
+      }
+
+      // seek 后也触发自动滚动
+      if (s.settings.autoScroll && activeIndex >= 0) {
+        scrollToItem(activeIndex);
+      }
+    };
+
     video.addEventListener('timeupdate', onTimeUpdate);
-    syncTimer = { video, handler: onTimeUpdate };
+    video.addEventListener('seeked', onSeeked);
+    syncTimer = { video, handler: onTimeUpdate, seekedHandler: onSeeked };
 
     // 监听用户手动滚动，暂停自动滚动
     setupManualScrollDetection();
@@ -366,6 +386,9 @@
   function stopSync() {
     if (syncTimer) {
       syncTimer.video.removeEventListener('timeupdate', syncTimer.handler);
+      if (syncTimer.seekedHandler) {
+        syncTimer.video.removeEventListener('seeked', syncTimer.seekedHandler);
+      }
       syncTimer = null;
     }
     // 清理滚动监听
