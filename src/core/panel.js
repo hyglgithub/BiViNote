@@ -476,7 +476,6 @@
 
   function bindDocAutoEvents() {
     const ds = window.BiViNote.deepseek;
-    if (!ds) return;
 
     const statusEl = panelEl.querySelector('#bn-ds-status');
     const actionBtn = panelEl.querySelector('#bn-ds-action');
@@ -489,10 +488,14 @@
     const continueBtn = panelEl.querySelector('#bn-ds-continue');
     let savedScreenshots = null;
 
+    // 设置提示词（两个版本都需要）
     if (promptEl) {
       const stored = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
       promptEl.textContent = stored;
     }
+
+    // Lite 版本：没有 DeepSeek 模块，只显示提示词，不绑定事件
+    if (!ds) return;
 
     function updateUI(dsState) {
       if (!statusEl) return;
