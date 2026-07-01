@@ -741,34 +741,12 @@
   function buildDocAutoHTML() {
     const hasDeepSeek = !!window.BiViNote.deepseek;
 
-    if (!hasDeepSeek) {
-      // Lite 版本：显示界面但功能禁用
-      return `
-        <div class="bn-doc-auto">
-          <div class="bn-doc-header">
-            <div class="bn-doc-title">DeepSeek 文档整理</div>
-            <span class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>不可用</span>
-          </div>
-          <div class="bn-doc-body">
-            <pre class="bn-prompt-pre"></pre>
-          </div>
-          <div class="bn-doc-actions">
-            <button class="bn-btn-primary" disabled>开始整理</button>
-            <div class="bn-hint" style="margin-top: 8px; text-align: center;">
-              此功能需要使用增强实验版（Main 版本）<br>
-              请从 GitHub Release 下载完整版本
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    // Main 版本：正常显示
-    return `
+    // 两个版本界面完全一致
+    const html = `
       <div class="bn-doc-auto">
         <div class="bn-doc-header">
           <div class="bn-doc-title">DeepSeek 文档整理</div>
-          <span id="bn-ds-status" class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>未登录</span>
+          <span id="bn-ds-status" class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>${hasDeepSeek ? '未登录' : '不可用'}</span>
         </div>
         <div class="bn-doc-body">
           <pre id="bn-ds-prompt" class="bn-prompt-pre"></pre>
@@ -776,14 +754,17 @@
           <div id="bn-ds-result" class="bn-result-area" style="display:none"></div>
         </div>
         <div class="bn-doc-actions">
-          <button id="bn-ds-action" class="bn-btn-primary">打开 DeepSeek 登录</button>
+          <button id="bn-ds-action" class="bn-btn-primary"${hasDeepSeek ? '' : ' disabled'}>${hasDeepSeek ? '打开 DeepSeek 登录' : '开始整理'}</button>
           <button id="bn-ds-download" class="bn-btn-primary" style="display:none">下载 Markdown</button>
           <button id="bn-ds-copy" style="display:none">复制</button>
           <button id="bn-ds-clear" style="display:none">清除</button>
           <button id="bn-ds-continue" style="display:none">继续询问</button>
+          ${hasDeepSeek ? '' : '<div class="bn-hint" style="margin-top: 8px; text-align: center;">此功能需要使用增强实验版（Main 版本）<br>请从 GitHub Release 下载完整版本</div>'}
         </div>
       </div>
     `;
+
+    return html;
   }
 
   // ── 设置页 HTML ──
