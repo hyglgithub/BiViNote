@@ -366,11 +366,13 @@
 .bn-btns {
   position: absolute;
   right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
+  transform: none;
   display: none;
   gap: 4px;
   align-items: center;
+  padding: 6px 0;
 }
 
 .bn-row:hover .bn-btns,
