@@ -192,18 +192,26 @@
 
   // ── 文档整理页 HTML ──
 
-  const DEFAULT_DEEPSEEK_PROMPT = `你是一个视频笔记整理助手。请整理用户发送的 Markdown 文档。
+  const DEFAULT_DEEPSEEK_PROMPT = `你是一个视频笔记整理助手，将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
 
 要求：
-1. 删除口语化表达和语气词
-2. 合并字幕断行，保持语义完整
-3. 删除时间戳标记
-4. 修正语音识别错误
-5. 保留专业术语和代码
-6. 保留 YAML frontmatter
-7. 保留所有图片引用（assets/ 目录）
-8. 不要新增原文没有的内容
-9. 只输出整理后的 Markdown，不要解释`;
+
+1. 删除口语化内容、重复内容、无意义过渡语句，例如：好的、然后、这里呢、兄弟、就是说等。
+2. 删除所有字幕时间戳，例如 \`00:12\`、\`05:30\`。
+3. 不要逐句输出字幕，将连续字幕整理为简洁、连贯、易阅读的知识内容。
+4. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、英文大小写错误，请结合上下文修正，并统一技术术语写法。
+5. 若文档存在章节结构，严格按原始章节整理；若无章节，则按内容自然分段。
+6. 不要新增原文不存在的标题、章节或目录层级，不要改变原始内容顺序。
+7. 所有图片均为相对路径资源（如 \`![截图](assets/1.png)\`），默认与前一句字幕内容相关；必须保留所有图片，禁止修改图片 Markdown 语法、alt 文本、路径、文件名，不得遗漏任何图片，可根据整理后的内容适当调整图片在当前语义块中的位置。
+8. 保留所有技术名词、工具名、框架名、产品名，不要删除、替换或省略。
+9. 若存在 Frontmatter（文档开头 YAML），必须完整原样保留，禁止修改字段、字段值和字段顺序。
+10. 仅整理原文，禁止总结、解释、扩展原文不存在的信息或补充额外知识。
+
+待整理文档：
+
+{markdown}
+
+直接输出整理后的 Markdown 文档，不要输出任何额外内容。`;
 
   function buildDocHTML() {
     const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
@@ -249,21 +257,21 @@
       <div class="bn-setting-label">提示词管理</div>
       <div class="bn-accordion">
         <div class="bn-accordion-item">
-          <div class="bn-accordion-header" data-acc="noimg">📄 手动 · 无截图 <span class="bn-acc-arrow">▶</span></div>
+          <div class="bn-accordion-header" data-acc="noimg">手动 · 无截图 <span class="bn-acc-arrow">▶</span></div>
           <div class="bn-accordion-body" id="bn-acc-noimg">
             <textarea class="bn-prompt-textarea" id="bn-prompt-noimg"></textarea>
             <div class="bn-doc-actions"><button id="bn-save-noimg" class="bn-btn-primary">保存</button><button id="bn-reset-noimg">重置</button></div>
           </div>
         </div>
         <div class="bn-accordion-item">
-          <div class="bn-accordion-header" data-acc="img">🖼️ 手动 · 有截图 <span class="bn-acc-arrow">▶</span></div>
+          <div class="bn-accordion-header" data-acc="img">手动 · 有截图 <span class="bn-acc-arrow">▶</span></div>
           <div class="bn-accordion-body" id="bn-acc-img">
             <textarea class="bn-prompt-textarea" id="bn-prompt-img"></textarea>
             <div class="bn-doc-actions"><button id="bn-save-img" class="bn-btn-primary">保存</button><button id="bn-reset-img">重置</button></div>
           </div>
         </div>
         <div class="bn-accordion-item">
-          <div class="bn-accordion-header" data-acc="ds">🤖 自动 · DeepSeek <span class="bn-acc-arrow">▶</span></div>
+          <div class="bn-accordion-header" data-acc="ds">自动 · DeepSeek <span class="bn-acc-arrow">▶</span></div>
           <div class="bn-accordion-body" id="bn-acc-ds">
             <textarea class="bn-prompt-textarea" id="bn-prompt-ds"></textarea>
             <div class="bn-doc-actions"><button id="bn-save-ds" class="bn-btn-primary">保存</button><button id="bn-reset-ds">重置</button></div>
@@ -378,12 +386,12 @@
       });
     });
 
-    // 手风琴展开/折叠
-    panelEl.querySelectorAll('.bn-accordion-header').forEach(header => {
-      header.addEventListener('click', () => {
-        const item = header.parentElement;
-        item.classList.toggle('open');
-      });
+    // 手风琴展开/折叠（事件委托）
+    panelEl.addEventListener('click', (e) => {
+      const header = e.target.closest('.bn-accordion-header');
+      if (header) {
+        header.parentElement.classList.toggle('open');
+      }
     });
 
     // 提词管理 - 填充 textarea
