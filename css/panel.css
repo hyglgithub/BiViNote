@@ -554,9 +554,6 @@
   color: var(--bn-text);
 }
 
-/* (old prompt textarea styles removed - see .bn-prompt-textarea below) */
-}
-
 /* 下拉选择 */
 .bn-select {
   width: calc(100% - 24px);

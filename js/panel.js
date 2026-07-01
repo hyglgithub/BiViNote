@@ -378,7 +378,7 @@
       });
     });
 
-    // 提示词展开/折叠（事件委托）
+    // 提示词展开/折叠（手风琴：打开一个自动关闭其余）
     const settingView = views['setting'];
     if (settingView) {
       settingView.addEventListener('click', (e) => {
@@ -388,8 +388,14 @@
         const section = document.getElementById(targetId);
         if (!section) return;
         const hidden = section.style.display === 'none';
-        section.style.display = hidden ? 'block' : 'none';
-        toggle.textContent = (hidden ? '▾' : '▸') + toggle.textContent.slice(1);
+        // 关闭所有
+        settingView.querySelectorAll('.bn-prompt-section').forEach(s => { s.style.display = 'none'; });
+        settingView.querySelectorAll('.bn-prompt-toggle').forEach(t => { t.textContent = '▸' + t.textContent.slice(1); });
+        // 打开点击的
+        if (hidden) {
+          section.style.display = 'block';
+          toggle.textContent = '▾' + toggle.textContent.slice(1);
+        }
       });
     }
 
