@@ -255,28 +255,20 @@
       <div class="bn-setting-label">字幕语言</div>
       <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
       <div class="bn-setting-label">提示词管理</div>
-      <div class="bn-accordion">
-        <div class="bn-accordion-item">
-          <div class="bn-accordion-header" data-acc="noimg">手动 · 无截图 <span class="bn-acc-arrow">▶</span></div>
-          <div class="bn-accordion-body" id="bn-acc-noimg">
-            <textarea class="bn-prompt-textarea" id="bn-prompt-noimg"></textarea>
-            <div class="bn-doc-actions"><button id="bn-save-noimg" class="bn-btn-primary">保存</button><button id="bn-reset-noimg">重置</button></div>
-          </div>
-        </div>
-        <div class="bn-accordion-item">
-          <div class="bn-accordion-header" data-acc="img">手动 · 有截图 <span class="bn-acc-arrow">▶</span></div>
-          <div class="bn-accordion-body" id="bn-acc-img">
-            <textarea class="bn-prompt-textarea" id="bn-prompt-img"></textarea>
-            <div class="bn-doc-actions"><button id="bn-save-img" class="bn-btn-primary">保存</button><button id="bn-reset-img">重置</button></div>
-          </div>
-        </div>
-        <div class="bn-accordion-item">
-          <div class="bn-accordion-header" data-acc="ds">自动 · DeepSeek <span class="bn-acc-arrow">▶</span></div>
-          <div class="bn-accordion-body" id="bn-acc-ds">
-            <textarea class="bn-prompt-textarea" id="bn-prompt-ds"></textarea>
-            <div class="bn-doc-actions"><button id="bn-save-ds" class="bn-btn-primary">保存</button><button id="bn-reset-ds">重置</button></div>
-          </div>
-        </div>
+      <div class="bn-setting-label bn-sub-label" id="bn-toggle-noimg" style="cursor:pointer;font-weight:normal">▸ 手动 · 无截图</div>
+      <div id="bn-section-noimg" style="display:none">
+        <textarea class="bn-prompt-textarea" id="bn-prompt-noimg"></textarea>
+        <div class="bn-doc-actions"><button id="bn-save-noimg" class="bn-btn-primary">保存</button><button id="bn-reset-noimg">重置</button></div>
+      </div>
+      <div class="bn-setting-label bn-sub-label" id="bn-toggle-img" style="cursor:pointer;font-weight:normal">▸ 手动 · 有截图</div>
+      <div id="bn-section-img" style="display:none">
+        <textarea class="bn-prompt-textarea" id="bn-prompt-img"></textarea>
+        <div class="bn-doc-actions"><button id="bn-save-img" class="bn-btn-primary">保存</button><button id="bn-reset-img">重置</button></div>
+      </div>
+      <div class="bn-setting-label bn-sub-label" id="bn-toggle-ds" style="cursor:pointer;font-weight:normal">▸ 自动 · DeepSeek</div>
+      <div id="bn-section-ds" style="display:none">
+        <textarea class="bn-prompt-textarea" id="bn-prompt-ds"></textarea>
+        <div class="bn-doc-actions"><button id="bn-save-ds" class="bn-btn-primary">保存</button><button id="bn-reset-ds">重置</button></div>
       </div>
       <div class="bn-divider"></div>
       <div class="bn-setting-label">文档整理方式</div>
@@ -386,11 +378,16 @@
       });
     });
 
-    // 手风琴展开/折叠（事件委托）
-    panelEl.addEventListener('click', (e) => {
-      const header = e.target.closest('.bn-accordion-header');
-      if (header) {
-        header.parentElement.classList.toggle('open');
+    // 提示词展开/折叠
+    ['noimg', 'img', 'ds'].forEach(key => {
+      const toggle = panelEl.querySelector(`#bn-toggle-${key}`);
+      const section = panelEl.querySelector(`#bn-section-${key}`);
+      if (toggle && section) {
+        toggle.addEventListener('click', () => {
+          const hidden = section.style.display === 'none';
+          section.style.display = hidden ? 'block' : 'none';
+          toggle.textContent = (hidden ? '▾' : '▸') + toggle.textContent.slice(1);
+        });
       }
     });
 
