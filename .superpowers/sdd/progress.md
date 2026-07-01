@@ -9,14 +9,16 @@
 - Task 5: 移动核心功能文件 - completed (18f4c2a)
 - Task 6: 提取 DeepSeek 模块 - completed (7497b6c)
 - Task 7: 创建 manifest 文件 - completed (a4bd04d)
-- Task 8: 创建构建脚本 - pending
-- Task 9: 测试 main 版本 - pending
+- Task 8: 创建构建脚本 - completed (80a5fca)
+- Task 9: 测试 main 版本 - completed (1e00eb8)
 - Task 10: 测试 lite 版本 - pending
 - Task 11: 更新文档 - pending
 - Task 12: 清理旧文件 - pending
 
 ## 完成记录
 
+- Task 9: 测试 main 版本 - 1e00eb8 - 创建 tests/main-version.test.js，107 个测试通过，759 个总测试通过
+- Task 8: 创建构建脚本 - 80a5fca - 创建 scripts/build.js，支持 main/lite 版本构建，164 个测试通过
 - Task 7: 创建 manifest 文件 - a4bd04d - 创建 main 和 lite 版本 manifest，92 个测试通过
 - Task 6: 提取 DeepSeek 模块 - 7497b6c - 提取 DeepSeek 后台逻辑，创建面板模块，复制客户端文件，58 个测试通过
 - Task 5: 移动核心功能文件 - 18f4c2a - 复制 8 个核心功能文件到 src/core/，170 个测试通过
