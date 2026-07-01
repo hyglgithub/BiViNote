@@ -325,7 +325,7 @@
           <label class="bn-switch-track" for="bn-dark-mode"></label>
         </div>
         <div class="bn-switch">
-          <span>预览暂停</span>
+          <span>预览截图暂停</span>
           <input type="checkbox" id="bn-pause-preview" checked>
           <label class="bn-switch-track" for="bn-pause-preview"></label>
         </div>
