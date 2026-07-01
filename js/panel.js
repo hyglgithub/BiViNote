@@ -244,12 +244,8 @@
 
   function buildSettingHTML() {
     return `
-      <div class="bn-setting-label">文档整理模式</div>
-      <div class="bn-chip-group" data-setting="docOrganizeMode">
-        <input type="radio" name="bn-docMode" id="bn-dm-manual" value="manual" checked><label for="bn-dm-manual">手动整理</label>
-        <input type="radio" name="bn-docMode" id="bn-dm-auto" value="auto"><label for="bn-dm-auto">自动整理</label>
-      </div>
-      <div class="bn-hint" style="margin-bottom:8px">手动: 复制提示词自行处理 · 自动: 调用 DeepSeek</div>
+      <div class="bn-setting-label">字幕语言</div>
+      <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
       <div class="bn-setting-label">提示词管理</div>
       <div class="bn-accordion">
         <div class="bn-accordion-item">
@@ -275,8 +271,15 @@
         </div>
       </div>
       <div class="bn-divider"></div>
-      <div class="bn-setting-label">字幕语言</div>
-      <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
+      <div class="bn-setting-label">文档整理方式</div>
+      <label class="bn-radio-line">
+        <input type="radio" name="bn-docMode" id="bn-dm-manual" value="manual" checked>
+        <div><div class="bn-radio-title">手动整理</div><div class="bn-radio-desc">复制提示词，自行处理</div></div>
+      </label>
+      <label class="bn-radio-line">
+        <input type="radio" name="bn-docMode" id="bn-dm-auto" value="auto">
+        <div><div class="bn-radio-title">自动整理</div><div class="bn-radio-desc">调用 DeepSeek</div></div>
+      </label>
       <div class="bn-setting-label">字体大小</div>
       <div class="bn-chip-group" data-setting="fontSize">
         <input type="radio" name="bn-fontSize" id="bn-fs-s" value="small"><label for="bn-fs-s">小</label>

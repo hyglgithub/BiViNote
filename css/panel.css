@@ -913,23 +913,23 @@
 /* ── 文档整理 ── */
 
 .bn-label {
-  font-size: 12px; color: var(--bn-text-sub); margin-bottom: 4px;
+  font-size: 12px; color: var(--bn-text-sub); margin: 12px 12px 4px;
 }
 
 .bn-hint {
-  font-size: 11px; color: var(--bn-text-sub); margin-bottom: 8px; opacity: 0.7;
+  font-size: 11px; color: var(--bn-text-sub); margin: 0 12px 8px; opacity: 0.7;
 }
 
 .bn-input {
-  width: 100%; padding: 5px 8px; font-size: 12px;
+  width: calc(100% - 24px); padding: 5px 8px; font-size: 12px;
   border: 1px solid var(--bn-border); border-radius: 4px;
   background: var(--bn-card); color: var(--bn-text);
-  margin-bottom: 4px;
+  margin: 0 12px 4px;
 }
 
 .bn-doc-header {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 8px;
+  margin: 8px 12px 8px;
 }
 
 .bn-doc-title {
@@ -937,7 +937,7 @@
 }
 
 .bn-doc-actions {
-  display: flex; gap: 6px; margin-top: 8px;
+  display: flex; gap: 6px; margin: 8px 12px 0;
 }
 
 .bn-btn-primary {
@@ -988,11 +988,11 @@
   white-space: pre-wrap; word-break: break-all;
   color: var(--bn-text); min-height: 150px; max-height: 400px; overflow-y: auto;
   font-family: "Cascadia Code", "Consolas", monospace;
-  margin-top: 4px;
+  margin: 4px 12px 0;
 }
 
 /* 手风琴 */
-.bn-accordion { margin-bottom: 8px; }
+.bn-accordion { margin: 0 12px 8px; }
 
 .bn-accordion-item {
   border: 1px solid var(--bn-border); border-radius: 6px;
@@ -1014,16 +1014,33 @@
 .bn-accordion-item.open .bn-acc-arrow { transform: rotate(90deg); }
 
 .bn-accordion-body {
-  padding: 0 10px; max-height: 0; overflow: hidden;
-  transition: max-height 0.2s ease, padding 0.2s ease;
+  display: none; padding: 8px 10px;
 }
 
 .bn-accordion-item.open .bn-accordion-body {
-  padding: 8px 10px; max-height: 500px;
+  display: block;
 }
 
 .bn-divider {
-  border-top: 1px solid var(--bn-border); margin: 10px 0; opacity: 0.3;
+  border-top: 1px solid var(--bn-border); margin: 10px 12px; opacity: 0.3;
+}
+
+/* 单选项（两行标题+描述） */
+.bn-radio-line {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 12px; cursor: pointer;
+}
+
+.bn-radio-line input[type="radio"] {
+  margin-top: 2px; flex-shrink: 0;
+}
+
+.bn-radio-title {
+  font-size: 12px; font-weight: 500; color: var(--bn-text);
+}
+
+.bn-radio-desc {
+  font-size: 11px; color: var(--bn-text-sub); margin-top: 1px;
 }
 
 .bn-prompt-pre {
@@ -1032,7 +1049,7 @@
   white-space: pre-wrap; word-break: break-all;
   color: var(--bn-text); max-height: 400px; overflow-y: auto;
   font-family: "Cascadia Code", "Consolas", monospace;
-  margin: 0;
+  margin: 0 12px;
 }
 
 .bn-prompt-textarea {
@@ -1040,5 +1057,5 @@
   border: 1px solid var(--bn-border); border-radius: 4px;
   background: var(--bn-card); color: var(--bn-text);
   font-family: "Cascadia Code", "Consolas", monospace;
-  resize: vertical; line-height: 1.5;
+  resize: vertical; line-height: 1.5; box-sizing: border-box;
 }
