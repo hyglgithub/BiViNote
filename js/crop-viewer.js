@@ -50,6 +50,12 @@
   // ── 打开 ──
 
   function open(snapKey) {
+    // 根据设置暂停视频
+    if (window.BiViNote.state.settings.pauseOnPreview) {
+      const video = window.BiViNote.subtitle?.getVideoElement();
+      if (video && !video.paused) video.pause();
+    }
+
     currentSnapKey = snapKey;
     const snap = window.BiViNote.state.screenshots.get(snapKey);
     if (!snap) return;

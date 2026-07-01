@@ -324,6 +324,11 @@
           <input type="checkbox" id="bn-dark-mode">
           <label class="bn-switch-track" for="bn-dark-mode"></label>
         </div>
+        <div class="bn-switch">
+          <span>预览暂停</span>
+          <input type="checkbox" id="bn-pause-preview" checked>
+          <label class="bn-switch-track" for="bn-pause-preview"></label>
+        </div>
         <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
       </div>
       <div id="bn-settings-editor" style="display:none">
@@ -384,6 +389,15 @@
         const theme = darkModeEl.checked ? 'dark' : '';
         panelEl.setAttribute('data-bn-theme', theme);
         if (collapseContainerEl) collapseContainerEl.setAttribute('data-bn-theme', theme);
+        window.BiViNote.settings.save();
+      });
+    }
+
+    // 预览暂停
+    const pausePreviewEl = panelEl.querySelector('#bn-pause-preview');
+    if (pausePreviewEl) {
+      pausePreviewEl.addEventListener('change', () => {
+        window.BiViNote.state.settings.pauseOnPreview = pausePreviewEl.checked;
         window.BiViNote.settings.save();
       });
     }
@@ -813,6 +827,9 @@
 
     const darkModeEl = panelEl.querySelector('#bn-dark-mode');
     if (darkModeEl) darkModeEl.checked = s.darkMode;
+
+    const pausePreviewEl = panelEl.querySelector('#bn-pause-preview');
+    if (pausePreviewEl) pausePreviewEl.checked = s.pauseOnPreview;
   }
 
   // ── 应用显示设置 ──

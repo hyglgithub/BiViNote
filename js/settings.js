@@ -13,6 +13,7 @@
     frameStep: 0.2,
     autoScroll: true,
     darkMode: false,
+    pauseOnPreview: true,
     subtitleLang: '',
     downloadDir: '',
     promptNoImage: '',
