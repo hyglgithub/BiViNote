@@ -10,13 +10,17 @@
 
 BiViNote 提供两个版本：
 
-| 版本 | 说明 | 分发方式 |
-|------|------|----------|
-| **Main（增强实验版）** | 核心功能 + DeepSeek AI 文档整理 | [GitHub Release](https://github.com/hyglgithub/BiViNote/releases) |
-| **Lite（绿色精简版）** | 仅核心功能，无 DeepSeek 依赖 | Chrome / Edge 应用商店 |
+| 版本 | 说明 | 分发方式 | 分支 |
+|------|------|----------|------|
+| **Main（增强实验版）** | 核心功能 + DeepSeek AI 文档整理 | [GitHub Release](https://github.com/hyglgithub/BiViNote/releases) | `modular-architecture` |
+| **Lite（绿色精简版）** | 仅核心功能，无 DeepSeek 依赖 | Chrome / Edge 应用商店 | `modular-architecture` |
 
 > **为什么分两个版本？**  
 > DeepSeek 集成需要 MAIN world 脚本注入读取第三方 localStorage token，这违反了 Chrome Web Store 政策。因此将 DeepSeek 功能隔离到独立版本，通过 GitHub Release 分发；精简版可上架官方商店。
+
+> **分支说明**  
+> - `main` 分支：原始单文件架构，已归档不再维护
+> - `modular-architecture` 分支：模块化架构，当前开发分支
 
 ## 功能
 
