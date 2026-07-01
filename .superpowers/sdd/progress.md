@@ -13,7 +13,7 @@
 - Task 9: 测试 main 版本 - completed (1e00eb8)
 - Task 10: 测试 lite 版本 - completed (b78c8bb)
 - Task 11: 更新文档 - completed
-- Task 12: 清理旧文件 - pending
+- Task 12: 清理旧文件 - completed (ad51710)
 
 ## 完成记录
 

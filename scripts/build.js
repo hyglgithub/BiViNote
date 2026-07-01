@@ -61,15 +61,20 @@ const DEEPSEEK_MODULE_FILES = [
  */
 function removeDir(dirPath) {
   if (!fs.existsSync(dirPath)) return;
-  for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
-    const fullPath = path.join(dirPath, entry.name);
-    if (entry.isDirectory()) {
-      removeDir(fullPath);
-    } else {
-      fs.unlinkSync(fullPath);
+  try {
+    fs.rmSync(dirPath, { recursive: true, force: true });
+  } catch (e) {
+    // Fallback for older Node.js versions
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        removeDir(fullPath);
+      } else {
+        fs.unlinkSync(fullPath);
+      }
     }
+    fs.rmdirSync(dirPath);
   }
-  fs.rmdirSync(dirPath);
 }
 
 /**
