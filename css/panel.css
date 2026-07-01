@@ -910,6 +910,23 @@
   background: var(--bn-text-sub);
 }
 
+/* 提示词管理 */
+.bn-prompt-toggle {
+  font-size: 1em; font-weight: normal;
+  margin: 8px 12px 4px; cursor: pointer; color: var(--bn-text);
+  user-select: none;
+}
+
+.bn-prompt-toggle:hover { color: var(--bn-accent); }
+
+.bn-prompt-section {
+  display: none; margin: 0 12px;
+}
+
+.bn-prompt-section.bn-open {
+  display: block;
+}
+
 /* ── 文档整理 ── */
 
 .bn-label {

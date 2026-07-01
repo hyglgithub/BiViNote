@@ -255,18 +255,18 @@
       <div class="bn-setting-label">字幕语言</div>
       <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
       <div class="bn-setting-label">提示词管理</div>
-      <div class="bn-setting-label" style="cursor:pointer;font-weight:normal" onclick="var s=this.nextElementSibling;s.style.display=s.style.display==='none'?'block':'none';this.textContent=(s.style.display==='none'?'▸':'▾')+this.textContent.slice(1)">▸ 手动 · 无截图</div>
-      <div style="display:none">
+      <div class="bn-prompt-toggle" data-target="bn-psection-noimg">▸ 手动 · 无截图</div>
+      <div class="bn-prompt-section" id="bn-psection-noimg">
         <textarea class="bn-prompt-textarea" id="bn-prompt-noimg"></textarea>
         <div class="bn-doc-actions"><button id="bn-save-noimg" class="bn-btn-primary">保存</button><button id="bn-reset-noimg">重置</button></div>
       </div>
-      <div class="bn-setting-label" style="cursor:pointer;font-weight:normal" onclick="var s=this.nextElementSibling;s.style.display=s.style.display==='none'?'block':'none';this.textContent=(s.style.display==='none'?'▸':'▾')+this.textContent.slice(1)">▸ 手动 · 有截图</div>
-      <div style="display:none">
+      <div class="bn-prompt-toggle" data-target="bn-psection-img">▸ 手动 · 有截图</div>
+      <div class="bn-prompt-section" id="bn-psection-img">
         <textarea class="bn-prompt-textarea" id="bn-prompt-img"></textarea>
         <div class="bn-doc-actions"><button id="bn-save-img" class="bn-btn-primary">保存</button><button id="bn-reset-img">重置</button></div>
       </div>
-      <div class="bn-setting-label" style="cursor:pointer;font-weight:normal" onclick="var s=this.nextElementSibling;s.style.display=s.style.display==='none'?'block':'none';this.textContent=(s.style.display==='none'?'▸':'▾')+this.textContent.slice(1)">▸ 自动 · DeepSeek</div>
-      <div style="display:none">
+      <div class="bn-prompt-toggle" data-target="bn-psection-ds">▸ 自动 · DeepSeek</div>
+      <div class="bn-prompt-section" id="bn-psection-ds">
         <textarea class="bn-prompt-textarea" id="bn-prompt-ds"></textarea>
         <div class="bn-doc-actions"><button id="bn-save-ds" class="bn-btn-primary">保存</button><button id="bn-reset-ds">重置</button></div>
       </div>
@@ -377,6 +377,20 @@
         }
       });
     });
+
+    // 提示词展开/折叠（事件委托）
+    const settingView = views['setting'];
+    if (settingView) {
+      settingView.addEventListener('click', (e) => {
+        const toggle = e.target.closest('.bn-prompt-toggle');
+        if (!toggle) return;
+        const targetId = toggle.dataset.target;
+        const section = document.getElementById(targetId);
+        if (!section) return;
+        const isOpen = section.classList.toggle('bn-open');
+        toggle.textContent = (isOpen ? '▾' : '▸') + toggle.textContent.slice(1);
+      });
+    }
 
     // 提词管理 - 填充 textarea
     const noimgTextarea = document.getElementById('bn-prompt-noimg');
