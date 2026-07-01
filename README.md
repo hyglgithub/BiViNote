@@ -42,9 +42,34 @@
 
 ```bash
 git clone https://github.com/hyglgithub/BiViNote.git
+cd BiViNote
+npm install  # 安装依赖（如需要）
 ```
 
-然后按照上述步骤 3-6 加载扩展。
+#### 构建扩展
+
+BiViNote 支持两个版本：
+
+- **Main 版本**：包含核心功能 + DeepSeek AI 文档整理
+- **Lite 版本**：仅核心功能，无 DeepSeek 依赖
+
+```bash
+# 构建两个版本
+node scripts/build.js
+
+# 仅构建 Main 版本
+node scripts/build.js main
+
+# 仅构建 Lite 版本
+node scripts/build.js lite
+```
+
+构建完成后，在 `dist/main/` 或 `dist/lite/` 目录中加载扩展：
+
+1. 打开扩展管理页（`chrome://extensions/`）
+2. 开启"开发者模式"
+3. 点击"加载已解压的扩展程序"
+4. 选择 `dist/main/` 或 `dist/lite/` 目录
 
 ## 使用方法
 
@@ -133,30 +158,44 @@ note.zip
 
 ```
 BiViNote/
-├── manifest.json      # 扩展配置 (Manifest V3)
-├── background.js      # Service Worker - API 代理、图标状态、SSE 处理、DeepSeek 通信
-├── content.js         # 入口脚本 - 面板注入、路由监听、视频切换检测
-├── js/
-│   ├── state.js       # 全局状态管理
-│   ├── panel.js       # 面板 UI - 标签页、折叠、拖动、设置、提示词管理、文档整理
-│   ├── subtitle.js    # 字幕 - 获取、渲染、高亮同步、跳转
-│   ├── chapter.js     # 章节 - 获取、渲染、跳转
-│   ├── video-info.js  # 视频信息展示
-│   ├── capture.js     # 截图 - OffscreenCanvas、保存、剪贴板
-│   ├── crop-viewer.js # 截图浏览 - Cropper.js 裁剪、缩放、旋转、翻转
-│   ├── export.js      # 导出 - SRT、Markdown、ZIP
-│   ├── deepseek.js    # DeepSeek 通信模块 - 状态机、chunk 处理、请求生命周期
-│   └── settings.js    # 设置 - chrome.storage.local 持久化
+├── src/
+│   ├── core/                    # 核心功能模块
+│   │   ├── message-bus.js       # 消息总线 - 模块间通信
+│   │   ├── background.js        # Service Worker - API 代理、图标状态
+│   │   ├── panel.js             # 面板 UI - 标签页、折叠、拖动、设置
+│   │   ├── state.js             # 全局状态管理
+│   │   ├── subtitle.js          # 字幕 - 获取、渲染、高亮同步、跳转
+│   │   ├── chapter.js           # 章节 - 获取、渲染、跳转
+│   │   ├── video-info.js        # 视频信息展示
+│   │   ├── capture.js           # 截图 - OffscreenCanvas、保存、剪贴板
+│   │   ├── export.js            # 导出 - SRT、Markdown、ZIP
+│   │   ├── settings.js          # 设置 - chrome.storage.local 持久化
+│   │   └── crop-viewer.js       # 截图浏览 - Cropper.js 裁剪、缩放、旋转、翻转
+│   ├── modules/
+│   │   └── deepseek/            # DeepSeek AI 模块（可选）
+│   │       ├── background.js    # DeepSeek 后台逻辑 - SSE 处理、消息路由
+│   │       ├── panel.js         # DeepSeek 面板扩展 - 文档整理标签页
+│   │       ├── client.js        # DeepSeek 客户端 - 状态机、chunk 处理
+│   │       ├── api.js           # DeepSeek MAIN world - PoW、completion、stop_stream
+│   │       ├── bridge.js        # DeepSeek ISOLATED world - 消息桥接
+│   │       └── wasm-solver.js   # DeepSeek PoW WASM 求解器
+│   └── manifests/
+│       ├── manifest-main.json   # Main 版本清单（含 DeepSeek）
+│       └── manifest-lite.json   # Lite 版本清单（无 DeepSeek）
+├── scripts/
+│   └── build.js                 # 构建脚本 - 生成 main/lite 版本
+├── tests/                       # 测试文件
+├── dist/                        # 构建输出（自动生成）
+│   ├── main/                    # Main 版本（core + DeepSeek）
+│   └── lite/                    # Lite 版本（仅 core）
+├── content.js                   # 入口脚本 - 面板注入、路由监听
 ├── css/
-│   └── panel.css      # 面板样式（含暗色主题）
+│   └── panel.css                # 面板样式（含暗色主题）
 ├── libs/
-│   ├── jszip.min.js       # ZIP 打包库
-│   ├── cropper.min.js     # Cropper.js 裁剪库
-│   ├── cropper.min.css
-│   ├── deepseek-api.js    # DeepSeek MAIN world - PoW、completion、stop_stream
-│   ├── deepseek-bridge.js # DeepSeek ISOLATED world - 消息桥接
-│   └── wasm-solver.js     # DeepSeek PoW WASM 求解器
-└── icons/             # 扩展图标（正常 + 变暗状态）
+│   ├── jszip.min.js             # ZIP 打包库
+│   ├── cropper.min.js           # Cropper.js 裁剪库
+│   └── cropper.min.css
+└── icons/                       # 扩展图标（正常 + 变暗状态）
 ```
 
 ## 技术要点
