@@ -337,7 +337,7 @@
       loadImage(url);
       window.BiViNote.subtitle.renderSubtitleList();
       window.BiViNote.chapter.render();
-      window.BiViNote.panel.renderPrompt();
+      window.BiViNote.panel.renderDoc();
       window.BiViNote.panel.showToast('裁剪完成');
     }, 'image/png');
   }

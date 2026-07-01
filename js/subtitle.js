@@ -127,7 +127,7 @@
       s.videoDuration = meta.defaultDuration || 0;
 
       // 标题获取后立即更新提示词
-      panel.renderPrompt();
+      panel.renderDoc();
 
       // 用 URL 中的 ?p= 参数选择正确的分P，获取对应 CID
       const pageIndex = extractPageIndex(location.href);

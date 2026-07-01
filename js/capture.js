@@ -100,7 +100,7 @@
 
       // 重新渲染字幕列表
       window.BiViNote.subtitle.renderSubtitleList();
-      panel.renderPrompt();
+      panel.renderDoc();
       panel.showToast('已添加截屏');
     } catch (err) {
       console.error('[BiViNote] addScreenshot error:', err);
@@ -140,7 +140,7 @@
 
       if (!wasPaused) video.play().catch(() => {});
       window.BiViNote.chapter.render();
-      panel.renderPrompt();
+      panel.renderDoc();
       panel.showToast('已添加截屏');
     } catch (err) {
       console.error('[BiViNote] addChapterScreenshot error:', err);
@@ -157,7 +157,7 @@
     if (old?.url) URL.revokeObjectURL(old.url);
     s.screenshots.delete(subtitleIndex);
     window.BiViNote.subtitle.renderSubtitleList();
-    window.BiViNote.panel.renderPrompt();
+    window.BiViNote.panel.renderDoc();
     window.BiViNote.panel.showToast('已取消截屏');
   }
 

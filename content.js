@@ -72,7 +72,7 @@
         setTimeout(async () => {
           if (BN.state.panelVisible) {
             await BN.subtitle.refresh();
-            BN.panel.renderPrompt();
+            BN.panel.renderDoc();
           }
         }, 1000);
       }
