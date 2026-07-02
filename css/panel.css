@@ -1088,20 +1088,24 @@
 }
 
 .bn-result-area::-webkit-scrollbar,
-.bn-doc-think::-webkit-scrollbar {
+.bn-doc-think::-webkit-scrollbar,
+.bn-prompt-pre::-webkit-scrollbar {
   width: 6px;
 }
 .bn-result-area::-webkit-scrollbar-track,
-.bn-doc-think::-webkit-scrollbar-track {
+.bn-doc-think::-webkit-scrollbar-track,
+.bn-prompt-pre::-webkit-scrollbar-track {
   background: var(--bn-header-bg);
 }
 .bn-result-area::-webkit-scrollbar-thumb,
-.bn-doc-think::-webkit-scrollbar-thumb {
+.bn-doc-think::-webkit-scrollbar-thumb,
+.bn-prompt-pre::-webkit-scrollbar-thumb {
   background: var(--bn-btn-border);
   border-radius: 3px;
 }
 .bn-result-area::-webkit-scrollbar-thumb:hover,
-.bn-doc-think::-webkit-scrollbar-thumb:hover {
+.bn-doc-think::-webkit-scrollbar-thumb:hover,
+.bn-prompt-pre::-webkit-scrollbar-thumb:hover {
   background: var(--bn-text-sub);
 }
 
