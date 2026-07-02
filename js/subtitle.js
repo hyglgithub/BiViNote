@@ -277,6 +277,11 @@
 
       container.appendChild(el);
     });
+
+    // 重新渲染后恢复高亮状态
+    if (lastActiveIndex >= 0) {
+      updateHighlight(lastActiveIndex);
+    }
   }
 
   // ── 字幕列表点击事件 ──

@@ -291,9 +291,9 @@
           <div><div class="bn-radio-title">自动整理</div><div class="bn-radio-desc">调用 DeepSeek</div></div>
         </label>
         <div class="bn-setting-label">提示词管理</div>
-        <div class="bn-prompt-toggle" data-prompt="noimg">▸ 手动 · 无截图</div>
-        <div class="bn-prompt-toggle" data-prompt="img">▸ 手动 · 有截图</div>
-        <div class="bn-prompt-toggle" data-prompt="ds">▸ 自动 · DeepSeek</div>
+        <div class="bn-prompt-toggle" data-prompt="noimg">▸ 手动无截图</div>
+        <div class="bn-prompt-toggle" data-prompt="img">▸ 手动有截图</div>
+        <div class="bn-prompt-toggle" data-prompt="ds">▸ deepseek自动</div>
         <div class="bn-setting-label">字体大小</div>
         <div class="bn-chip-group" data-setting="fontSize">
           <input type="radio" name="bn-fontSize" id="bn-fs-s" value="small"><label for="bn-fs-s">小</label>
@@ -333,7 +333,7 @@
       </div>
       <div id="bn-settings-editor" style="display:none">
         <div class="bn-editor-title">提示词管理</div>
-        <div class="bn-prompt-toggle bn-editor-back" id="bn-editor-back">▾ 手动 · 无截图</div>
+        <div class="bn-prompt-toggle bn-editor-back" id="bn-editor-back">▾ 手动无截图</div>
         <textarea class="bn-prompt-textarea" id="bn-editor-textarea"></textarea>
         <div class="bn-doc-actions">
           <button id="bn-editor-save" class="bn-btn-primary">保存</button>
@@ -418,9 +418,9 @@
 
     // 提示词管理 - 全屏编辑模式
     const PROMPT_MAP = {
-      noimg: { key: 'promptNoImage', default: DEFAULT_PROMPT_NO_IMAGE, label: '手动 · 无截图' },
-      img:   { key: 'promptWithImage', default: DEFAULT_PROMPT_WITH_IMAGE, label: '手动 · 有截图' },
-      ds:    { key: 'deepseekPrompt', default: DEFAULT_DEEPSEEK_PROMPT, label: '自动 · DeepSeek' },
+      noimg: { key: 'promptNoImage', default: DEFAULT_PROMPT_NO_IMAGE, label: '手动无截图' },
+      img:   { key: 'promptWithImage', default: DEFAULT_PROMPT_WITH_IMAGE, label: '手动有截图' },
+      ds:    { key: 'deepseekPrompt', default: DEFAULT_DEEPSEEK_PROMPT, label: 'deepseek自动' },
     };
     let editingType = null;
 
