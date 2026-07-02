@@ -683,6 +683,9 @@
             ? window.BiViNote.exportUtil.buildMarkdown(s)
             : buildExportMarkdown();
           const prompt = s.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
+          console.log('[BiViNote] buildMarkdown output:', md);
+          console.log('[BiViNote] screenshots count:', s.screenshots.size);
+          console.log('[BiViNote] screenshots keys:', [...s.screenshots.keys()]);
           ds.sendMarkdown(md, prompt);
         }
       });
