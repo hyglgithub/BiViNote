@@ -597,6 +597,30 @@
   background: var(--bn-tab-active);
 }
 
+/* About 区域 */
+.bn-about {
+  text-align: center;
+  padding: 12px 0 8px;
+}
+.bn-about-divider {
+  height: 1px;
+  background: var(--bn-border);
+  margin: 0 12px 12px;
+}
+.bn-about-version {
+  font-size: 0.9em;
+  color: var(--bn-text);
+  margin-bottom: 4px;
+}
+.bn-about-link {
+  font-size: 0.85em;
+  color: var(--bn-link, #4fc3f7);
+  text-decoration: none;
+}
+.bn-about-link:hover {
+  text-decoration: underline;
+}
+
 /* Toast 提示 */
 .bn-toast {
   position: fixed;

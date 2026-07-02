@@ -162,6 +162,10 @@
     // 设置页事件绑定
     bindSettingEvents();
 
+    // 填充版本号
+    const versionEl = document.getElementById('bn-version');
+    if (versionEl) versionEl.textContent = 'v' + chrome.runtime.getManifest().version;
+
     // 应用字体和行高设置
     applyDisplaySettings();
   }
@@ -330,6 +334,11 @@
           <label class="bn-switch-track" for="bn-pause-preview"></label>
         </div>
         <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
+        <div class="bn-about">
+          <div class="bn-about-divider"></div>
+          <div class="bn-about-version">BiViNote <span id="bn-version"></span></div>
+          <a class="bn-about-link" href="https://github.com/hyglgithub/BiViNote/releases" target="_blank">GitHub Releases ↗</a>
+        </div>
       </div>
       <div id="bn-settings-editor" style="display:none">
         <div class="bn-editor-title">提示词管理</div>
