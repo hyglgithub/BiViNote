@@ -358,16 +358,14 @@
     @media (max-width: 768px) {
       .hero-inner {
         flex-direction: column;
-        text-align: center;
       }
-      .hero-title { font-size: 32px; }
+      .hero-title { font-size: 28px; }
       .hero-subtitle { font-size: 16px; }
-      .hero-buttons { justify-content: center; flex-wrap: wrap; }
+      .hero-buttons { flex-direction: column; }
+      .btn { width: 100%; text-align: center; }
       .hero-video { max-width: 100%; }
-      .btn { width: 100%; max-width: 280px; text-align: center; }
       .features-inner { grid-template-columns: repeat(2, 1fr); }
       .section-title { font-size: 24px; }
-      .carousel-slide { padding: 20px; }
       .step { flex-direction: column; gap: 12px; }
       .footer-inner { flex-direction: column; gap: 12px; text-align: center; }
       .footer-right { justify-content: center; }
