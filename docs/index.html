@@ -62,32 +62,48 @@
 
     /* Hero 区 */
     #hero {
-      padding: 120px 24px 80px;
-      text-align: center;
+      padding: 100px 24px 60px;
       background: linear-gradient(180deg, #f8fbff 0%, #fff 100%);
     }
     .hero-inner {
-      max-width: 800px;
+      max-width: 1200px;
       margin: 0 auto;
+      display: flex;
+      gap: 40px;
+      align-items: center;
+    }
+    .hero-content {
+      flex: 1;
+    }
+    .hero-video {
+      flex: 1;
+      max-width: 560px;
+    }
+    .hero-video .video-wrapper {
+      max-width: none;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+    .hero-video .video-wrapper iframe {
+      width: 100%;
+      height: 315px;
+      display: block;
     }
     .hero-title {
-      font-size: 48px;
+      font-size: 42px;
       font-weight: 700;
       line-height: 1.3;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .hero-title span { display: block; }
     .hero-subtitle {
-      font-size: 20px;
+      font-size: 18px;
       color: #666;
-      margin-bottom: 32px;
+      margin-bottom: 24px;
       line-height: 1.8;
     }
     .hero-buttons {
       display: flex;
-      gap: 16px;
-      justify-content: center;
-      margin-bottom: 60px;
+      gap: 12px;
     }
     .btn {
       display: inline-block;
@@ -119,7 +135,13 @@
     }
 
     /* 功能卡片 */
-    .hero-features {
+    #features {
+      padding: 40px 24px;
+      background: #fff;
+    }
+    .features-inner {
+      max-width: 1200px;
+      margin: 0 auto;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 20px;
@@ -334,11 +356,16 @@
 
     /* 响应式 */
     @media (max-width: 768px) {
+      .hero-inner {
+        flex-direction: column;
+        text-align: center;
+      }
       .hero-title { font-size: 32px; }
       .hero-subtitle { font-size: 16px; }
-      .hero-buttons { flex-direction: column; align-items: center; }
+      .hero-buttons { justify-content: center; flex-wrap: wrap; }
+      .hero-video { max-width: 100%; }
       .btn { width: 100%; max-width: 280px; text-align: center; }
-      .hero-features { grid-template-columns: repeat(2, 1fr); }
+      .features-inner { grid-template-columns: repeat(2, 1fr); }
       .section-title { font-size: 24px; }
       .carousel-slide { padding: 20px; }
       .step { flex-direction: column; gap: 12px; }
@@ -365,43 +392,54 @@
   <!-- Hero 区 -->
   <section id="hero">
     <div class="hero-inner">
-      <h1 class="hero-title">
-        <span>看 B 站视频</span>
-        <span>还在手抄笔记？</span>
-      </h1>
-      <p class="hero-subtitle">
-        一键抓取字幕 + 截图<br>
-        自动整理，30 秒搞定！
-      </p>
-      <div class="hero-buttons">
-        <a href="https://github.com/hyglgithub/BiViNote/releases" target="_blank" class="btn btn-primary">
-          📦 GitHub 下载
-        </a>
-        <a href="https://wwbna.lanzouv.com/igplK3u1ibgf" target="_blank" class="btn btn-secondary">
-          ☁️ 蓝奏云下载
-        </a>
+      <div class="hero-content">
+        <h1 class="hero-title">
+          <span>看 B 站视频</span>
+          <span>还在手抄笔记？</span>
+        </h1>
+        <p class="hero-subtitle">
+          一键抓取字幕 + 截图<br>
+          自动整理，30 秒搞定！
+        </p>
+        <div class="hero-buttons">
+          <a href="https://github.com/hyglgithub/BiViNote/releases" target="_blank" class="btn btn-primary">
+            📦 GitHub 下载
+          </a>
+          <a href="https://wwbna.lanzouv.com/igplK3u1ibgf" target="_blank" class="btn btn-secondary">
+            ☁️ 蓝奏云下载
+          </a>
+        </div>
       </div>
-      <div class="hero-features">
-        <div class="feature-card">
-          <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>
-          <div class="feature-name">抓取字幕</div>
-          <div class="feature-desc">中英多语言，逐句精准同步</div>
+      <div class="hero-video">
+        <div class="video-wrapper">
+          <iframe src="//player.bilibili.com/player.html?bvid=BV18HTj6mEPP&page=1" style="border:none" scrolling="no" allowfullscreen></iframe>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></div>
-          <div class="feature-name">智能截图</div>
-          <div class="feature-desc">逐帧微调，裁剪翻转一站搞定</div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path><circle cx="12" cy="16" r="1"></circle></svg></div>
-          <div class="feature-name">自动整理</div>
-          <div class="feature-desc">AI 去口语化，秒变结构化笔记</div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
-          <div class="feature-name">一键导出</div>
-          <div class="feature-desc">Markdown + 截图打包，即用即走</div>
-        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 功能卡片区 -->
+  <section id="features">
+    <div class="features-inner">
+      <div class="feature-card">
+        <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>
+        <div class="feature-name">抓取字幕</div>
+        <div class="feature-desc">中英多语言，逐句精准同步</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></div>
+        <div class="feature-name">智能截图</div>
+        <div class="feature-desc">逐帧微调，裁剪翻转一站搞定</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path><circle cx="12" cy="16" r="1"></circle></svg></div>
+        <div class="feature-name">自动整理</div>
+        <div class="feature-desc">AI 去口语化，秒变结构化笔记</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+        <div class="feature-name">一键导出</div>
+        <div class="feature-desc">Markdown + 截图打包，即用即走</div>
       </div>
     </div>
   </section>
