@@ -326,6 +326,20 @@
       color: #666;
     }
     .footer-right a:hover { color: #00A1D6; }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .hero-title { font-size: 32px; }
+      .hero-subtitle { font-size: 16px; }
+      .hero-buttons { flex-direction: column; align-items: center; }
+      .btn { width: 100%; max-width: 280px; text-align: center; }
+      .hero-features { grid-template-columns: repeat(2, 1fr); }
+      .section-title { font-size: 24px; }
+      .carousel-slide { padding: 20px; }
+      .step { flex-direction: column; gap: 12px; }
+      .footer-inner { flex-direction: column; gap: 12px; text-align: center; }
+      .footer-right { justify-content: center; }
+    }
   </style>
 </head>
 <body>
