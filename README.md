@@ -23,7 +23,15 @@
 
 ## 功能演示
 
-![BiViNote 功能演示](演示图片.png)
+![字幕抓取功能](./screenshots/功能演示-字幕.png)
+
+<br>
+
+![文档整理功能](./screenshots/功能演示-文档整理.png)
+
+## 使用教程
+
+📺 **视频教程**：[BiViNote 使用教程](https://www.bilibili.com/video/BV18HTj6mEPP)
 
 ## 安装方式
 
