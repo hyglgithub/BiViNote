@@ -299,6 +299,33 @@
       height: 360px;
       display: block;
     }
+
+    /* 页脚 */
+    #footer {
+      padding: 24px;
+      border-top: 1px solid #eee;
+      background: #fff;
+    }
+    .footer-inner {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer-left {
+      font-size: 14px;
+      color: #888;
+    }
+    .footer-right {
+      display: flex;
+      gap: 20px;
+    }
+    .footer-right a {
+      font-size: 14px;
+      color: #666;
+    }
+    .footer-right a:hover { color: #00A1D6; }
   </style>
 </head>
 <body>
@@ -435,8 +462,19 @@
     </div>
   </section>
 
-  <!-- 页脚占位 -->
-  <footer id="footer"></footer>
+  <!-- 页脚 -->
+  <footer id="footer">
+    <div class="footer-inner">
+      <div class="footer-left">
+        BiViNote │ MIT License │ © 2026 hyglgithub
+      </div>
+      <div class="footer-right">
+        <a href="https://github.com/hyglgithub/BiViNote" target="_blank">GitHub</a>
+        <a href="https://github.com/hyglgithub/BiViNote/releases" target="_blank">Releases</a>
+        <a href="#disclaimer">免责声明</a>
+      </div>
+    </div>
+  </footer>
 
   <script>
   // 轮播
