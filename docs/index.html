@@ -59,6 +59,96 @@
       background: #f5f5f5;
       text-decoration: none;
     }
+
+    /* Hero 区 */
+    #hero {
+      padding: 120px 24px 80px;
+      text-align: center;
+      background: linear-gradient(180deg, #f8fbff 0%, #fff 100%);
+    }
+    .hero-inner {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .hero-title {
+      font-size: 48px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 20px;
+    }
+    .hero-title span { display: block; }
+    .hero-subtitle {
+      font-size: 20px;
+      color: #666;
+      margin-bottom: 32px;
+      line-height: 1.8;
+    }
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin-bottom: 60px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #00A1D6;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0, 161, 214, 0.3);
+    }
+    .btn-primary:hover {
+      background: #0090c0;
+      text-decoration: none;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(0, 161, 214, 0.4);
+    }
+    .btn-secondary {
+      background: #fff;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+    .btn-secondary:hover {
+      background: #f5f5f5;
+      text-decoration: none;
+    }
+
+    /* 功能卡片 */
+    .hero-features {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+    .feature-card {
+      padding: 24px 16px;
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .feature-card:hover {
+      border-color: #00A1D6;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      transform: translateY(-2px);
+    }
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+    .feature-name {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .feature-desc {
+      font-size: 13px;
+      color: #888;
+    }
   </style>
 </head>
 <body>
@@ -76,8 +166,49 @@
     </div>
   </nav>
 
-  <!-- Hero 区占位 -->
-  <section id="hero"></section>
+  <!-- Hero 区 -->
+  <section id="hero">
+    <div class="hero-inner">
+      <h1 class="hero-title">
+        <span>看 B 站视频</span>
+        <span>还在手抄笔记？</span>
+      </h1>
+      <p class="hero-subtitle">
+        一键抓取字幕 + 截图<br>
+        自动整理，30 秒搞定！
+      </p>
+      <div class="hero-buttons">
+        <a href="https://github.com/hyglgithub/BiViNote/releases" target="_blank" class="btn btn-primary">
+          📦 GitHub 下载
+        </a>
+        <a href="https://wwbna.lanzouv.com/igplK3u1ibgf" target="_blank" class="btn btn-secondary">
+          ☁️ 蓝奏云下载
+        </a>
+      </div>
+      <div class="hero-features">
+        <div class="feature-card">
+          <div class="feature-icon">📝</div>
+          <div class="feature-name">抓取字幕</div>
+          <div class="feature-desc">中英多语言，逐句精准同步</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📷</div>
+          <div class="feature-name">智能截图</div>
+          <div class="feature-desc">逐帧微调，裁剪翻转一站搞定</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🤖</div>
+          <div class="feature-name">自动整理</div>
+          <div class="feature-desc">AI 去口语化，秒变结构化笔记</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📄</div>
+          <div class="feature-name">一键导出</div>
+          <div class="feature-desc">Markdown + 截图打包，即用即走</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- 功能演示区占位 -->
   <section id="demo"></section>
