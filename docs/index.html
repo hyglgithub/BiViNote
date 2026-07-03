@@ -149,6 +149,91 @@
       font-size: 13px;
       color: #888;
     }
+
+    /* 功能演示区 */
+    #demo {
+      padding: 80px 24px;
+      background: #fff;
+    }
+    .demo-inner {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .section-title {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 40px;
+    }
+
+    /* 轮播 */
+    .carousel {
+      position: relative;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #f8f9fa;
+    }
+    .carousel-track {
+      display: flex;
+      transition: transform 0.4s ease;
+    }
+    .carousel-slide {
+      min-width: 100%;
+      padding: 32px;
+    }
+    .slide-content {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .slide-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .slide-desc {
+      color: #666;
+      font-size: 14px;
+    }
+    .slide-img {
+      width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .carousel-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.4);
+      color: #fff;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .carousel-arrow:hover { background: rgba(0, 0, 0, 0.6); }
+    .carousel-prev { left: 12px; }
+    .carousel-next { right: 12px; }
+    .carousel-dots {
+      text-align: center;
+      padding: 16px 0;
+    }
+    .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background: #ddd;
+      border-radius: 50%;
+      margin: 0 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .dot.active { background: #00A1D6; }
   </style>
 </head>
 <body>
@@ -210,14 +295,66 @@
     </div>
   </section>
 
-  <!-- 功能演示区占位 -->
-  <section id="demo"></section>
+  <!-- 功能演示区 -->
+  <section id="demo">
+    <div class="demo-inner">
+      <h2 class="section-title">功能演示</h2>
+      <div class="carousel">
+        <div class="carousel-track" id="carouselTrack">
+          <div class="carousel-slide">
+            <div class="slide-content">
+              <h3 class="slide-title">📝 字幕抓取 & 截图标注</h3>
+              <p class="slide-desc">自动获取 B 站视频字幕，点击即可为任意字幕添加视频帧截图，支持逐帧微调和裁剪</p>
+            </div>
+            <img src="../screenshots/demo-subtitle.png" alt="字幕抓取演示" class="slide-img">
+          </div>
+          <div class="carousel-slide">
+            <div class="slide-content">
+              <h3 class="slide-title">🤖 AI 文档整理</h3>
+              <p class="slide-desc">接入 DeepSeek，自动清理口语化内容、修正错别字，保留截图标记，流式输出整理结果</p>
+            </div>
+            <img src="../screenshots/demo-doc-organize.png" alt="AI文档整理演示" class="slide-img">
+          </div>
+        </div>
+        <button class="carousel-arrow carousel-prev" onclick="moveCarousel(-1)">&#8249;</button>
+        <button class="carousel-arrow carousel-next" onclick="moveCarousel(1)">&#8250;</button>
+        <div class="carousel-dots">
+          <span class="dot active" onclick="goToSlide(0)"></span>
+          <span class="dot" onclick="goToSlide(1)"></span>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- 使用教程区占位 -->
   <section id="tutorial"></section>
 
   <!-- 页脚占位 -->
   <footer id="footer"></footer>
+
+  <script>
+  // 轮播
+  let currentSlide = 0;
+  const totalSlides = 2;
+
+  function moveCarousel(direction) {
+    currentSlide = (currentSlide + direction + totalSlides) % totalSlides;
+    updateCarousel();
+  }
+
+  function goToSlide(index) {
+    currentSlide = index;
+    updateCarousel();
+  }
+
+  function updateCarousel() {
+    const track = document.getElementById('carouselTrack');
+    track.style.transform = `translateX(-${currentSlide * 100}%)`;
+    document.querySelectorAll('.dot').forEach((dot, i) => {
+      dot.classList.toggle('active', i === currentSlide);
+    });
+  }
+  </script>
 
 </body>
 </html>
