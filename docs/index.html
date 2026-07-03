@@ -234,6 +234,71 @@
       transition: background 0.2s;
     }
     .dot.active { background: #00A1D6; }
+
+    /* 使用教程区 */
+    #tutorial {
+      padding: 80px 24px;
+      background: #f8fbff;
+    }
+    .tutorial-inner {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .steps {
+      margin-bottom: 48px;
+    }
+    .step {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border: 1px solid #eee;
+    }
+    .step-num {
+      width: 36px;
+      height: 36px;
+      background: #00A1D6;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .step-title {
+      font-weight: 600;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    .step-desc {
+      font-size: 14px;
+      color: #666;
+    }
+    .video-section {
+      text-align: center;
+    }
+    .video-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .video-wrapper {
+      max-width: 640px;
+      margin: 0 auto;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+    .video-wrapper iframe {
+      width: 100%;
+      height: 360px;
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -326,8 +391,49 @@
     </div>
   </section>
 
-  <!-- 使用教程区占位 -->
-  <section id="tutorial"></section>
+  <!-- 使用教程区 -->
+  <section id="tutorial">
+    <div class="tutorial-inner">
+      <h2 class="section-title">🚀 快速开始</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">下载安装包并解压</div>
+            <div class="step-desc">从 GitHub 或蓝奏云下载最新版本</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">打开扩展管理页</div>
+            <div class="step-desc">Chrome: chrome://extensions/ &nbsp;|&nbsp; Edge: edge://extensions/</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">开启开发者模式，加载扩展</div>
+            <div class="step-desc">点击「加载已解压的扩展程序」，选择包含 manifest.json 的目录</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">打开 B 站视频页，开始使用</div>
+            <div class="step-desc">点击浏览器工具栏上的 BiViNote 图标打开面板</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="video-section">
+        <h3 class="video-title">📺 视频教程</h3>
+        <div class="video-wrapper">
+          <iframe src="//player.bilibili.com/player.html?bvid=BV18HTj6mEPP&page=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- 页脚占位 -->
   <footer id="footer"></footer>
