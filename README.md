@@ -23,11 +23,11 @@
 
 ## 功能演示
 
-![字幕抓取功能](./screenshots/demo-subtitle.png)
+![字幕抓取功能](docs/screenshots/demo-subtitle.png)
 
 <br>
 
-![文档整理功能](./screenshots/demo-doc-organize.png)
+![文档整理功能](docs/screenshots/demo-doc-organize.png)
 
 ## 使用教程
 
