@@ -1,0 +1,40 @@
+name: Build and Release Extension
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'manifest.json'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from manifest.json
+        id: get_version
+        run: echo "VERSION=$(jq -r '.version' manifest.json)" >> $GITHUB_OUTPUT
+
+      - name: Create ZIP package
+        run: |
+          mkdir -p package
+          cp manifest.json background.js content.js package/
+          cp -r css js libs icons package/
+          cd package
+          zip -r ../bivinote-v${{ steps.get_version.outputs.VERSION }}-chrome.zip *
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: BiViNote v${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: bivinote-v${{ steps.get_version.outputs.VERSION }}-chrome.zip
