@@ -29,6 +29,14 @@ jobs:
           cd package
           zip -r ../bivinote-v${{ steps.get_version.outputs.VERSION }}-chrome.zip *
 
+      - name: Get Release Notes from CHANGELOG.md
+        id: extract_notes
+        run: |
+          NOTES=$(awk '/## \[${{ steps.get_version.outputs.VERSION }}\]/{flag=1; next} /## \[[0-9]+\.[0-9]+\.[0-9]+\]/{flag=0} flag' CHANGELOG.md)
+          echo "NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -36,5 +44,5 @@ jobs:
           name: BiViNote v${{ steps.get_version.outputs.VERSION }}
           draft: false
           prerelease: false
-          generate_release_notes: true
+          body: ${{ steps.extract_notes.outputs.NOTES }}
           files: bivinote-v${{ steps.get_version.outputs.VERSION }}-chrome.zip
