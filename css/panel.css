@@ -1057,9 +1057,80 @@
   cursor: pointer;
 }
 
-#bn-ds-continue {
+#bn-doc-continue {
   background: none; border: none; color: var(--bn-accent);
   padding: 5px 8px; font-size: 0.92em; cursor: pointer;
+}
+
+.bn-doc-status {
+  display: flex; align-items: center; gap: 8px;
+  margin: 8px 12px; font-size: 0.95em; font-weight: 600; color: var(--bn-text);
+}
+
+.bn-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 0.82em; font-weight: 500;
+}
+
+.bn-badge-warn { background: #fff3cd; color: #856404; }
+.bn-badge-ok   { background: #d4edda; color: #155724; }
+.bn-badge-info { background: #cce5ff; color: #004085; }
+.bn-badge-err  { background: #f8d7da; color: #721c24; }
+
+[data-bn-theme="dark"] .bn-badge-warn { background: #664d03; color: #ffc107; }
+[data-bn-theme="dark"] .bn-badge-ok   { background: #0f5132; color: #75b798; }
+[data-bn-theme="dark"] .bn-badge-info { background: #031633; color: #6ea8fe; }
+[data-bn-theme="dark"] .bn-badge-err  { background: #58151c; color: #ea868f; }
+
+.bn-prompt-switcher {
+  display: flex; gap: 0; margin: 0 12px 8px;
+  border: 1px solid var(--bn-border); border-radius: 4px; overflow: hidden;
+}
+
+.bn-prompt-btn {
+  flex: 1; padding: 5px 12px; font-size: 0.9em;
+  border: none; background: var(--bn-btn-bg); color: var(--bn-text);
+  cursor: pointer; transition: background 0.15s;
+}
+
+.bn-prompt-btn:not(:last-child) {
+  border-right: 1px solid var(--bn-border);
+}
+
+.bn-prompt-btn.active {
+  background: var(--bn-accent); color: #fff;
+}
+
+.bn-prompt-preview {
+  margin: 0 12px 8px; max-height: 120px; overflow-y: auto;
+  border: 1px solid var(--bn-border); border-radius: 4px;
+  background: var(--bn-card);
+}
+
+.bn-prompt-preview pre {
+  margin: 0; padding: 8px; font-size: 0.82em;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--bn-text-sub);
+}
+
+.bn-doc-thinking-title,
+.bn-doc-result-title {
+  display: block; font-size: 0.88em; font-weight: 600;
+  color: var(--bn-text-sub); margin: 8px 12px 4px;
+}
+
+#bn-doc-thinking,
+#bn-doc-result {
+  margin: 0 12px 8px; max-height: 200px; overflow-y: auto;
+  border: 1px solid var(--bn-border); border-radius: 4px;
+  background: var(--bn-card);
+}
+
+#bn-doc-thinking pre,
+#bn-doc-result pre {
+  margin: 0; padding: 8px; font-size: 0.88em;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--bn-text);
 }
 
 #bn-settings-editor {

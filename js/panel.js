@@ -209,48 +209,41 @@
 直接输出总结，不要输出任何额外说明。`;
 
   function buildDocHTML() {
-    const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
-    if (mode === 'auto') return buildDocAutoHTML();
-    return buildDocManualHTML();
-  }
-
-  function buildDocManualHTML() {
-    return `
-      <div class="bn-doc-auto">
-        <div class="bn-label">路径前缀</div>
-        <input type="text" id="bn-download-dir" class="bn-input" placeholder="例如: D:\\Notes\\Bilibili">
-        <div class="bn-hint">提示词中 {download_dir} 会替换为此值</div>
-        <div class="bn-doc-body">
-          <pre id="bn-prompt-display" class="bn-prompt-pre"></pre>
-        </div>
-        <div class="bn-doc-actions">
-          <button id="bn-prompt-copy" class="bn-btn-primary">复制提示词</button>
-        </div>
-      </div>
-    `;
+    return buildDocAutoHTML();
   }
 
   function buildDocAutoHTML() {
-    return `
-      <div class="bn-doc-auto">
-        <div class="bn-doc-header">
-          <div class="bn-doc-title">DeepSeek 文档整理</div>
-          <span id="bn-ds-status" class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>未登录</span>
-        </div>
-        <div class="bn-doc-body">
-          <pre id="bn-ds-prompt" class="bn-prompt-pre"></pre>
-          <div id="bn-ds-think" class="bn-doc-think" style="display:none"></div>
-          <div id="bn-ds-result" class="bn-result-area" style="display:none"></div>
-        </div>
-        <div class="bn-doc-actions">
-          <button id="bn-ds-action" class="bn-btn-primary">打开 DeepSeek 登录</button>
-          <button id="bn-ds-download" class="bn-btn-primary" style="display:none">下载 Markdown</button>
-          <button id="bn-ds-copy" style="display:none">复制</button>
-          <button id="bn-ds-clear" style="display:none">清除</button>
-          <button id="bn-ds-continue" style="display:none">继续询问</button>
-        </div>
-      </div>
-    `;
+    const status = window.BiViNote.deepseek?.getState?.() || 'not_logged_in';
+    const statusText = { not_logged_in: '未登录', ready: '就绪', reading: '读取中', responding: '生成中', done: '完成', error: '出错' };
+    const badgeClass = { not_logged_in: 'bn-badge-warn', ready: 'bn-badge-ok', reading: 'bn-badge-info', responding: 'bn-badge-info', done: 'bn-badge-ok', error: 'bn-badge-err' };
+
+    let html = `<div class="bn-doc-auto">`;
+    html += `<div class="bn-doc-status">DeepSeek 文档整理 <span class="bn-badge ${badgeClass[status] || 'bn-badge-warn'}">${statusText[status] || status}</span></div>`;
+    html += `<div class="bn-prompt-switcher">`;
+    html += `<button class="bn-prompt-btn active" data-prompt="ds">文档清洗</button>`;
+    html += `<button class="bn-prompt-btn" data-prompt="summary">文档总结</button>`;
+    html += `</div>`;
+    html += `<div class="bn-prompt-preview"><pre id="bn-doc-prompt-preview"></pre></div>`;
+    html += `<div id="bn-doc-actions">`;
+    if (status === 'not_logged_in') {
+      html += `<button id="bn-doc-login" class="bn-btn-primary">登录 DeepSeek</button>`;
+    } else if (status === 'ready') {
+      html += `<button id="bn-doc-start" class="bn-btn-primary">开始整理</button>`;
+    } else if (status === 'reading' || status === 'responding') {
+      html += `<button id="bn-doc-stop" class="bn-btn-primary">停止整理</button>`;
+    } else if (status === 'done') {
+      html += `<button id="bn-doc-download" class="bn-btn-primary">下载文档</button>`;
+      html += `<button id="bn-doc-restart" class="bn-btn-primary">重新整理</button>`;
+      html += `<button id="bn-doc-continue" class="bn-btn-primary">继续询问</button>`;
+    } else if (status === 'error') {
+      html += `<button id="bn-doc-retry" class="bn-btn-primary">重试</button>`;
+      html += `<button id="bn-doc-login-retry" class="bn-btn-primary">重新登录</button>`;
+    }
+    html += `</div>`;
+    html += `<div id="bn-doc-thinking"><span class="bn-doc-thinking-title">思考过程</span><pre id="bn-doc-thinking-text"></pre></div>`;
+    html += `<div id="bn-doc-result"><span class="bn-doc-result-title">整理结果</span><pre id="bn-doc-result-text"></pre></div>`;
+    html += `</div>`;
+    return html;
   }
 
   // ── 设置页 HTML ──
@@ -260,15 +253,6 @@
       <div id="bn-settings-main">
         <div class="bn-setting-label">字幕语言</div>
         <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
-        <div class="bn-setting-label">文档整理方式</div>
-        <label class="bn-radio-line">
-          <input type="radio" name="bn-docMode" id="bn-dm-manual" value="manual" checked>
-          <div><div class="bn-radio-title">手动整理</div><div class="bn-radio-desc">复制提示词，自行处理</div></div>
-        </label>
-        <label class="bn-radio-line">
-          <input type="radio" name="bn-docMode" id="bn-dm-auto" value="auto">
-          <div><div class="bn-radio-title">自动整理</div><div class="bn-radio-desc">调用 DeepSeek</div></div>
-        </label>
         <div class="bn-setting-label">提示词管理</div>
         <div class="bn-prompt-toggle" data-prompt="ds">▸ 文档清洗</div>
         <div class="bn-prompt-toggle" data-prompt="summary">▸ 文档总结</div>
@@ -385,20 +369,6 @@
       });
     }
 
-    // 文档整理模式
-    panelEl.querySelectorAll('input[name="bn-docMode"]').forEach(r => {
-      r.addEventListener('change', () => {
-        window.BiViNote.state.settings.docOrganizeMode = r.value;
-        window.BiViNote.settings.save();
-        // 重新构建文档整理页
-        const docView = views['doc'];
-        if (docView) {
-          docView.innerHTML = buildDocHTML();
-          bindDocEvents();
-        }
-      });
-    });
-
     // 提示词管理 - 全屏编辑模式
     const PROMPT_MAP = {
       ds:      { key: 'deepseekPrompt', default: DEFAULT_DEEPSEEK_PROMPT, label: '文档清洗' },
@@ -510,103 +480,87 @@
   // ── 文档整理页事件 ──
 
   function bindDocEvents() {
-    const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
-    if (mode === 'auto') bindDocAutoEvents();
-    else bindDocManualEvents();
-  }
-
-  function bindDocManualEvents() {
-    const s = window.BiViNote.state.settings;
-
-    const dirInput = panelEl.querySelector('#bn-download-dir');
-    if (dirInput) {
-      dirInput.value = s.downloadDir || '';
-      dirInput.addEventListener('change', () => {
-        s.downloadDir = dirInput.value.trim();
-        window.BiViNote.settings.save();
-        renderDoc();
-      });
-    }
-
-    renderDoc();
-
-    const copyBtn = panelEl.querySelector('#bn-prompt-copy');
-    if (copyBtn) copyBtn.addEventListener('click', () => {
-      const displayEl = panelEl.querySelector('#bn-prompt-display');
-      if (displayEl) navigator.clipboard.writeText(displayEl.textContent).then(() => showToast('已复制提示词'));
-    });
+    bindDocAutoEvents();
   }
 
   function bindDocAutoEvents() {
     const ds = window.BiViNote.deepseek;
     if (!ds) return;
 
-    const statusEl = panelEl.querySelector('#bn-ds-status');
-    const actionBtn = panelEl.querySelector('#bn-ds-action');
-    const promptEl = panelEl.querySelector('#bn-ds-prompt');
-    const thinkEl = panelEl.querySelector('#bn-ds-think');
-    const resultEl = panelEl.querySelector('#bn-ds-result');
-    const downloadBtn = panelEl.querySelector('#bn-ds-download');
-    const copyBtn = panelEl.querySelector('#bn-ds-copy');
-    const clearBtn = panelEl.querySelector('#bn-ds-clear');
-    const continueBtn = panelEl.querySelector('#bn-ds-continue');
+    const statusBadgeEl = panelEl?.querySelector('.bn-badge');
+    const actionsEl = panelEl?.querySelector('#bn-doc-actions');
+    const promptPreviewEl = panelEl?.querySelector('#bn-doc-prompt-preview');
+    const thinkEl = panelEl?.querySelector('#bn-doc-thinking-text');
+    const resultEl = panelEl?.querySelector('#bn-doc-result-text');
+    const thinkingSection = panelEl?.querySelector('#bn-doc-thinking');
+    const resultSection = panelEl?.querySelector('#bn-doc-result');
     let savedScreenshots = null;
+    let currentPromptType = 'ds';
 
-    if (promptEl) {
+    // 提示词预览
+    if (promptPreviewEl) {
       const stored = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
-      promptEl.textContent = stored;
+      promptPreviewEl.textContent = stored;
+    }
+
+    // 提示词切换按钮
+    const promptBtns = panelEl?.querySelectorAll('.bn-prompt-btn');
+    if (promptBtns) {
+      promptBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          promptBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentPromptType = btn.dataset.prompt;
+          if (promptPreviewEl) {
+            const key = currentPromptType === 'ds' ? 'deepseekPrompt' : 'deepseekSummary';
+            const defaultPrompt = currentPromptType === 'ds' ? DEFAULT_DEEPSEEK_PROMPT : DEFAULT_DEEPSEEK_SUMMARY;
+            promptPreviewEl.textContent = window.BiViNote.state.settings[key] || defaultPrompt;
+          }
+        });
+      });
     }
 
     function updateUI(dsState) {
-      if (!statusEl) return;
-      const stateMap = {
-        'not_logged_in': { cls: 'bn-status-off', dot: 'bn-dot-red', text: '未登录', action: '打开 DeepSeek 登录' },
-        'ready': { cls: 'bn-status-ok', dot: 'bn-dot-green', text: '已登录', action: '开始整理' },
-        'reading': { cls: 'bn-status-warn', dot: 'bn-spinner', text: '读取中', action: '停止整理' },
-        'responding': { cls: 'bn-status-warn', dot: 'bn-spinner', text: '整理中', action: '停止整理' },
-        'done': { cls: 'bn-status-ok', dot: 'bn-dot-green', text: '已完成', action: null },
-        'error': { cls: 'bn-status-off', dot: 'bn-dot-red', text: '错误', action: '重试' },
-      };
-      const info = stateMap[dsState] || stateMap['not_logged_in'];
-      statusEl.className = `bn-status ${info.cls}`;
-      statusEl.innerHTML = `<span class="${info.dot}"></span>${info.text}`;
+      // 更新状态徽章
+      if (statusBadgeEl) {
+        const statusText = { not_logged_in: '未登录', ready: '就绪', reading: '读取中', responding: '生成中', done: '完成', error: '出错' };
+        const badgeClass = { not_logged_in: 'bn-badge-warn', ready: 'bn-badge-ok', reading: 'bn-badge-info', responding: 'bn-badge-info', done: 'bn-badge-ok', error: 'bn-badge-err' };
+        statusBadgeEl.className = `bn-badge ${badgeClass[dsState] || 'bn-badge-warn'}`;
+        statusBadgeEl.textContent = statusText[dsState] || dsState;
+      }
 
-      if (actionBtn) {
-        if (info.action) {
-          actionBtn.textContent = info.action;
-          actionBtn.style.display = '';
-          actionBtn.disabled = false;
-        } else {
-          actionBtn.style.display = 'none';
+      // 重新渲染按钮区域
+      if (actionsEl) {
+        let actionsHTML = '';
+        if (dsState === 'not_logged_in') {
+          actionsHTML = `<button id="bn-doc-login" class="bn-btn-primary" data-action="login">登录 DeepSeek</button>`;
+        } else if (dsState === 'ready') {
+          actionsHTML = `<button id="bn-doc-start" class="bn-btn-primary" data-action="start">开始整理</button>`;
+        } else if (dsState === 'reading' || dsState === 'responding') {
+          actionsHTML = `<button id="bn-doc-stop" class="bn-btn-primary" data-action="stop">停止整理</button>`;
+        } else if (dsState === 'done') {
+          actionsHTML = `<button id="bn-doc-download" class="bn-btn-primary" data-action="download">下载文档</button>`;
+          actionsHTML += `<button id="bn-doc-restart" class="bn-btn-primary" data-action="restart">重新整理</button>`;
+          actionsHTML += `<button id="bn-doc-continue" class="bn-btn-primary" data-action="continue">继续询问</button>`;
+        } else if (dsState === 'error') {
+          actionsHTML = `<button id="bn-doc-retry" class="bn-btn-primary" data-action="retry">重试</button>`;
+          actionsHTML += `<button id="bn-doc-login-retry" class="bn-btn-primary" data-action="login-retry">重新登录</button>`;
         }
+        actionsEl.innerHTML = actionsHTML;
       }
 
-      if (dsState === 'reading' || dsState === 'responding' || dsState === 'done') {
-        if (promptEl) promptEl.style.display = 'none';
-      } else {
-        if (promptEl) promptEl.style.display = '';
-        if (thinkEl) thinkEl.style.display = 'none';
-        if (resultEl) resultEl.style.display = 'none';
-      }
-
+      // 思考/结果区域显隐
       if (dsState === 'reading') {
-        if (thinkEl) { thinkEl.style.display = ''; thinkEl.textContent = ''; }
-        if (resultEl) { resultEl.style.display = 'none'; resultEl.textContent = ''; }
+        if (thinkingSection) thinkingSection.style.display = '';
+        if (thinkEl) thinkEl.textContent = '';
+        if (resultSection) resultSection.style.display = 'none';
+        if (resultEl) resultEl.textContent = '';
       } else if (dsState === 'responding' || dsState === 'done') {
-        if (thinkEl) thinkEl.style.display = 'none';
-        if (resultEl) resultEl.style.display = '';
-      }
-
-      if (dsState === 'done') {
-        if (downloadBtn) downloadBtn.style.display = '';
-        if (copyBtn) copyBtn.style.display = '';
-        if (clearBtn) clearBtn.style.display = '';
-        if (continueBtn) continueBtn.style.display = '';
+        if (thinkingSection) thinkingSection.style.display = 'none';
+        if (resultSection) resultSection.style.display = '';
       } else {
-        if (downloadBtn) downloadBtn.style.display = 'none';
-        if (copyBtn) copyBtn.style.display = 'none';
-        if (clearBtn) clearBtn.style.display = 'none';
-        if (continueBtn) continueBtn.style.display = 'none';
+        if (thinkingSection) thinkingSection.style.display = 'none';
+        if (resultSection) resultSection.style.display = 'none';
       }
     }
 
@@ -616,27 +570,31 @@
     // 自动滚动：离开底部暂停，回到底部恢复
     let autoScroll = true;
     const isAtBottom = (el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 5;
-    if (thinkEl) {
-      thinkEl.addEventListener('scroll', () => { autoScroll = isAtBottom(thinkEl); }, { passive: true });
+    if (thinkingSection) {
+      thinkingSection.addEventListener('scroll', () => { autoScroll = isAtBottom(thinkingSection); }, { passive: true });
     }
-    if (resultEl) {
-      resultEl.addEventListener('scroll', () => { autoScroll = isAtBottom(resultEl); }, { passive: true });
+    if (resultSection) {
+      resultSection.addEventListener('scroll', () => { autoScroll = isAtBottom(resultSection); }, { passive: true });
     }
 
     ds.onChunk((chunk) => {
       if (chunk.type === 'think' && thinkEl) {
         thinkEl.textContent += chunk.text;
-        if (autoScroll) thinkEl.scrollTop = thinkEl.scrollHeight;
+        if (autoScroll && thinkingSection) thinkingSection.scrollTop = thinkingSection.scrollHeight;
       } else if (chunk.type === 'response' && resultEl) {
         resultEl.textContent += chunk.text;
-        if (autoScroll) resultEl.scrollTop = resultEl.scrollHeight;
+        if (autoScroll && resultSection) resultSection.scrollTop = resultSection.scrollHeight;
       }
     });
 
-    if (actionBtn) {
-      actionBtn.addEventListener('click', () => {
-        const currentState = ds.getState();
-        if (currentState === 'not_logged_in') {
+    // 按钮事件委托
+    if (actionsEl) {
+      actionsEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+
+        if (action === 'login' || action === 'login-retry') {
           ds.openLogin();
           let attempts = 0;
           const poll = setInterval(async () => {
@@ -644,82 +602,65 @@
             await ds.checkLogin();
             if (ds.getState() === 'ready' || attempts >= 15) clearInterval(poll);
           }, 2000);
-        } else if (currentState === 'reading' || currentState === 'responding') {
-          ds.abort();
-          if (thinkEl) thinkEl.textContent = '';
-          if (resultEl) resultEl.textContent = '';
-        } else if (currentState === 'ready' || currentState === 'error') {
+        } else if (action === 'start' || action === 'retry') {
           autoScroll = true;
-          // 快照当前截图，防止整理过程中用户调整图片
           const s = window.BiViNote.state;
           savedScreenshots = s.screenshots ? new Map(s.screenshots) : null;
           const md = window.BiViNote.exportUtil
             ? window.BiViNote.exportUtil.buildMarkdown(s)
             : buildExportMarkdown();
-          const prompt = s.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
+          const promptKey = currentPromptType === 'ds' ? 'deepseekPrompt' : 'deepseekSummary';
+          const defaultPrompt = currentPromptType === 'ds' ? DEFAULT_DEEPSEEK_PROMPT : DEFAULT_DEEPSEEK_SUMMARY;
+          const prompt = s.settings[promptKey] || defaultPrompt;
           ds.sendMarkdown(md, prompt);
+        } else if (action === 'stop') {
+          ds.abort();
+          if (thinkEl) thinkEl.textContent = '';
+          if (resultEl) resultEl.textContent = '';
+        } else if (action === 'download') {
+          downloadResult(ds, savedScreenshots);
+        } else if (action === 'restart') {
+          ds.clear();
+          savedScreenshots = null;
+          if (thinkEl) thinkEl.textContent = '';
+          if (resultEl) resultEl.textContent = '';
+        } else if (action === 'continue') {
+          const chatId = ds.getChatId();
+          const url = chatId ? `https://chat.deepseek.com/a/chat/s/${chatId}` : 'https://chat.deepseek.com';
+          chrome.runtime.sendMessage({ type: 'ds-open-chat', url });
         }
       });
     }
+  }
 
-    if (downloadBtn) {
-      downloadBtn.addEventListener('click', async () => {
-        const result = ds.getResult();
-        if (!result.response) return;
-        const shots = savedScreenshots;
-        const hasScreenshots = shots && shots.size > 0;
-        if (hasScreenshots && typeof JSZip !== 'undefined') {
-          const zip = new JSZip();
-          zip.file('note.md', result.response);
-          for (const [index, { blob, timeCode }] of shots) {
-            const tc = timeCode || '0000';
-            zip.file(`assets/${tc}.png`, blob);
-          }
-          const zipBlob = await zip.generateAsync({ type: 'blob' });
-          const url = URL.createObjectURL(zipBlob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = extractFilename(result.response).replace(/\.md$/, '.zip');
-          a.click();
-          URL.revokeObjectURL(url);
-        } else {
-          const blob = new Blob([result.response], { type: 'text/markdown;charset=utf-8' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = extractFilename(result.response);
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-      });
+  async function downloadResult(ds, savedScreenshots) {
+    const result = ds.getResult();
+    if (!result.response) return;
+    const shots = savedScreenshots;
+    const hasScreenshots = shots && shots.size > 0;
+    if (hasScreenshots && typeof JSZip !== 'undefined') {
+      const zip = new JSZip();
+      zip.file('note.md', result.response);
+      for (const [index, { blob, timeCode }] of shots) {
+        const tc = timeCode || '0000';
+        zip.file(`assets/${tc}.png`, blob);
+      }
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = extractFilename(result.response).replace(/\.md$/, '.zip');
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const blob = new Blob([result.response], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = extractFilename(result.response);
+      a.click();
+      URL.revokeObjectURL(url);
     }
-
-    if (copyBtn) {
-      copyBtn.addEventListener('click', () => {
-        const result = ds.getResult();
-        if (result.response) navigator.clipboard.writeText(result.response).then(() => showToast('已复制'));
-      });
-    }
-
-    if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
-        ds.clear();
-        savedScreenshots = null;
-        if (thinkEl) thinkEl.textContent = '';
-        if (resultEl) resultEl.textContent = '';
-      });
-    }
-
-    // 继续询问：跳转到 DeepSeek 会话页面
-    if (continueBtn) {
-      continueBtn.addEventListener('click', () => {
-        const chatId = ds.getChatId();
-        const url = chatId ? `https://chat.deepseek.com/a/chat/s/${chatId}` : 'https://chat.deepseek.com';
-        chrome.runtime.sendMessage({ type: 'ds-open-chat', url });
-      });
-    }
-
-    // 登录检测延迟到用户点击文档整理标签时触发（见 switchTab）
   }
 
   function extractFilename(text) {
@@ -759,25 +700,14 @@
   function resetDocAuto() {
     const ds = window.BiViNote.deepseek;
     if (ds) ds.abort();
-    const thinkEl = panelEl?.querySelector('#bn-ds-think');
-    const resultEl = panelEl?.querySelector('#bn-ds-result');
+    const thinkEl = panelEl?.querySelector('#bn-doc-thinking-text');
+    const resultEl = panelEl?.querySelector('#bn-doc-result-text');
     if (thinkEl) thinkEl.textContent = '';
     if (resultEl) resultEl.textContent = '';
   }
 
   function renderDoc() {
-    const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
-    if (mode === 'auto') return;
-
-    const stored = window.BiViNote.state.settings.deepseekPrompt;
-    const template = stored || DEFAULT_DEEPSEEK_PROMPT;
-
-    const displayEl = panelEl.querySelector('#bn-prompt-display');
-    if (displayEl) {
-      displayEl.textContent = template
-        .replace(/\{download_dir\}/g, window.BiViNote.state.settings.downloadDir || '{download_dir}')
-        .replace(/\{title\}/g, window.BiViNote.state.title || '{title}');
-    }
+    // No-op: manual mode removed, auto mode handles its own rendering
   }
 
   // ── 加载设置到 UI ──
@@ -791,7 +721,6 @@
     setRadio('bn-fontSize', s.fontSize);
     setRadio('bn-lineHeight', s.lineHeight);
     setRadio('bn-frameStep', String(s.frameStep));
-    setRadio('bn-docMode', s.docOrganizeMode || 'manual');
 
     const autoScrollEl = panelEl.querySelector('#bn-auto-scroll');
     if (autoScrollEl) autoScrollEl.checked = s.autoScroll;
@@ -833,7 +762,7 @@
     footerEl.classList.toggle('bn-show', tabDef?.footer || false);
 
     // 点击文档整理标签时检测 DeepSeek 登录状态（仅空闲时检测）
-    if (tabId === 'doc' && s.settings.docOrganizeMode === 'auto') {
+    if (tabId === 'doc') {
       const ds = window.BiViNote.deepseek;
       const st = ds?.getState?.();
       if (ds?.checkLogin && (st === 'not_logged_in' || st === 'ready')) {
