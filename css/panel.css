@@ -960,10 +960,90 @@
 
 /* ── 文档整理 ── */
 
+.bn-doc-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 8px 12px 8px;
+}
+
 .bn-doc-auto {
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+.bn-doc-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.bn-doc-body .bn-prompt-pre,
+.bn-doc-body .bn-doc-think,
+.bn-doc-body .bn-result-area {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.bn-prompt-pre {
+  width: calc(100% - 24px);
+  margin: 0 12px 12px;
+  padding: 8px;
+  font-size: 0.85em;
+  background: var(--bn-header-bg);
+  border: 1px solid var(--bn-btn-border);
+  border-radius: 3px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: monospace;
+  line-height: var(--bn-line-height);
+  user-select: text;
+  color: var(--bn-text);
+}
+
+.bn-doc-title {
+  font-size: 1em; font-weight: 600; color: var(--bn-text);
+}
+
+/* 状态指示器 */
+.bn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88em;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.bn-status-off { color: var(--bn-text-sub); }
+.bn-status-ok { color: #28a745; }
+.bn-status-warn { color: #ffc107; }
+
+.bn-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.bn-dot-red { background: #dc3545; }
+.bn-dot-green { background: #28a745; }
+
+.bn-spinner {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--bn-text-sub);
+  border-top-color: var(--bn-accent);
+  border-radius: 50%;
+  animation: bn-spin 0.8s linear infinite;
+}
+
+@keyframes bn-spin {
+  to { transform: rotate(360deg); }
 }
 
 .bn-doc-actions {
@@ -979,7 +1059,7 @@
   cursor: pointer;
 }
 
-#bn-doc-continue {
+#bn-ds-continue {
   background: none; border: none; color: var(--bn-accent);
   padding: 5px 8px; font-size: 0.92em; cursor: pointer;
 }

@@ -107,7 +107,7 @@
     panelEl.addEventListener('wheel', (e) => {
       const el = e.target;
       // 找到最近的可滚动祖先
-      const scrollable = el.closest('.bn-scroll, #bn-doc-thinking, #bn-doc-result, .bn-prompt-textarea, .bn-prompt-preview, .bn-sub-list, textarea, [style*="overflow"]');
+      const scrollable = el.closest('.bn-scroll, .bn-result-area, .bn-doc-think, .bn-prompt-textarea, .bn-prompt-pre, .bn-sub-list, textarea, [style*="overflow"]');
       if (scrollable) {
         const { scrollTop, scrollHeight, clientHeight } = scrollable;
         const atTop = scrollTop <= 0 && e.deltaY < 0;
@@ -213,37 +213,30 @@
   }
 
   function buildDocAutoHTML() {
-    const status = window.BiViNote.deepseek?.getState?.() || 'not_logged_in';
-    const statusText = { not_logged_in: '未登录', ready: '就绪', reading: '读取中', responding: '生成中', done: '完成', error: '出错' };
-    const badgeClass = { not_logged_in: 'bn-badge-warn', ready: 'bn-badge-ok', reading: 'bn-badge-info', responding: 'bn-badge-info', done: 'bn-badge-ok', error: 'bn-badge-err' };
-
-    let html = `<div class="bn-doc-auto">`;
-    html += `<div class="bn-doc-status">DeepSeek 文档整理 <span class="bn-badge ${badgeClass[status] || 'bn-badge-warn'}">${statusText[status] || status}</span></div>`;
-    html += `<div class="bn-prompt-switcher">`;
-    html += `<button class="bn-prompt-btn active" data-prompt="ds">文档清洗</button>`;
-    html += `<button class="bn-prompt-btn" data-prompt="summary">文档总结</button>`;
-    html += `</div>`;
-    html += `<div class="bn-prompt-preview"><pre id="bn-doc-prompt-preview"></pre></div>`;
-    html += `<div id="bn-doc-actions">`;
-    if (status === 'not_logged_in') {
-      html += `<button id="bn-doc-login" class="bn-btn-primary">登录 DeepSeek</button>`;
-    } else if (status === 'ready') {
-      html += `<button id="bn-doc-start" class="bn-btn-primary">开始整理</button>`;
-    } else if (status === 'reading' || status === 'responding') {
-      html += `<button id="bn-doc-stop" class="bn-btn-primary">停止整理</button>`;
-    } else if (status === 'done') {
-      html += `<button id="bn-doc-download" class="bn-btn-primary">下载文档</button>`;
-      html += `<button id="bn-doc-restart" class="bn-btn-primary">重新整理</button>`;
-      html += `<button id="bn-doc-continue" class="bn-btn-primary">继续询问</button>`;
-    } else if (status === 'error') {
-      html += `<button id="bn-doc-retry" class="bn-btn-primary">重试</button>`;
-      html += `<button id="bn-doc-login-retry" class="bn-btn-primary">重新登录</button>`;
-    }
-    html += `</div>`;
-    html += `<div id="bn-doc-thinking"><span class="bn-doc-thinking-title">思考过程</span><pre id="bn-doc-thinking-text"></pre></div>`;
-    html += `<div id="bn-doc-result"><span class="bn-doc-result-title">整理结果</span><pre id="bn-doc-result-text"></pre></div>`;
-    html += `</div>`;
-    return html;
+    return `
+      <div class="bn-doc-auto">
+        <div class="bn-doc-header">
+          <div class="bn-doc-title">DeepSeek 文档整理</div>
+          <span id="bn-ds-status" class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>未登录</span>
+        </div>
+        <div class="bn-prompt-switcher">
+          <button class="bn-prompt-btn active" data-prompt="ds">文档清洗</button>
+          <button class="bn-prompt-btn" data-prompt="summary">文档总结</button>
+        </div>
+        <div class="bn-doc-body">
+          <pre id="bn-ds-prompt" class="bn-prompt-pre"></pre>
+          <div id="bn-ds-think" class="bn-doc-think" style="display:none"></div>
+          <div id="bn-ds-result" class="bn-result-area" style="display:none"></div>
+        </div>
+        <div class="bn-doc-actions">
+          <button id="bn-ds-action" class="bn-btn-primary">打开 DeepSeek 登录</button>
+          <button id="bn-ds-download" class="bn-btn-primary" style="display:none">下载 Markdown</button>
+          <button id="bn-ds-copy" style="display:none">复制</button>
+          <button id="bn-ds-clear" style="display:none">清除</button>
+          <button id="bn-ds-continue" style="display:none">继续询问</button>
+        </div>
+      </div>
+    `;
   }
 
   // ── 设置页 HTML ──
@@ -487,22 +480,24 @@
     const ds = window.BiViNote.deepseek;
     if (!ds) return;
 
-    const statusBadgeEl = panelEl?.querySelector('.bn-badge');
-    const actionsEl = panelEl?.querySelector('#bn-doc-actions');
-    const promptPreviewEl = panelEl?.querySelector('#bn-doc-prompt-preview');
-    const thinkEl = panelEl?.querySelector('#bn-doc-thinking-text');
-    const resultEl = panelEl?.querySelector('#bn-doc-result-text');
-    const thinkingSection = panelEl?.querySelector('#bn-doc-thinking');
-    const resultSection = panelEl?.querySelector('#bn-doc-result');
+    const statusEl = panelEl.querySelector('#bn-ds-status');
+    const actionBtn = panelEl.querySelector('#bn-ds-action');
+    const promptEl = panelEl.querySelector('#bn-ds-prompt');
+    const thinkEl = panelEl.querySelector('#bn-ds-think');
+    const resultEl = panelEl.querySelector('#bn-ds-result');
+    const downloadBtn = panelEl.querySelector('#bn-ds-download');
+    const copyBtn = panelEl.querySelector('#bn-ds-copy');
+    const clearBtn = panelEl.querySelector('#bn-ds-clear');
+    const continueBtn = panelEl.querySelector('#bn-ds-continue');
     let savedScreenshots = null;
     let currentPromptType = 'ds';
 
     // 提示词预览
     function updatePromptPreview() {
-      if (!promptPreviewEl) return;
+      if (!promptEl) return;
       const storageKey = currentPromptType === 'ds' ? 'deepseekPrompt' : 'deepseekSummary';
       const defaultPrompt = currentPromptType === 'ds' ? DEFAULT_DEEPSEEK_PROMPT : DEFAULT_DEEPSEEK_SUMMARY;
-      promptPreviewEl.textContent = window.BiViNote.state.settings[storageKey] || defaultPrompt;
+      promptEl.textContent = window.BiViNote.state.settings[storageKey] || defaultPrompt;
     }
 
     // 提示词切换按钮
@@ -521,46 +516,55 @@
     updatePromptPreview();
 
     function updateUI(dsState) {
-      // 更新状态徽章
-      if (statusBadgeEl) {
-        const statusText = { not_logged_in: '未登录', ready: '就绪', reading: '读取中', responding: '生成中', done: '完成', error: '出错' };
-        const badgeClass = { not_logged_in: 'bn-badge-warn', ready: 'bn-badge-ok', reading: 'bn-badge-info', responding: 'bn-badge-info', done: 'bn-badge-ok', error: 'bn-badge-err' };
-        statusBadgeEl.className = `bn-badge ${badgeClass[dsState] || 'bn-badge-warn'}`;
-        statusBadgeEl.textContent = statusText[dsState] || dsState;
-      }
+      if (!statusEl) return;
+      const stateMap = {
+        'not_logged_in': { cls: 'bn-status-off', dot: 'bn-dot-red', text: '未登录', action: '打开 DeepSeek 登录' },
+        'ready': { cls: 'bn-status-ok', dot: 'bn-dot-green', text: '已登录', action: '开始整理' },
+        'reading': { cls: 'bn-status-warn', dot: 'bn-spinner', text: '读取中', action: '停止整理' },
+        'responding': { cls: 'bn-status-warn', dot: 'bn-spinner', text: '整理中', action: '停止整理' },
+        'done': { cls: 'bn-status-ok', dot: 'bn-dot-green', text: '已完成', action: null },
+        'error': { cls: 'bn-status-off', dot: 'bn-dot-red', text: '错误', action: '重试' },
+      };
+      const info = stateMap[dsState] || stateMap['not_logged_in'];
+      statusEl.className = `bn-status ${info.cls}`;
+      statusEl.innerHTML = `<span class="${info.dot}"></span>${info.text}`;
 
-      // 重新渲染按钮区域
-      if (actionsEl) {
-        let actionsHTML = '';
-        if (dsState === 'not_logged_in') {
-          actionsHTML = `<button id="bn-doc-login" class="bn-btn-primary" data-action="login">登录 DeepSeek</button>`;
-        } else if (dsState === 'ready') {
-          actionsHTML = `<button id="bn-doc-start" class="bn-btn-primary" data-action="start">开始整理</button>`;
-        } else if (dsState === 'reading' || dsState === 'responding') {
-          actionsHTML = `<button id="bn-doc-stop" class="bn-btn-primary" data-action="stop">停止整理</button>`;
-        } else if (dsState === 'done') {
-          actionsHTML = `<button id="bn-doc-download" class="bn-btn-primary" data-action="download">下载文档</button>`;
-          actionsHTML += `<button id="bn-doc-restart" class="bn-btn-primary" data-action="restart">重新整理</button>`;
-          actionsHTML += `<button id="bn-doc-continue" class="bn-btn-primary" data-action="continue">继续询问</button>`;
-        } else if (dsState === 'error') {
-          actionsHTML = `<button id="bn-doc-retry" class="bn-btn-primary" data-action="retry">重试</button>`;
-          actionsHTML += `<button id="bn-doc-login-retry" class="bn-btn-primary" data-action="login-retry">重新登录</button>`;
+      if (actionBtn) {
+        if (info.action) {
+          actionBtn.textContent = info.action;
+          actionBtn.style.display = '';
+          actionBtn.disabled = false;
+        } else {
+          actionBtn.style.display = 'none';
         }
-        actionsEl.innerHTML = actionsHTML;
       }
 
-      // 思考/结果区域显隐
-      if (dsState === 'reading') {
-        if (thinkingSection) thinkingSection.style.display = '';
-        if (thinkEl) thinkEl.textContent = '';
-        if (resultSection) resultSection.style.display = 'none';
-        if (resultEl) resultEl.textContent = '';
-      } else if (dsState === 'responding' || dsState === 'done') {
-        if (thinkingSection) thinkingSection.style.display = 'none';
-        if (resultSection) resultSection.style.display = '';
+      if (dsState === 'reading' || dsState === 'responding' || dsState === 'done') {
+        if (promptEl) promptEl.style.display = 'none';
       } else {
-        if (thinkingSection) thinkingSection.style.display = 'none';
-        if (resultSection) resultSection.style.display = 'none';
+        if (promptEl) promptEl.style.display = '';
+        if (thinkEl) thinkEl.style.display = 'none';
+        if (resultEl) resultEl.style.display = 'none';
+      }
+
+      if (dsState === 'reading') {
+        if (thinkEl) { thinkEl.style.display = ''; thinkEl.textContent = ''; }
+        if (resultEl) { resultEl.style.display = 'none'; resultEl.textContent = ''; }
+      } else if (dsState === 'responding' || dsState === 'done') {
+        if (thinkEl) thinkEl.style.display = 'none';
+        if (resultEl) resultEl.style.display = '';
+      }
+
+      if (dsState === 'done') {
+        if (downloadBtn) downloadBtn.style.display = '';
+        if (copyBtn) copyBtn.style.display = '';
+        if (clearBtn) clearBtn.style.display = '';
+        if (continueBtn) continueBtn.style.display = '';
+      } else {
+        if (downloadBtn) downloadBtn.style.display = 'none';
+        if (copyBtn) copyBtn.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
+        if (continueBtn) continueBtn.style.display = 'none';
       }
     }
 
@@ -570,31 +574,27 @@
     // 自动滚动：离开底部暂停，回到底部恢复
     let autoScroll = true;
     const isAtBottom = (el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 5;
-    if (thinkingSection) {
-      thinkingSection.addEventListener('scroll', () => { autoScroll = isAtBottom(thinkingSection); }, { passive: true });
+    if (thinkEl) {
+      thinkEl.addEventListener('scroll', () => { autoScroll = isAtBottom(thinkEl); }, { passive: true });
     }
-    if (resultSection) {
-      resultSection.addEventListener('scroll', () => { autoScroll = isAtBottom(resultSection); }, { passive: true });
+    if (resultEl) {
+      resultEl.addEventListener('scroll', () => { autoScroll = isAtBottom(resultEl); }, { passive: true });
     }
 
     ds.onChunk((chunk) => {
       if (chunk.type === 'think' && thinkEl) {
         thinkEl.textContent += chunk.text;
-        if (autoScroll && thinkingSection) thinkingSection.scrollTop = thinkingSection.scrollHeight;
+        if (autoScroll) thinkEl.scrollTop = thinkEl.scrollHeight;
       } else if (chunk.type === 'response' && resultEl) {
         resultEl.textContent += chunk.text;
-        if (autoScroll && resultSection) resultSection.scrollTop = resultSection.scrollHeight;
+        if (autoScroll) resultEl.scrollTop = resultEl.scrollHeight;
       }
     });
 
-    // 按钮事件委托
-    if (actionsEl) {
-      actionsEl.addEventListener('click', (e) => {
-        const btn = e.target.closest('button[data-action]');
-        if (!btn) return;
-        const action = btn.dataset.action;
-
-        if (action === 'login' || action === 'login-retry') {
+    if (actionBtn) {
+      actionBtn.addEventListener('click', () => {
+        const currentState = ds.getState();
+        if (currentState === 'not_logged_in') {
           ds.openLogin();
           let attempts = 0;
           const poll = setInterval(async () => {
@@ -602,7 +602,11 @@
             await ds.checkLogin();
             if (ds.getState() === 'ready' || attempts >= 15) clearInterval(poll);
           }, 2000);
-        } else if (action === 'start' || action === 'retry') {
+        } else if (currentState === 'reading' || currentState === 'responding') {
+          ds.abort();
+          if (thinkEl) thinkEl.textContent = '';
+          if (resultEl) resultEl.textContent = '';
+        } else if (currentState === 'ready' || currentState === 'error') {
           autoScroll = true;
           const s = window.BiViNote.state;
           savedScreenshots = s.screenshots ? new Map(s.screenshots) : null;
@@ -613,22 +617,37 @@
           const defaultPrompt = currentPromptType === 'ds' ? DEFAULT_DEEPSEEK_PROMPT : DEFAULT_DEEPSEEK_SUMMARY;
           const prompt = s.settings[promptKey] || defaultPrompt;
           ds.sendMarkdown(md, prompt, currentPromptType === 'ds');
-        } else if (action === 'stop') {
-          ds.abort();
-          if (thinkEl) thinkEl.textContent = '';
-          if (resultEl) resultEl.textContent = '';
-        } else if (action === 'download') {
-          downloadResult(ds, savedScreenshots);
-        } else if (action === 'restart') {
-          ds.clear();
-          savedScreenshots = null;
-          if (thinkEl) thinkEl.textContent = '';
-          if (resultEl) resultEl.textContent = '';
-        } else if (action === 'continue') {
-          const chatId = ds.getChatId();
-          const url = chatId ? `https://chat.deepseek.com/a/chat/s/${chatId}` : 'https://chat.deepseek.com';
-          chrome.runtime.sendMessage({ type: 'ds-open-chat', url });
         }
+      });
+    }
+
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', async () => {
+        downloadResult(ds, savedScreenshots);
+      });
+    }
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        const result = ds.getResult();
+        if (result.response) navigator.clipboard.writeText(result.response).then(() => showToast('已复制'));
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        ds.clear();
+        savedScreenshots = null;
+        if (thinkEl) thinkEl.textContent = '';
+        if (resultEl) resultEl.textContent = '';
+      });
+    }
+
+    if (continueBtn) {
+      continueBtn.addEventListener('click', () => {
+        const chatId = ds.getChatId();
+        const url = chatId ? `https://chat.deepseek.com/a/chat/s/${chatId}` : 'https://chat.deepseek.com';
+        chrome.runtime.sendMessage({ type: 'ds-open-chat', url });
       });
     }
   }
@@ -700,8 +719,8 @@
   function resetDocAuto() {
     const ds = window.BiViNote.deepseek;
     if (ds) ds.abort();
-    const thinkEl = panelEl?.querySelector('#bn-doc-thinking-text');
-    const resultEl = panelEl?.querySelector('#bn-doc-result-text');
+    const thinkEl = panelEl?.querySelector('#bn-ds-think');
+    const resultEl = panelEl?.querySelector('#bn-ds-result');
     if (thinkEl) thinkEl.textContent = '';
     if (resultEl) resultEl.textContent = '';
   }
