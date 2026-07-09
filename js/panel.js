@@ -107,7 +107,7 @@
     panelEl.addEventListener('wheel', (e) => {
       const el = e.target;
       // 找到最近的可滚动祖先
-      const scrollable = el.closest('.bn-scroll, .bn-result-area, .bn-doc-think, .bn-prompt-textarea, .bn-prompt-pre, .bn-sub-list, textarea, [style*="overflow"]');
+      const scrollable = el.closest('.bn-scroll, #bn-doc-thinking, #bn-doc-result, .bn-prompt-textarea, .bn-prompt-preview, .bn-sub-list, textarea, [style*="overflow"]');
       if (scrollable) {
         const { scrollTop, scrollHeight, clientHeight } = scrollable;
         const atTop = scrollTop <= 0 && e.deltaY < 0;
@@ -769,17 +769,6 @@
         ds.checkLogin();
       }
     }
-  }
-
-  // ── 工具函数 ──
-
-  function formatCompactTime(seconds) {
-    const safe = Math.max(0, Math.floor(seconds || 0));
-    const h = Math.floor(safe / 3600);
-    const m = Math.floor((safe % 3600) / 60);
-    const s = safe % 60;
-    const pad = n => String(n).padStart(2, '0');
-    return h > 0 ? `${pad(h)}${pad(m)}${pad(s)}` : `${pad(m)}${pad(s)}`;
   }
 
   // ── 折叠/展开 ──
