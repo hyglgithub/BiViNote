@@ -182,24 +182,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// 非视频页禁止图标路径
-const PROHIBITED_ICON = {
-  16: 'icons/icon-16-prohibited.png',
-  32: 'icons/icon-32-prohibited.png',
-  48: 'icons/icon-48-prohibited.png',
-  128: 'icons/icon-128-prohibited.png'
-};
-
-// 扩展图标点击 → 切换面板（非视频页显示禁止图标提示）
+// 扩展图标点击 → 切换面板
 chrome.action.onClicked.addListener((tab) => {
-  if (!isVideoPage(tab.url || '')) {
-    const tabId = tab.id;
-    chrome.action.setIcon({ tabId, path: PROHIBITED_ICON }).catch(() => {});
-    setTimeout(() => {
-      updateIconForTab(tabId, tab.url);
-    }, 1500);
-    return;
-  }
   chrome.tabs.sendMessage(tab.id, { type: 'toggle-panel' }).catch(() => {});
 });
 
