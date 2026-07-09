@@ -16,11 +16,9 @@
     pauseOnPreview: true,
     subtitleLang: '',
     downloadDir: '',
-    promptNoImage: '',
-    promptWithImage: '',
     lastOpenMode: 'panel',
-    docOrganizeMode: 'auto',
-    deepseekPrompt: ''
+    deepseekPrompt: '',
+    deepseekSummary: ''
   };
 
   const DEFAULT_CHECKED = {
@@ -72,9 +70,8 @@
   function resetDefaults() {
     const s = window.BiViNote.state.settings;
     const preserved = {
-      promptNoImage: s.promptNoImage,
-      promptWithImage: s.promptWithImage,
       deepseekPrompt: s.deepseekPrompt,
+      deepseekSummary: s.deepseekSummary,
     };
     Object.assign(s, { ...DEFAULTS }, preserved);
     Object.assign(window.BiViNote.state.videoInfoChecked, { ...DEFAULT_CHECKED });
