@@ -498,9 +498,11 @@
     let currentPromptType = 'ds';
 
     // 提示词预览
-    if (promptPreviewEl) {
-      const stored = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
-      promptPreviewEl.textContent = stored;
+    function updatePromptPreview() {
+      if (!promptPreviewEl) return;
+      const storageKey = currentPromptType === 'ds' ? 'deepseekPrompt' : 'deepseekSummary';
+      const defaultPrompt = currentPromptType === 'ds' ? DEFAULT_DEEPSEEK_PROMPT : DEFAULT_DEEPSEEK_SUMMARY;
+      promptPreviewEl.textContent = window.BiViNote.state.settings[storageKey] || defaultPrompt;
     }
 
     // 提示词切换按钮
@@ -511,14 +513,12 @@
           promptBtns.forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           currentPromptType = btn.dataset.prompt;
-          if (promptPreviewEl) {
-            const key = currentPromptType === 'ds' ? 'deepseekPrompt' : 'deepseekSummary';
-            const defaultPrompt = currentPromptType === 'ds' ? DEFAULT_DEEPSEEK_PROMPT : DEFAULT_DEEPSEEK_SUMMARY;
-            promptPreviewEl.textContent = window.BiViNote.state.settings[key] || defaultPrompt;
-          }
+          updatePromptPreview();
         });
       });
     }
+
+    updatePromptPreview();
 
     function updateUI(dsState) {
       // 更新状态徽章
@@ -612,7 +612,7 @@
           const promptKey = currentPromptType === 'ds' ? 'deepseekPrompt' : 'deepseekSummary';
           const defaultPrompt = currentPromptType === 'ds' ? DEFAULT_DEEPSEEK_PROMPT : DEFAULT_DEEPSEEK_SUMMARY;
           const prompt = s.settings[promptKey] || defaultPrompt;
-          ds.sendMarkdown(md, prompt);
+          ds.sendMarkdown(md, prompt, currentPromptType === 'ds');
         } else if (action === 'stop') {
           ds.abort();
           if (thinkEl) thinkEl.textContent = '';
