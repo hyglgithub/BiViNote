@@ -1,0 +1,325 @@
+// BiViNote Options Page Script
+// 提示词管理功能
+
+const DEFAULT_PROMPTS = {
+  clear: { name: '文档清洗', prompt: `你是一个视频笔记整理助手，将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
+
+要求：
+
+1. 删除口语化内容、重复内容、无意义过渡语句，例如：好的、然后、这里呢、兄弟、就是说等。
+2. 删除所有字幕时间戳，例如 \`00:12\`、\`05:30\`。
+3. 不要逐句输出字幕，将连续字幕整理为简洁、连贯、易阅读的知识内容。
+4. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、英文大小写错误，请结合上下文修正，并统一技术术语写法。
+5. 若文档存在章节结构，严格按原始章节整理；若无章节，则按内容自然分段。
+6. 不要新增原文不存在的标题、章节或目录层级，不要改变原始内容顺序。
+7. 文档中形如 ![xxx](assets/数字.png) 的 Markdown 标记属于特殊文本块，() 内为相对资源路径且默认与前一句字幕内容关联；必须保留全部此类标记，禁止修改语法、alt 文本、路径或文件名，不得遗漏，可根据整理后的内容适当调整其在当前语义块中的位置。
+8. 保留所有技术名词、工具名、框架名、产品名，不要删除、替换或省略。
+9. 若存在 Frontmatter（文档开头 YAML），必须完整原样保留，禁止修改字段、字段值和字段顺序。
+10. 仅整理原文，禁止总结、解释、扩展原文不存在的信息或补充额外知识。
+11. 输出前必须进行一致性检查：最终文档中的图片 Markdown 数量必须与原文完全一致。若原文图片数量为 0，则输出图片数量也必须为 0，不得新增任何图片。
+
+待整理文档：
+
+{markdown}
+
+直接输出整理后的 Markdown 文档，不要输出任何额外内容。` },
+
+  summary: { name: '文档总结', prompt: `你是一个视频总结助手，请根据提供的视频字幕文档生成简洁、准确的视频总结。
+
+要求：
+1. 仅依据字幕内容进行总结，不得添加、猜测或推断原文未提及的信息。
+2. 提炼视频的核心主题、主要观点或关键内容，忽略寒暄、口头禅、广告、重复内容等无关信息。
+3. 总结长度为 3–5 句话，覆盖视频的主要内容即可，不要展开细节。
+4. 使用自然流畅、客观中立的中文表达。
+5. 输出一段连续文本，不使用标题、列表、Markdown、引号或其他格式。
+6. 如果字幕内容不完整或存在缺失，仅总结能够确定的内容，不要补充或猜测。
+
+待总结文档：
+
+{markdown}
+
+直接输出总结，不要输出任何额外说明。` }
+};
+
+// ============ 工具函数 ============
+
+function escapeHtml(text) {
+  const el = document.createElement('div');
+  el.textContent = text;
+  return el.innerHTML;
+}
+
+function truncate(text, max) {
+  return text.length > max ? text.substring(0, max) + '...' : text;
+}
+
+// ============ 加载/保存设置 ============
+
+async function loadSettings() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['bivinote_settings'], (result) => {
+      resolve(result.bivinote_settings || {});
+    });
+  });
+}
+
+async function saveSettings(patch) {
+  const settings = await loadSettings();
+  const merged = { ...settings, ...patch };
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ bivinote_settings: merged }, resolve);
+  });
+}
+
+// ============ 状态 ============
+
+let selectedCardId = null; // null = 新建模式, 'ds'|'summary'|'custom_xxx' = 编辑模式
+
+// ============ 获取所有提示词列表 ============
+
+async function getAllPrompts() {
+  const settings = await loadSettings();
+  const customPrompts = settings.customPrompts || [];
+
+  const list = [
+    { id: 'ds', name: '文档清洗', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.ds.prompt, builtin: true },
+    { id: 'summary', name: '文档总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true }
+  ];
+
+  customPrompts.forEach(p => {
+    list.push({ id: p.id, name: p.name, prompt: p.prompt, builtin: false });
+  });
+
+  return list;
+}
+
+// ============ 渲染卡片网格 ============
+
+async function renderPromptCards() {
+  const grid = document.getElementById('prompt-grid');
+  if (!grid) return;
+
+  const prompts = await getAllPrompts();
+
+  grid.innerHTML = prompts.map(p => `
+    <div class="prompt-card${selectedCardId === p.id ? ' selected' : ''}" data-id="${p.id}">
+      <div class="prompt-card-header">
+        <span class="prompt-card-name">${escapeHtml(p.name)}</span>
+        <span class="prompt-card-badge ${p.builtin ? 'builtin' : 'custom'}">${p.builtin ? '内置' : '自定义'}</span>
+        <div style="position: relative;">
+          <button class="more-btn" data-id="${p.id}" title="更多">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+          </button>
+          <div class="dropdown" data-id="${p.id}">
+            ${p.builtin ? `<button class="dropdown-item reset-btn" data-id="${p.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              重置
+            </button>` : `<button class="dropdown-item danger delete-btn" data-id="${p.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/></svg>
+              删除
+            </button>`}
+          </div>
+        </div>
+      </div>
+      <p class="prompt-card-preview">${escapeHtml(truncate(p.prompt, 80))}</p>
+    </div>
+  `).join('');
+
+  // 绑定卡片点击事件
+  grid.querySelectorAll('.prompt-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.more-btn') || e.target.closest('.dropdown')) return;
+      selectCard(card.dataset.id);
+    });
+  });
+
+  // 绑定更多按钮
+  grid.querySelectorAll('.more-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // 关闭其他下拉菜单
+      grid.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
+      btn.nextElementSibling.classList.toggle('show');
+    });
+  });
+
+  // 绑定重置按钮
+  grid.querySelectorAll('.reset-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      resetPrompt(btn.dataset.id);
+      btn.closest('.dropdown').classList.remove('show');
+    });
+  });
+
+  // 绑定删除按钮
+  grid.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteCustomPrompt(btn.dataset.id);
+      btn.closest('.dropdown').classList.remove('show');
+    });
+  });
+}
+
+// ============ 选中卡片 ============
+
+async function selectCard(id) {
+  selectedCardId = id;
+  const prompts = await getAllPrompts();
+  const p = prompts.find(item => item.id === id);
+  if (!p) return;
+
+  document.getElementById('edit-content').value = p.prompt;
+  document.getElementById('edit-name').value = p.name;
+
+  document.getElementById('edit-title').textContent = '编辑提示词';
+
+  document.getElementById('btn-cancel').classList.add('show');
+  updateSaveButton();
+
+  // 更新卡片选中状态
+  document.querySelectorAll('.prompt-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.id === id);
+  });
+}
+
+// ============ 取消选中（回到新建模式） ============
+
+function resetToCreateMode() {
+  selectedCardId = null;
+  document.getElementById('edit-content').value = '';
+  document.getElementById('edit-name').value = '';
+
+  document.getElementById('edit-title').textContent = '新建提示词';
+
+  document.getElementById('btn-cancel').classList.remove('show');
+  updateSaveButton();
+
+  document.querySelectorAll('.prompt-card').forEach(c => c.classList.remove('selected'));
+}
+
+// ============ 更新保存按钮状态 ============
+
+function updateSaveButton() {
+  const name = document.getElementById('edit-name').value.trim();
+  const content = document.getElementById('edit-content').value.trim();
+  document.getElementById('btn-save').disabled = !(name && content);
+}
+
+// ============ 保存提示词 ============
+
+async function savePrompt() {
+  const name = document.getElementById('edit-name').value.trim();
+  const content = document.getElementById('edit-content').value.trim();
+  if (!name || !content) return;
+
+  if (selectedCardId) {
+    // 编辑模式
+    if (selectedCardId === 'clear') {
+      await saveSettings({ deepseekPrompt: content });
+    } else if (selectedCardId === 'summary') {
+      await saveSettings({ deepseekSummary: content });
+    } else {
+      // 自定义提示词
+      const settings = await loadSettings();
+      const customPrompts = settings.customPrompts || [];
+      const index = customPrompts.findIndex(p => p.id === selectedCardId);
+      if (index !== -1) {
+        customPrompts[index] = { ...customPrompts[index], name, prompt: content };
+        await saveSettings({ customPrompts });
+      }
+    }
+  } else {
+    // 新建模式
+    const settings = await loadSettings();
+    const customPrompts = settings.customPrompts || [];
+    const id = 'custom_' + Date.now();
+    customPrompts.push({ id, name, prompt: content });
+    await saveSettings({ customPrompts });
+  }
+
+  await renderPromptCards();
+  resetToCreateMode();
+}
+
+// ============ 重置提示词 ============
+
+async function resetPrompt(id) {
+  if (id === 'clear') {
+    await saveSettings({ deepseekPrompt: DEFAULT_PROMPTS.ds.prompt });
+  } else if (id === 'summary') {
+    await saveSettings({ deepseekSummary: DEFAULT_PROMPTS.summary.prompt });
+  } else {
+    // 自定义提示词重置 = 删除
+    await deleteCustomPrompt(id);
+    return;
+  }
+
+  // 如果当前正在编辑这个提示词，刷新编辑区
+  if (selectedCardId === id) {
+    const prompts = await getAllPrompts();
+    const p = prompts.find(item => item.id === id);
+    if (p) {
+      document.getElementById('edit-content').value = p.prompt;
+      document.getElementById('edit-name').value = p.name;
+    }
+  }
+
+  await renderPromptCards();
+}
+
+// ============ 删除自定义提示词 ============
+
+async function deleteCustomPrompt(id) {
+  if (!confirm('确定删除此提示词？')) return;
+
+  const settings = await loadSettings();
+  const customPrompts = (settings.customPrompts || []).filter(p => p.id !== id);
+  await saveSettings({ customPrompts });
+
+  if (selectedCardId === id) {
+    resetToCreateMode();
+  }
+
+  await renderPromptCards();
+}
+
+// ============ 初始化 ============
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // 导航切换
+  const navItems = document.querySelectorAll('.nav-item');
+  const sections = document.querySelectorAll('.section');
+
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const sectionId = item.getAttribute('data-section');
+      navItems.forEach(nav => nav.classList.remove('active'));
+      sections.forEach(sec => sec.classList.remove('active'));
+      item.classList.add('active');
+      document.getElementById('section-' + sectionId).classList.add('active');
+    });
+  });
+
+  // 渲染卡片
+  await renderPromptCards();
+
+  // 输入监听
+  document.getElementById('edit-name').addEventListener('input', updateSaveButton);
+  document.getElementById('edit-content').addEventListener('input', updateSaveButton);
+
+  // 保存按钮
+  document.getElementById('btn-save').addEventListener('click', savePrompt);
+
+  // 取消按钮
+  document.getElementById('btn-cancel').addEventListener('click', resetToCreateMode);
+
+  // 点击其他地方关闭下拉菜单
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.more-btn') && !e.target.closest('.dropdown')) {
+      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
+    }
+  });
+
+});

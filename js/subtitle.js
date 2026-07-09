@@ -157,8 +157,8 @@
         window.BiViNote.chapter.render();
       }
 
-      // 更新字幕语言下拉
-      panel.updateSubtitleSelect(s.subtitles, s.selectedSubtitleUrl);
+      // 更新字幕语言下拉（仅显示可用语言列表，不传 selectedUrl）
+      panel.updateSubtitleSelect(s.subtitles, null);
 
       if (s.subtitles.length === 0) {
         s.subtitleBody = [];
@@ -199,6 +199,8 @@
       s.selectedSubtitleLang = lang || '';
       renderSubtitleList();
       startSync();
+      // 更新语言选择按钮显示
+      panel.updateSubtitleSelect(s.subtitles, s.selectedSubtitleUrl);
     } catch (err) {
       if (runId !== s.fetchRunId) return;
       console.error('[BiViNote] loadSubtitle error:', err);
@@ -410,9 +412,7 @@
     if (!scrollWrap) return;
 
     const handler = () => {
-      if (Date.now() > manualScrollPauseUntil) {
-        manualScrollPauseUntil = Date.now() + 3000;
-      }
+      manualScrollPauseUntil = Date.now() + 3000;
     };
     scrollWrap.addEventListener('wheel', handler, { passive: true });
     scrollWrap.addEventListener('touchmove', handler, { passive: true });

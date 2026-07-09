@@ -18,7 +18,8 @@
     downloadDir: '',
     lastOpenMode: 'panel',
     deepseekPrompt: '',
-    deepseekSummary: ''
+    deepseekSummary: '',
+    customPrompts: []
   };
 
   const DEFAULT_CHECKED = {
@@ -72,6 +73,7 @@
     const preserved = {
       deepseekPrompt: s.deepseekPrompt,
       deepseekSummary: s.deepseekSummary,
+      customPrompts: s.customPrompts,
     };
     Object.assign(s, { ...DEFAULTS }, preserved);
     Object.assign(window.BiViNote.state.videoInfoChecked, { ...DEFAULT_CHECKED });

@@ -10,18 +10,18 @@
   let panelEl = null;
   let mainWrapEl = null;
   let arrowEl = null;
-  let footerEl = null;
   let headerEl = null;
+  let footerEl = null;
   let collapseContainerEl = null;
   let tabs = [];
   let views = {};
 
   const TAB_DEFS = [
-    { id: 'subtitle', label: '字幕', footer: true },
-    { id: 'chapter', label: '章节', footer: false },
-    { id: 'video', label: '视频信息', footer: false },
-    { id: 'doc', label: '文档整理', footer: false },
-    { id: 'setting', label: '设置', footer: false }
+    { id: 'subtitle', label: '字幕' },
+    { id: 'chapter', label: '章节' },
+    { id: 'video', label: '视频信息' },
+    { id: 'doc', label: '文档整理' },
+    { id: 'setting', label: '设置' }
   ];
 
   // ── 创建面板 ──
@@ -89,10 +89,17 @@
 
     mainWrapEl.appendChild(scrollWrap);
 
-    // Footer
+    // 字幕页底部工具栏（在滚动容器外面，不随字幕滚动）
     footerEl = document.createElement('div');
-    footerEl.className = 'bn-footer bn-show';
+    footerEl.className = 'bn-sub-footer';
     footerEl.innerHTML = `
+      <div class="bn-lang-box">
+        <button class="bn-lang-btn" id="bn-lang-trigger">
+          <span id="bn-lang-label">暂无字幕</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="bn-lang-menu" id="bn-lang-menu"></div>
+      </div>
       <button data-action="refresh">刷新</button>
       <button data-action="copy">复制</button>
       <button data-action="export-srt">导出（.srt）</button>
@@ -156,8 +163,25 @@
     setupCollapseDrag(collapseContainerEl);
     document.body.appendChild(collapseContainerEl);
 
-    // 绑定 footer 按钮
-    footerEl.addEventListener('click', onFooterClick);
+    // 绑定字幕页底部工具栏按钮
+    const subFooter = panelEl.querySelector('.bn-sub-footer');
+    if (subFooter) {
+      subFooter.addEventListener('click', onFooterClick);
+    }
+
+    // 语言切换下拉菜单
+    const langTrigger = panelEl.querySelector('#bn-lang-trigger');
+    const langMenu = panelEl.querySelector('#bn-lang-menu');
+    if (langTrigger && langMenu) {
+      langTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        langMenu.classList.toggle('show');
+      });
+      // 点击外部关闭菜单
+      document.addEventListener('click', () => {
+        langMenu.classList.remove('show');
+      });
+    }
 
     // 设置页事件绑定
     bindSettingEvents();
@@ -168,6 +192,9 @@
 
     // 应用字体和行高设置
     applyDisplaySettings();
+
+    // 初始化显示状态（字幕页）
+    switchTab('subtitle');
   }
 
   // ── 提示词模板 ──
@@ -188,6 +215,7 @@
 8. 保留所有技术名词、工具名、框架名、产品名，不要删除、替换或省略。
 9. 若存在 Frontmatter（文档开头 YAML），必须完整原样保留，禁止修改字段、字段值和字段顺序。
 10. 仅整理原文，禁止总结、解释、扩展原文不存在的信息或补充额外知识。
+11. 输出前必须进行一致性检查：最终文档中的图片 Markdown 数量必须与原文完全一致。若原文图片数量为 0，则输出图片数量也必须为 0，不得新增任何图片。
 
 待整理文档：
 
@@ -195,12 +223,15 @@
 
 直接输出整理后的 Markdown 文档，不要输出任何额外内容。`;
 
-  const DEFAULT_DEEPSEEK_SUMMARY = `你是一个视频总结助手，根据视频字幕文档生成简洁的视频总结。
+  const DEFAULT_DEEPSEEK_SUMMARY = `你是一个视频总结助手，请根据提供的视频字幕文档生成简洁、准确的视频总结。
 
 要求：
-1. 用 3-5 句话概括视频核心内容。
-2. 列出 3-8 个关键要点。
-3. 不要添加原文不存在的信息。
+1. 仅依据字幕内容进行总结，不得添加、猜测或推断原文未提及的信息。
+2. 提炼视频的核心主题、主要观点或关键内容，忽略寒暄、口头禅、广告、重复内容等无关信息。
+3. 总结长度为 3–5 句话，覆盖视频的主要内容即可，不要展开细节。
+4. 使用自然流畅、客观中立的中文表达。
+5. 输出一段连续文本，不使用标题、列表、Markdown、引号或其他格式。
+6. 如果字幕内容不完整或存在缺失，仅总结能够确定的内容，不要补充或猜测。
 
 待总结文档：
 
@@ -219,10 +250,7 @@
           <div class="bn-doc-title">DeepSeek 文档整理</div>
           <span id="bn-ds-status" class="bn-status bn-status-off"><span class="bn-dot bn-dot-red"></span>未登录</span>
         </div>
-        <div class="bn-prompt-switcher">
-          <button class="bn-prompt-btn active" data-prompt="ds">文档清洗</button>
-          <button class="bn-prompt-btn" data-prompt="summary">文档总结</button>
-        </div>
+        <div class="bn-prompt-switcher" id="bn-prompt-switcher"></div>
         <div class="bn-doc-body">
           <pre id="bn-ds-prompt" class="bn-prompt-pre"></pre>
           <div id="bn-ds-think" class="bn-doc-think" style="display:none"></div>
@@ -244,11 +272,6 @@
   function buildSettingHTML() {
     return `
       <div id="bn-settings-main">
-        <div class="bn-setting-label">字幕语言</div>
-        <select class="bn-select" id="bn-lang-select"><option value="">暂无字幕</option></select>
-        <div class="bn-setting-label">提示词管理</div>
-        <div class="bn-prompt-toggle" data-prompt="ds">▸ 文档清洗</div>
-        <div class="bn-prompt-toggle" data-prompt="summary">▸ 文档总结</div>
         <div class="bn-setting-label">字体大小</div>
         <div class="bn-chip-group" data-setting="fontSize">
           <input type="radio" name="bn-fontSize" id="bn-fs-s" value="small"><label for="bn-fs-s">小</label>
@@ -284,20 +307,14 @@
           <input type="checkbox" id="bn-pause-preview" checked>
           <label class="bn-switch-track" for="bn-pause-preview"></label>
         </div>
-        <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
+        <div class="bn-setting-actions">
+          <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
+          <button class="bn-setting-btn" id="bn-open-options-btn">更多设置</button>
+        </div>
         <div class="bn-about">
           <div class="bn-about-divider"></div>
           <div class="bn-about-version">BiViNote <span id="bn-version"></span></div>
           <a class="bn-about-link" href="https://github.com/hyglgithub/BiViNote/releases" target="_blank">GitHub Releases ↗</a>
-        </div>
-      </div>
-      <div id="bn-settings-editor" style="display:none">
-        <div class="bn-editor-title">提示词管理</div>
-        <div class="bn-prompt-toggle bn-editor-back" id="bn-editor-back">▾ 文档清洗</div>
-        <textarea class="bn-prompt-textarea" id="bn-editor-textarea"></textarea>
-        <div class="bn-doc-actions">
-          <button id="bn-editor-save" class="bn-btn-primary">保存</button>
-          <button id="bn-editor-reset">重置</button>
         </div>
       </div>
     `;
@@ -362,73 +379,13 @@
       });
     }
 
-    // 提示词管理 - 全屏编辑模式
-    const PROMPT_MAP = {
-      ds:      { key: 'deepseekPrompt', default: DEFAULT_DEEPSEEK_PROMPT, label: '文档清洗' },
-      summary: { key: 'deepseekSummary', default: DEFAULT_DEEPSEEK_SUMMARY, label: '文档总结' },
-    };
-    let editingType = null;
-
-    function openEditor(type) {
-      const info = PROMPT_MAP[type];
-      if (!info) return;
-      editingType = type;
-      const mainEl = document.getElementById('bn-settings-main');
-      const editorEl = document.getElementById('bn-settings-editor');
-      const textarea = document.getElementById('bn-editor-textarea');
-      const backBtn = document.getElementById('bn-editor-back');
-      if (mainEl) mainEl.style.display = 'none';
-      if (editorEl) editorEl.style.display = '';
-      if (textarea) textarea.value = window.BiViNote.state.settings[info.key] || info.default;
-      if (backBtn) backBtn.textContent = '▾ ' + info.label;
-    }
-
-    function closeEditor() {
-      editingType = null;
-      const mainEl = document.getElementById('bn-settings-main');
-      const editorEl = document.getElementById('bn-settings-editor');
-      if (mainEl) mainEl.style.display = '';
-      if (editorEl) editorEl.style.display = 'none';
-    }
-
-    const settingView = views['setting'];
-    if (settingView) {
-      settingView.addEventListener('click', (e) => {
-        const toggle = e.target.closest('.bn-prompt-toggle');
-        if (!toggle) return;
-        const type = toggle.dataset.prompt;
-        if (type) openEditor(type);
+    // 打开选项页面
+    const openOptionsBtn = document.getElementById('bn-open-options-btn');
+    if (openOptionsBtn) {
+      openOptionsBtn.addEventListener('click', () => {
+        chrome.runtime.sendMessage({ type: 'open-options' });
       });
     }
-
-    const editorBack = document.getElementById('bn-editor-back');
-    if (editorBack) editorBack.addEventListener('click', closeEditor);
-
-    const editorSave = document.getElementById('bn-editor-save');
-    if (editorSave) editorSave.addEventListener('click', () => {
-      if (!editingType) return;
-      const info = PROMPT_MAP[editingType];
-      const textarea = document.getElementById('bn-editor-textarea');
-      if (info && textarea) {
-        window.BiViNote.state.settings[info.key] = textarea.value;
-        window.BiViNote.settings.save();
-        showToast('已保存');
-      }
-      closeEditor();
-    });
-
-    const editorReset = document.getElementById('bn-editor-reset');
-    if (editorReset) editorReset.addEventListener('click', () => {
-      if (!editingType) return;
-      const info = PROMPT_MAP[editingType];
-      const textarea = document.getElementById('bn-editor-textarea');
-      if (info && textarea) {
-        window.BiViNote.state.settings[info.key] = '';
-        textarea.value = info.default;
-        window.BiViNote.settings.save();
-        showToast('已重置');
-      }
-    });
 
     // 恢复默认
     const resetBtn = panelEl.querySelector('#bn-reset-btn');
@@ -451,18 +408,6 @@
           bindDocEvents();
         }
         showToast('已恢复默认设置');
-      });
-    }
-
-    // 字幕语言切换
-    const langSelect = panelEl.querySelector('#bn-lang-select');
-    if (langSelect) {
-      langSelect.addEventListener('change', () => {
-        const url = langSelect.value;
-        const lang = langSelect.options[langSelect.selectedIndex]?.dataset?.lang || '';
-        if (url && window.BiViNote.subtitle) {
-          window.BiViNote.subtitle.switchSubtitle(url, lang);
-        }
       });
     }
 
@@ -489,30 +434,98 @@
     const copyBtn = panelEl.querySelector('#bn-ds-copy');
     const clearBtn = panelEl.querySelector('#bn-ds-clear');
     const continueBtn = panelEl.querySelector('#bn-ds-continue');
-    let savedScreenshots = null;
-    let currentPromptType = 'ds';
+    let savedScreenshots = {};
+    let currentPromptType = 'summary';
+    let autoScroll = true;
 
-    // 提示词预览
-    function updatePromptPreview() {
-      if (!promptEl) return;
-      const storageKey = currentPromptType === 'ds' ? 'deepseekPrompt' : 'deepseekSummary';
-      const defaultPrompt = currentPromptType === 'ds' ? DEFAULT_DEEPSEEK_PROMPT : DEFAULT_DEEPSEEK_SUMMARY;
-      promptEl.textContent = window.BiViNote.state.settings[storageKey] || defaultPrompt;
-    }
+    // 渲染提示词切换按钮
+    function renderPromptSwitcher() {
+      const switcherEl = panelEl.querySelector('#bn-prompt-switcher');
+      if (!switcherEl) return;
+      const customPrompts = window.BiViNote.state.settings.customPrompts || [];
+      let html = `
+        <button class="bn-prompt-btn${currentPromptType === 'summary' ? ' active' : ''}" data-prompt="summary">文档总结</button>
+        <button class="bn-prompt-btn${currentPromptType === 'clear' ? ' active' : ''}" data-prompt="clear">文档清洗</button>
+      `;
+      customPrompts.forEach(p => {
+        html += `<button class="bn-prompt-btn${currentPromptType === p.id ? ' active' : ''}" data-prompt="${p.id}">${escapeHtml(p.name)}</button>`;
+        bindTaskEvents(p.id);
+      });
+      switcherEl.innerHTML = html;
 
-    // 提示词切换按钮
-    const promptBtns = panelEl?.querySelectorAll('.bn-prompt-btn');
-    if (promptBtns) {
+      // 绑定按钮点击事件
+      const promptBtns = switcherEl.querySelectorAll('.bn-prompt-btn');
       promptBtns.forEach(btn => {
         btn.addEventListener('click', () => {
           promptBtns.forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           currentPromptType = btn.dataset.prompt;
           updatePromptPreview();
+          refreshCurrentTaskUI();
         });
       });
     }
 
+    // 提示词预览
+    function updatePromptPreview() {
+      if (!promptEl) return;
+      if (currentPromptType === 'clear') {
+        promptEl.textContent = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
+      } else if (currentPromptType === 'summary') {
+        promptEl.textContent = window.BiViNote.state.settings.deepseekSummary || DEFAULT_DEEPSEEK_SUMMARY;
+      } else {
+        // 自定义提示词
+        const customPrompts = window.BiViNote.state.settings.customPrompts || [];
+        const custom = customPrompts.find(p => p.id === currentPromptType);
+        promptEl.textContent = custom ? custom.prompt : '';
+      }
+    }
+
+    // 刷新当前任务的UI
+    function refreshCurrentTaskUI() {
+      const task = ds.getTask(currentPromptType);
+      // 使用任务状态（已同步全局登录状态）
+      updateUI(task.state);
+      // 恢复结果内容
+      if (thinkEl) thinkEl.textContent = task.thinkText;
+      if (resultEl) resultEl.textContent = task.responseText;
+    }
+
+    // 已绑定事件的任务 ID 集合（防止重复绑定）
+    const boundTaskIds = new Set();
+
+    // 为任务绑定状态和 chunk 监听（包括自定义提示词）
+    function bindTaskEvents(taskId) {
+      if (boundTaskIds.has(taskId)) return;
+      boundTaskIds.add(taskId);
+
+      ds.onStateChange(taskId, (newState) => {
+        if (taskId === currentPromptType) {
+          updateUI(newState);
+        }
+      });
+
+      ds.onChunk(taskId, (chunk) => {
+        if (taskId !== currentPromptType) return;
+        if (chunk.type === 'think' && thinkEl) {
+          thinkEl.textContent += chunk.text;
+          if (autoScroll) thinkEl.scrollTop = thinkEl.scrollHeight;
+        } else if (chunk.type === 'response' && resultEl) {
+          resultEl.textContent += chunk.text;
+          if (autoScroll) resultEl.scrollTop = resultEl.scrollHeight;
+        }
+      });
+    }
+
+    // 绑定内置任务
+    ['clear', 'summary'].forEach(bindTaskEvents);
+
+    // 绑定自定义提示词任务
+    const initCustomPrompts = window.BiViNote.state.settings.customPrompts || [];
+    initCustomPrompts.forEach(p => bindTaskEvents(p.id));
+
+    // 渲染提示词切换按钮
+    renderPromptSwitcher();
     updatePromptPreview();
 
     function updateUI(dsState) {
@@ -568,11 +581,11 @@
       }
     }
 
-    ds.onStateChange(updateUI);
-    updateUI(ds.getState());
+    // 初始化UI
+    const initialTask = ds.getTask(currentPromptType);
+    updateUI(initialTask.state);
 
     // 自动滚动：离开底部暂停，回到底部恢复
-    let autoScroll = true;
     const isAtBottom = (el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 5;
     if (thinkEl) {
       thinkEl.addEventListener('scroll', () => { autoScroll = isAtBottom(thinkEl); }, { passive: true });
@@ -581,63 +594,67 @@
       resultEl.addEventListener('scroll', () => { autoScroll = isAtBottom(resultEl); }, { passive: true });
     }
 
-    ds.onChunk((chunk) => {
-      if (chunk.type === 'think' && thinkEl) {
-        thinkEl.textContent += chunk.text;
-        if (autoScroll) thinkEl.scrollTop = thinkEl.scrollHeight;
-      } else if (chunk.type === 'response' && resultEl) {
-        resultEl.textContent += chunk.text;
-        if (autoScroll) resultEl.scrollTop = resultEl.scrollHeight;
-      }
-    });
-
     if (actionBtn) {
       actionBtn.addEventListener('click', () => {
-        const currentState = ds.getState();
+        const task = ds.getTask(currentPromptType);
+        const currentState = task.state;
         if (currentState === 'not_logged_in') {
           ds.openLogin();
           let attempts = 0;
           const poll = setInterval(async () => {
             attempts++;
-            await ds.checkLogin();
-            if (ds.getState() === 'ready' || attempts >= 15) clearInterval(poll);
+            await ds.checkLogin(currentPromptType);
+            const t = ds.getTask(currentPromptType);
+            if (t.state === 'ready' || attempts >= 15) clearInterval(poll);
           }, 2000);
         } else if (currentState === 'reading' || currentState === 'responding') {
-          ds.abort();
+          ds.abort(currentPromptType);
           if (thinkEl) thinkEl.textContent = '';
           if (resultEl) resultEl.textContent = '';
         } else if (currentState === 'ready' || currentState === 'error') {
           autoScroll = true;
           const s = window.BiViNote.state;
-          savedScreenshots = s.screenshots ? new Map(s.screenshots) : null;
+          savedScreenshots[currentPromptType] = s.screenshots ? new Map(s.screenshots) : null;
           const md = window.BiViNote.exportUtil
             ? window.BiViNote.exportUtil.buildMarkdown(s)
             : buildExportMarkdown();
-          const promptKey = currentPromptType === 'ds' ? 'deepseekPrompt' : 'deepseekSummary';
-          const defaultPrompt = currentPromptType === 'ds' ? DEFAULT_DEEPSEEK_PROMPT : DEFAULT_DEEPSEEK_SUMMARY;
-          const prompt = s.settings[promptKey] || defaultPrompt;
-          ds.sendMarkdown(md, prompt, currentPromptType === 'ds');
+
+          // 获取提示词
+          let prompt;
+          let thinking = false;
+          if (currentPromptType === 'clear') {
+            prompt = s.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
+            thinking = true;
+          } else if (currentPromptType === 'summary') {
+            prompt = s.settings.deepseekSummary || DEFAULT_DEEPSEEK_SUMMARY;
+          } else {
+            // 自定义提示词
+            const customPrompts = s.settings.customPrompts || [];
+            const custom = customPrompts.find(p => p.id === currentPromptType);
+            prompt = custom ? custom.prompt : '';
+          }
+          ds.sendMarkdown(currentPromptType, md, prompt, thinking);
         }
       });
     }
 
     if (downloadBtn) {
       downloadBtn.addEventListener('click', async () => {
-        downloadResult(ds, savedScreenshots);
+        downloadResult(ds, savedScreenshots[currentPromptType], currentPromptType);
       });
     }
 
     if (copyBtn) {
       copyBtn.addEventListener('click', () => {
-        const result = ds.getResult();
+        const result = ds.getResult(currentPromptType);
         if (result.response) navigator.clipboard.writeText(result.response).then(() => showToast('已复制'));
       });
     }
 
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
-        ds.clear();
-        savedScreenshots = null;
+        ds.clear(currentPromptType);
+        savedScreenshots[currentPromptType] = null;
         if (thinkEl) thinkEl.textContent = '';
         if (resultEl) resultEl.textContent = '';
       });
@@ -645,15 +662,27 @@
 
     if (continueBtn) {
       continueBtn.addEventListener('click', () => {
-        const chatId = ds.getChatId();
+        const chatId = ds.getChatId(currentPromptType);
         const url = chatId ? `https://chat.deepseek.com/a/chat/s/${chatId}` : 'https://chat.deepseek.com';
         chrome.runtime.sendMessage({ type: 'ds-open-chat', url });
       });
     }
+
+    // 监听存储变化，实时更新提示词切换按钮
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === 'local' && changes.bivinote_settings) {
+        const newSettings = changes.bivinote_settings.newValue || {};
+        // 更新内存中的设置
+        Object.assign(window.BiViNote.state.settings, newSettings);
+        // 重新渲染提示词切换按钮
+        renderPromptSwitcher();
+        updatePromptPreview();
+      }
+    });
   }
 
-  async function downloadResult(ds, savedScreenshots) {
-    const result = ds.getResult();
+  async function downloadResult(ds, savedScreenshots, taskId = 'clear') {
+    const result = ds.getResult(taskId);
     if (!result.response) return;
     const shots = savedScreenshots;
     const hasScreenshots = shots && shots.size > 0;
@@ -718,7 +747,10 @@
 
   function resetDocAuto() {
     const ds = window.BiViNote.deepseek;
-    if (ds) ds.abort();
+    if (ds) {
+      ds.abort('clear');
+      ds.abort('summary');
+    }
     const thinkEl = panelEl?.querySelector('#bn-ds-think');
     const resultEl = panelEl?.querySelector('#bn-ds-result');
     if (thinkEl) thinkEl.textContent = '';
@@ -776,16 +808,17 @@
       views[id].classList.toggle('bn-show', id === tabId);
     });
 
-    // footer 只在字幕和章节页显示
-    const tabDef = TAB_DEFS.find(d => d.id === tabId);
-    footerEl.classList.toggle('bn-show', tabDef?.footer || false);
+    // 底部工具栏只在字幕页显示
+    if (footerEl) {
+      footerEl.classList.toggle('bn-show', tabId === 'subtitle');
+    }
 
-    // 点击文档整理标签时检测 DeepSeek 登录状态（仅空闲时检测）
+    // 点击文档整理标签时检测 DeepSeek 登录状态（全局检测一次即可）
     if (tabId === 'doc') {
       const ds = window.BiViNote.deepseek;
-      const st = ds?.getState?.();
-      if (ds?.checkLogin && (st === 'not_logged_in' || st === 'ready')) {
-        ds.checkLogin();
+      if (ds?.checkLogin) {
+        // 只检测一次，会自动同步到所有任务
+        ds.checkLogin('clear');
       }
     }
   }
@@ -1061,20 +1094,40 @@
   // ── 更新字幕语言下拉 ──
 
   function updateSubtitleSelect(subtitles, selectedUrl) {
-    const select = panelEl?.querySelector('#bn-lang-select');
-    if (!select) return;
+    const langLabel = panelEl?.querySelector('#bn-lang-label');
+    const langMenu = panelEl?.querySelector('#bn-lang-menu');
+    if (!langLabel || !langMenu) return;
+
     if (!subtitles || subtitles.length === 0) {
-      select.innerHTML = '<option value="">暂无字幕</option>';
-      select.disabled = true;
+      langLabel.textContent = '暂无字幕';
+      langMenu.innerHTML = '';
       return;
     }
-    select.innerHTML = subtitles.map(item => {
+
+    // 更新按钮文本
+    const selected = subtitles.find(s => s.subtitleUrl === selectedUrl);
+    const aiTag = selected?.lan?.startsWith('ai-') ? ' [AI]' : '';
+    langLabel.textContent = selected ? `${selected.lanDoc || selected.lan}${aiTag}` : '选择语言';
+
+    // 更新菜单项
+    langMenu.innerHTML = subtitles.map(item => {
       const aiTag = item.lan?.startsWith('ai-') ? ' [AI]' : '';
       const label = `${item.lanDoc || item.lan}${aiTag}`;
-      const selected = item.subtitleUrl === selectedUrl ? 'selected' : '';
-      return `<option value="${escapeHtml(item.subtitleUrl)}" data-lang="${escapeHtml(item.lan)}" ${selected}>${escapeHtml(label)}</option>`;
+      const activeClass = item.subtitleUrl === selectedUrl ? ' active' : '';
+      return `<div class="bn-lang-item${activeClass}" data-url="${escapeHtml(item.subtitleUrl)}" data-lang="${escapeHtml(item.lan)}">${escapeHtml(label)}</div>`;
     }).join('');
-    select.disabled = false;
+
+    // 绑定菜单项点击事件
+    langMenu.querySelectorAll('.bn-lang-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const url = item.dataset.url;
+        const lang = item.dataset.lang;
+        if (url && window.BiViNote.subtitle) {
+          window.BiViNote.subtitle.switchSubtitle(url, lang);
+        }
+        langMenu.classList.remove('show');
+      });
+    });
   }
 
   // ── Toast ──

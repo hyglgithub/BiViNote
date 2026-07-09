@@ -93,6 +93,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // 打开选项页面
+  if (message.type === 'open-options') {
+    chrome.runtime.openOptionsPage();
+    return false;
+  }
+
   // ── DeepSeek 文档整理 ──
 
   if (message.type === 'ds-check-login') {
@@ -123,7 +129,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'ds-send') {
     const requestId = message.requestId || crypto.randomUUID();
-    dsHandleSend(message.markdown, message.prompt, requestId, message.thinking);
+    dsHandleSend(message.markdown, message.prompt, requestId, message.thinking, message.taskId || 'clear');
     sendResponse({ ok: true, requestId });
     return true;
   }
@@ -157,7 +163,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // DeepSeek bridge → bilibili tab 转发
   if (message.type === 'DEEPSEEK_CHUNK') {
     const rid = message.requestId;
-    if (!dsSseProcessors[rid]) dsSseProcessors[rid] = dsCreateSSEProcessor();
+    if (!dsSseProcessors[rid]) dsSseProcessors[rid] = dsCreateSSEProcessor(rid);
     const processor = dsSseProcessors[rid];
     const text = processor.processChunk(message.chunk);
     dsSendToBilibiliTab({ type: 'ds-chunk', text, requestId: rid, chatId: processor.getChatId() });
@@ -432,47 +438,17 @@ function formatDate(timestamp) {
 
 const DS_URL = 'https://chat.deepseek.com';
 
-const DS_DEFAULT_PROMPT = `你是一个视频笔记整理助手，将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
-
-要求：
-
-1. 删除口语化内容、重复内容、无意义过渡语句，例如：好的、然后、这里呢、兄弟、就是说等。
-2. 删除所有字幕时间戳，例如 \`00:12\`、\`05:30\`。
-3. 不要逐句输出字幕，将连续字幕整理为简洁、连贯、易阅读的知识内容。
-4. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、英文大小写错误，请结合上下文修正，并统一技术术语写法。
-5. 若文档存在章节结构，严格按原始章节整理；若无章节，则按内容自然分段。
-6. 不要新增原文不存在的标题、章节或目录层级，不要改变原始内容顺序。
-7. 文档中形如 ![xxx](assets/数字.png) 的 Markdown 标记属于特殊文本块，() 内为相对资源路径且默认与前一句字幕内容关联；必须保留全部此类标记，禁止修改语法、alt 文本、路径或文件名，不得遗漏，可根据整理后的内容适当调整其在当前语义块中的位置。
-8. 保留所有技术名词、工具名、框架名、产品名，不要删除、替换或省略。
-9. 若存在 Frontmatter（文档开头 YAML），必须完整原样保留，禁止修改字段、字段值和字段顺序。
-10. 仅整理原文，禁止总结、解释、扩展原文不存在的信息或补充额外知识。
-
-待整理文档：
-
-{markdown}
-
-直接输出整理后的 Markdown 文档，不要输出任何额外内容。`;
-
-const DS_DEFAULT_SUMMARY_PROMPT = `你是一个视频总结助手，根据视频字幕文档生成简洁的视频总结。
-
-要求：
-1. 用 3-5 句话概括视频核心内容。
-2. 列出 3-8 个关键要点。
-3. 不要添加原文不存在的信息。
-
-待总结文档：
-
-{markdown}
-
-直接输出总结，不要输出任何额外说明。`;
-
 let dsInjectedTabs = new Set();
-let dsChatId = null;
+let chatIds = { ds: null, summary: null };
 let dsSseProcessors = {};
 let dsSenderTabId = null;
+let dsRequestIdToTaskId = {};  // requestId -> taskId 映射
 
-chrome.storage.local.get('chatId', (stored) => {
-  if (stored.chatId) dsChatId = stored.chatId;
+// 恢复 chatId（兼容旧 key chatId → chatId_clear）
+chrome.storage.local.get(['chatId', 'chatId_clear', 'chatId_summary'], (stored) => {
+  if (stored.chatId_clear) chatIds.ds = stored.chatId_clear;
+  else if (stored.chatId) chatIds.ds = stored.chatId;
+  if (stored.chatId_summary) chatIds.summary = stored.chatId_summary;
 });
 
 async function dsEnsureTab() {
@@ -517,43 +493,17 @@ async function dsCheckLogin() {
     if (!tab?.id) return { loggedIn: false };
 
     // 主要方式：通过 localStorage token 验证
-    try {
-      const results = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        world: 'MAIN',
-        func: async () => {
-          function tryGetToken(raw) {
-            if (!raw || typeof raw !== 'string' || raw.length <= 10) return null;
-            try {
-              const parsed = JSON.parse(raw);
-              if (typeof parsed === 'string' && parsed.length > 10) return parsed;
-              if (typeof parsed === 'object' && parsed !== null) {
-                const t = parsed.token || parsed.value || parsed.access_token || parsed.jwt;
-                return (t && typeof t === 'string' && t.length > 10) ? t : null;
-              }
-            } catch { return raw; }
-            return null;
-          }
-          const keys = ['userToken', 'token', 'ds_token', 'auth_token', 'access_token', 'jwt'];
-          let token = null;
-          for (const key of keys) {
-            token = tryGetToken(localStorage.getItem(key));
-            if (token) break;
-          }
-          if (!token) return { loggedIn: false };
-          try {
-            const res = await fetch('https://chat.deepseek.com/api/v1/user/profile', {
-              method: 'GET',
-              headers: { 'Authorization': 'Bearer ' + token },
-              credentials: 'include',
-            });
-            return { loggedIn: res.ok };
-          } catch { return null; }
-        },
-      });
-      const r = results?.[0]?.result;
-      if (r && typeof r.loggedIn === 'boolean') return r;
-    } catch {}
+    let result = await tryCheckLoginWithToken(tab.id);
+    if (result && typeof result.loggedIn === 'boolean') {
+      // 如果检测失败，激活标签页并刷新后重试
+      if (!result.loggedIn) {
+        await chrome.tabs.update(tab.id, { active: true });
+        await chrome.tabs.reload(tab.id);
+        await dsWaitTabComplete(tab.id, 10000);
+        result = await tryCheckLoginWithToken(tab.id);
+      }
+      return result;
+    }
 
     // 降级：cookie 检测
     const cookies = await chrome.cookies.getAll({ domain: '.deepseek.com' });
@@ -567,14 +517,56 @@ async function dsCheckLogin() {
   }
 }
 
+async function tryCheckLoginWithToken(tabId) {
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: async () => {
+        function tryGetToken(raw) {
+          if (!raw || typeof raw !== 'string' || raw.length <= 10) return null;
+          try {
+            const parsed = JSON.parse(raw);
+            if (typeof parsed === 'string' && parsed.length > 10) return parsed;
+            if (typeof parsed === 'object' && parsed !== null) {
+              const t = parsed.token || parsed.value || parsed.access_token || parsed.jwt;
+              return (t && typeof t === 'string' && t.length > 10) ? t : null;
+            }
+          } catch { return raw; }
+          return null;
+        }
+        const keys = ['userToken', 'token', 'ds_token', 'auth_token', 'access_token', 'jwt'];
+        let token = null;
+        for (const key of keys) {
+          token = tryGetToken(localStorage.getItem(key));
+          if (token) break;
+        }
+        if (!token) return { loggedIn: false };
+        try {
+          const res = await fetch('https://chat.deepseek.com/api/v1/user/profile', {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token },
+            credentials: 'include',
+          });
+          return { loggedIn: res.ok };
+        } catch { return null; }
+      },
+    });
+    return results?.[0]?.result || null;
+  } catch {
+    return null;
+  }
+}
+
 function dsSendToBilibiliTab(msg) {
   if (!dsSenderTabId) return;
   chrome.tabs.sendMessage(dsSenderTabId, msg).catch(() => {});
 }
 
-async function dsHandleSend(markdown, prompt, requestId, thinking) {
+async function dsHandleSend(markdown, prompt, requestId, thinking, taskId = 'clear') {
   dsSseProcessors = {};
   dsSenderTabId = null;
+  dsRequestIdToTaskId[requestId] = taskId;
 
   const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
   if (activeTabs[0]?.id) dsSenderTabId = activeTabs[0].id;
@@ -594,32 +586,25 @@ async function dsHandleSend(markdown, prompt, requestId, thinking) {
     return;
   }
 
+  // 处理 {markdown} 占位符
   let fullPrompt = prompt;
-  const storageKey = thinking === false ? 'deepseekSummary' : 'deepseekPrompt';
-  const defaultPrompt = thinking === false ? DS_DEFAULT_SUMMARY_PROMPT : DS_DEFAULT_PROMPT;
-
-  try {
-    const stored = await chrome.storage.local.get(storageKey);
-    const sysPrompt = stored[storageKey] || defaultPrompt;
-    if (sysPrompt.includes('{markdown}')) {
-      fullPrompt = sysPrompt.replace('{markdown}', markdown);
-    } else {
-      fullPrompt = sysPrompt + '\n\n' + markdown;
-    }
-  } catch {
-    fullPrompt = defaultPrompt.replace('{markdown}', markdown);
+  if (fullPrompt.includes('{markdown}')) {
+    fullPrompt = fullPrompt.replace('{markdown}', markdown);
+  } else {
+    fullPrompt = fullPrompt + '\n\n' + markdown;
   }
+  const chatId = chatIds[taskId] || null;
 
   chrome.tabs.sendMessage(tab.id, {
     type: 'ds-inject-request',
-    payload: { prompt: fullPrompt, chatId: dsChatId, requestId, thinking }
+    payload: { prompt: fullPrompt, chatId, requestId, thinking, taskId }
   }).catch((e) => {
     if (String(e).includes('Receiving end does not exist')) {
       dsInjectedTabs.delete(tab.id);
       dsInjectScripts(tab.id).then(() => {
         chrome.tabs.sendMessage(tab.id, {
           type: 'ds-inject-request',
-          payload: { prompt: fullPrompt, chatId: dsChatId, requestId, thinking }
+          payload: { prompt: fullPrompt, chatId, requestId, thinking, taskId }
         });
       });
     } else {
@@ -628,11 +613,12 @@ async function dsHandleSend(markdown, prompt, requestId, thinking) {
   });
 }
 
-function dsCreateSSEProcessor() {
+function dsCreateSSEProcessor(requestId) {
   let inThink = false;
   let chatId = null;
   let messageId = null;
   let dataLineBuf = '';
+  const taskId = dsRequestIdToTaskId[requestId] || 'clear';
 
   function processChunk(chunk) {
     let text = '';
@@ -644,7 +630,17 @@ function dsCreateSSEProcessor() {
           try {
             const data = JSON.parse(jsonStr);
             dataLineBuf = '';
-            if (data.type === 'deepseek:chat_session_id') { chatId = data.chat_session_id; continue; }
+            if (data.type === 'deepseek:chat_session_id') {
+              chatId = data.chat_session_id;
+              // 更新对应任务的 chatId
+              chatIds[taskId] = chatId;
+              let storageKey;
+              if (taskId === 'clear') storageKey = 'chatId_clear';
+              else if (taskId === 'summary') storageKey = 'chatId_summary';
+              else storageKey = 'chatId_' + taskId;
+              chrome.storage.local.set({ [storageKey]: chatId });
+              continue;
+            }
             if (data.response_message_id != null) messageId = data.response_message_id;
             const result = processEvent(data);
             if (result) text += result;
@@ -658,7 +654,17 @@ function dsCreateSSEProcessor() {
               const jsonStr = dataLineBuf.slice(6).trim();
               const data = JSON.parse(jsonStr);
               dataLineBuf = '';
-              if (data.type === 'deepseek:chat_session_id') { chatId = data.chat_session_id; continue; }
+              if (data.type === 'deepseek:chat_session_id') {
+                chatId = data.chat_session_id;
+                // 更新对应任务的 chatId
+                chatIds[taskId] = chatId;
+                let storageKey;
+                if (taskId === 'clear') storageKey = 'chatId_clear';
+                else if (taskId === 'summary') storageKey = 'chatId_summary';
+                else storageKey = 'chatId_' + taskId;
+                chrome.storage.local.set({ [storageKey]: chatId });
+                continue;
+              }
               if (data.response_message_id != null) messageId = data.response_message_id;
               const result = processEvent(data);
               if (result) text += result;

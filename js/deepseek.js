@@ -1,180 +1,265 @@
-// js/deepseek.js - DeepSeek 文档整理通信模块
+// js/deepseek.js - DeepSeek 文档整理通信模块（任务工厂模式）
 (function () {
   'use strict';
   const BN = window.BiViNote;
   if (!BN) return;
 
-  let state = 'not_logged_in';
-  let thinkText = '';
-  let responseText = '';
-  let inThink = false;
-  let chatId = null;
-  let activeRequestId = null;
+  // 任务存储
+  const tasks = {};
 
-  const listeners = { chunk: [], state: [], done: [], error: [] };
+  // 全局登录状态（所有任务共享）
+  let globalLoginState = 'not_logged_in'; // 'not_logged_in' | 'ready' | 'checking'
 
-  function emit(event, data) {
-    for (const fn of listeners[event]) {
+  // 创建新任务
+  function createTask(taskId) {
+    const task = {
+      id: taskId,
+      state: globalLoginState, // 使用全局登录状态
+      thinkText: '',
+      responseText: '',
+      inThink: false,
+      chatId: null,
+      activeRequestId: null,
+      listeners: { chunk: [], state: [], done: [], error: [] },
+    };
+
+    // 恢复 chatId（统一用 chatId_${taskId} 格式，ds 保留兼容旧 key）
+    let storageKey;
+    if (taskId === 'clear') storageKey = 'chatId_clear';
+    else if (taskId === 'summary') storageKey = 'chatId_summary';
+    else storageKey = 'chatId_' + taskId;
+    try {
+      chrome.storage.local.get(storageKey, (stored) => {
+        if (stored[storageKey]) task.chatId = stored[storageKey];
+      });
+    } catch {}
+
+    tasks[taskId] = task;
+    return task;
+  }
+
+  // 获取任务
+  function getTask(taskId) {
+    if (!tasks[taskId]) {
+      createTask(taskId);
+      // 新任务同步当前全局登录状态
+      if (globalLoginState === 'ready') {
+        setState(tasks[taskId], 'ready');
+      }
+    }
+    return tasks[taskId];
+  }
+
+  // 发送事件
+  function emit(task, event, data) {
+    for (const fn of task.listeners[event]) {
       try { fn(data); } catch (e) { console.error('[BN-DeepSeek]', e); }
     }
   }
 
-  function setState(newState) {
-    if (state === newState) return;
-    state = newState;
-    emit('state', state);
+  // 设置状态
+  function setState(task, newState) {
+    if (task.state === newState) return;
+    task.state = newState;
+    emit(task, 'state', task.state);
   }
 
-  // 恢复 chatId
-  try {
-    chrome.storage.local.get('chatId', (stored) => {
-      if (stored.chatId) chatId = stored.chatId;
-    });
-  } catch {}
-
-  async function checkLogin() {
+  // 检查登录状态（全局）
+  async function checkLogin(taskId) {
+    const task = getTask(taskId);
     return new Promise((resolve) => {
       chrome.runtime.sendMessage({ type: 'ds-check-login' }, (result) => {
         if (chrome.runtime.lastError) {
+          globalLoginState = 'not_logged_in';
+          // 同步到所有任务
+          Object.values(tasks).forEach(t => setState(t, 'not_logged_in'));
           resolve({ loggedIn: false, reason: chrome.runtime.lastError.message });
           return;
         }
         if (result?.loggedIn) {
-          setState('ready');
+          globalLoginState = 'ready';
+          // 同步到所有任务
+          Object.values(tasks).forEach(t => setState(t, 'ready'));
           resolve(result);
         } else {
-          setState('not_logged_in');
+          globalLoginState = 'not_logged_in';
+          // 同步到所有任务
+          Object.values(tasks).forEach(t => setState(t, 'not_logged_in'));
           resolve(result || { loggedIn: false });
         }
       });
     });
   }
 
-  function sendMarkdown(markdown, prompt, thinking = true) {
-    if (state === 'reading' || state === 'responding') return;
+  // 发送 markdown
+  function sendMarkdown(taskId, markdown, prompt, thinking = true) {
+    const task = getTask(taskId);
+    if (task.state === 'reading' || task.state === 'responding') return;
 
-    thinkText = '';
-    responseText = '';
-    inThink = false;
-    setState('reading');
+    task.thinkText = '';
+    task.responseText = '';
+    task.inThink = false;
+    setState(task, 'reading');
 
     const requestId = crypto.randomUUID();
-    activeRequestId = requestId;
+    task.activeRequestId = requestId;
 
     chrome.runtime.sendMessage({
       type: 'ds-send',
       markdown,
       prompt,
-      chatId,
+      chatId: task.chatId,
       requestId,
       thinking,
+      taskId,
     });
 
     setTimeout(() => {
-      if (state === 'reading' || state === 'responding') {
-        emit('error', '请求超时（120s）');
-        setState('error');
+      if (task.state === 'reading' || task.state === 'responding') {
+        emit(task, 'error', '请求超时（120s）');
+        setState(task, 'error');
       }
     }, 120000);
   }
 
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === 'ds-chunk') {
-      if (msg.requestId && msg.requestId !== activeRequestId) return;
-      processChunk(msg.text, msg.chatId);
-    } else if (msg.type === 'ds-done') {
-      if (msg.requestId && msg.requestId !== activeRequestId) return;
-      flush();
-      setState('done');
-      emit('done', getResult());
-    } else if (msg.type === 'ds-error') {
-      if (msg.requestId && msg.requestId !== activeRequestId) return;
-      emit('error', msg.error);
-      setState('error');
-    }
-  });
-
-  function processChunk(text, newChatId) {
+  // 处理 chunk
+  function processChunk(task, text, newChatId) {
     if (!text) return;
 
-    if (newChatId && newChatId !== chatId) {
-      chatId = newChatId;
-      try { chrome.storage.local.set({ chatId }); } catch {}
+    if (newChatId && newChatId !== task.chatId) {
+      task.chatId = newChatId;
+      let storageKey;
+      if (task.id === 'clear') storageKey = 'chatId_clear';
+      else if (task.id === 'summary') storageKey = 'chatId_summary';
+      else storageKey = 'chatId_' + task.id;
+      try { chrome.storage.local.set({ [storageKey]: newChatId }); } catch {}
     }
 
-    if (text.includes('<think>') && !inThink) {
-      inThink = true;
+    if (text.includes('<think>') && !task.inThink) {
+      task.inThink = true;
       const parts = text.split('<think>');
       if (parts[0]) {
-        if (state === 'reading') setState('responding');
-        responseText += parts[0];
-        emit('chunk', { type: 'response', text: parts[0] });
+        if (task.state === 'reading') setState(task, 'responding');
+        task.responseText += parts[0];
+        emit(task, 'chunk', { type: 'response', text: parts[0] });
       }
-      thinkText += parts[1] || '';
-      emit('chunk', { type: 'think', text: parts[1] || '' });
+      task.thinkText += parts[1] || '';
+      emit(task, 'chunk', { type: 'think', text: parts[1] || '' });
       return;
     }
 
-    if (text.includes('</think>') && inThink) {
-      inThink = false;
+    if (text.includes('</think>') && task.inThink) {
+      task.inThink = false;
       const parts = text.split('</think>');
-      thinkText += parts[0] || '';
-      emit('chunk', { type: 'think', text: parts[0] || '' });
-      setState('responding');
+      task.thinkText += parts[0] || '';
+      emit(task, 'chunk', { type: 'think', text: parts[0] || '' });
+      setState(task, 'responding');
       if (parts[1]) {
-        responseText += parts[1];
-        emit('chunk', { type: 'response', text: parts[1] });
+        task.responseText += parts[1];
+        emit(task, 'chunk', { type: 'response', text: parts[1] });
       }
       return;
     }
 
-    if (inThink) {
-      thinkText += text;
-      emit('chunk', { type: 'think', text });
+    if (task.inThink) {
+      task.thinkText += text;
+      emit(task, 'chunk', { type: 'think', text });
     } else {
-      if (state === 'reading') setState('responding');
-      responseText += text;
-      emit('chunk', { type: 'response', text });
+      if (task.state === 'reading') setState(task, 'responding');
+      task.responseText += text;
+      emit(task, 'chunk', { type: 'response', text });
     }
   }
 
-  function flush() {
-    if (inThink) inThink = false;
+  // 刷新
+  function flush(task) {
+    if (task.inThink) task.inThink = false;
   }
 
-  function getResult() {
-    return { think: thinkText.trim(), response: responseText.trim() };
+  // 获取结果
+  function getResult(taskId) {
+    const task = getTask(taskId);
+    return { think: task.thinkText.trim(), response: task.responseText.trim() };
   }
 
-  function clear() {
-    thinkText = '';
-    responseText = '';
-    inThink = false;
-    setState('ready');
+  // 清除
+  function clear(taskId) {
+    const task = getTask(taskId);
+    task.thinkText = '';
+    task.responseText = '';
+    task.inThink = false;
+    setState(task, 'ready');
   }
 
-  function abort() {
+  // 中断
+  function abort(taskId) {
+    const task = getTask(taskId);
     chrome.runtime.sendMessage({ type: 'ds-abort' });
-    activeRequestId = null;
-    clear();
+    task.activeRequestId = null;
+    clear(taskId);
   }
 
+  // 打开登录页面
   function openLogin() {
     chrome.runtime.sendMessage({ type: 'ds-open-login' });
   }
 
+  // 监听消息
+  chrome.runtime.onMessage.addListener((msg) => {
+    // 找到对应的任务
+    let task = null;
+    for (const id in tasks) {
+      if (tasks[id].activeRequestId === msg.requestId) {
+        task = tasks[id];
+        break;
+      }
+    }
+
+    // 如果找不到任务，可能是全局登录检查消息
+    if (!task) {
+      // 尝试匹配所有任务
+      for (const id in tasks) {
+        if (msg.type === 'ds-chunk' || msg.type === 'ds-done' || msg.type === 'ds-error') {
+          task = tasks[id];
+          break;
+        }
+      }
+    }
+
+    if (!task) return;
+
+    if (msg.type === 'ds-chunk') {
+      if (msg.requestId && msg.requestId !== task.activeRequestId) return;
+      processChunk(task, msg.text, msg.chatId);
+    } else if (msg.type === 'ds-done') {
+      if (msg.requestId && msg.requestId !== task.activeRequestId) return;
+      flush(task);
+      setState(task, 'done');
+      emit(task, 'done', getResult(task.id));
+    } else if (msg.type === 'ds-error') {
+      if (msg.requestId && msg.requestId !== task.activeRequestId) return;
+      emit(task, 'error', msg.error);
+      setState(task, 'error');
+    }
+  });
+
+  // 初始化默认任务
+  createTask('clear');
+  createTask('summary');
+
   BN.deepseek = {
     checkLogin,
     sendMarkdown,
-    getState: () => state,
-    getChatId: () => chatId,
-    onChunk: (fn) => listeners.chunk.push(fn),
-    onStateChange: (fn) => listeners.state.push(fn),
-    onDone: (fn) => listeners.done.push(fn),
-    onError: (fn) => listeners.error.push(fn),
+    getTask,
     getResult,
     clear,
     abort,
     openLogin,
+    getChatId: (taskId) => getTask(taskId).chatId,
+    getState: (taskId) => getTask(taskId).state,
+    onChunk: (taskId, fn) => getTask(taskId).listeners.chunk.push(fn),
+    onStateChange: (taskId, fn) => getTask(taskId).listeners.state.push(fn),
+    onDone: (taskId, fn) => getTask(taskId).listeners.done.push(fn),
+    onError: (taskId, fn) => getTask(taskId).listeners.error.push(fn),
   };
 })();
