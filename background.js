@@ -444,10 +444,9 @@ let dsSseProcessors = {};
 let dsSenderTabId = null;
 let dsRequestIdToTaskId = {};  // requestId -> taskId 映射
 
-// 恢复 chatId（兼容旧 key chatId → chatId_clear）
-chrome.storage.local.get(['chatId', 'chatId_clear', 'chatId_summary'], (stored) => {
-  if (stored.chatId_clear) chatIds.ds = stored.chatId_clear;
-  else if (stored.chatId) chatIds.ds = stored.chatId;
+// 恢复 chatId
+chrome.storage.local.get(['chatId_clear', 'chatId_summary'], (stored) => {
+  if (stored.chatId_clear) chatIds.clear = stored.chatId_clear;
   if (stored.chatId_summary) chatIds.summary = stored.chatId_summary;
 });
 
