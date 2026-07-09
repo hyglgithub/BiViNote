@@ -50,7 +50,7 @@
     });
   }
 
-  function sendMarkdown(markdown, prompt) {
+  function sendMarkdown(markdown, prompt, thinking = true) {
     if (state === 'reading' || state === 'responding') return;
 
     thinkText = '';
@@ -67,6 +67,7 @@
       prompt,
       chatId,
       requestId,
+      thinking,
     });
 
     setTimeout(() => {
