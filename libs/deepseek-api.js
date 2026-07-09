@@ -140,7 +140,7 @@
 
   // ========== 核心：发送消息并流式接收回复 ==========
 
-  async function sendDeepSeekMessage(prompt, chatId, requestId) {
+  async function sendDeepSeekMessage(prompt, chatId, requestId, thinkingEnabled = true) {
     try {
     const origin = window.location.origin;
 
@@ -293,7 +293,7 @@
           parent_message_id: null,
           prompt,
           ref_file_ids: [],
-          thinking_enabled: true,
+          thinking_enabled: thinkingEnabled,
           search_enabled: false,
           preempt: false,
         }),
@@ -446,8 +446,8 @@
     if (!msg) return;
 
     if (msg.type === "DEEPSEEK_SEND") {
-      const { prompt, chatId, requestId } = msg;
-      sendDeepSeekMessage(prompt, chatId, requestId || crypto.randomUUID());
+      const { prompt, chatId, requestId, thinking } = msg;
+      sendDeepSeekMessage(prompt, chatId, requestId || crypto.randomUUID(), thinking !== false);
     } else if (msg.type === "DEEPSEEK_ABORT") {
       stopStream(msg.chatId, msg.messageId);
     }
