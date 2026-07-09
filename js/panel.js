@@ -172,44 +172,6 @@
 
   // ── 提示词模板 ──
 
-  const DEFAULT_PROMPT_NO_IMAGE = `你是一个视频笔记整理助手。将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
-
-输入文件：{download_dir}\\{title}.md
-输出文件：直接覆盖原文件内容。
-
-要求：
-1. 删除口语化内容（如：好的、然后、兄弟、这里呢等）
-2. 删除重复内容和无意义过渡语句
-3. 合并逐句字幕，不保留时间戳
-4. 按原始章节结构整理；若无章节则按内容自然分段
-5. 将相邻字幕整理为简洁、连贯的知识点，不要逐句输出
-6. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、大小写错误，请结合上下文修正，并统一技术术语写法
-7. 保留技术名词、工具名、框架名、产品名，不要省略
-8. 若存在 Frontmatter，完整保留
-9. 不要总结、解释、扩展，禁止添加原文不存在的内容`;
-
-  const DEFAULT_PROMPT_WITH_IMAGE = `你是一个视频笔记整理助手。将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
-
-输入文件：
-{download_dir}\\{title}\\
-├── note.md
-└── assets/
-
-输出文件：直接覆盖原文件内容。
-
-要求：
-1. 只修改 note.md 内容，不得修改 assets/ 中的图片文件
-2. 删除口语化内容（如：好的、然后、兄弟、这里呢等）
-3. 删除重复内容和无意义过渡语句
-4. 合并逐句字幕，不保留时间戳
-5. 按原始章节结构整理；若无章节则按内容自然分段
-6. 将相邻字幕整理为简洁、连贯的知识点，不要逐句输出
-7. 字幕可能由 AI 识别生成，存在错别字、同音字、术语错误、大小写错误，请结合上下文修正，并统一技术术语写法
-8. 保留技术名词、工具名、框架名、产品名，不要省略
-9. 图片必须保留；保持图片与当前位置内容的对应关系，不要删除、移动或重新排序图片
-10. 若存在 Frontmatter，完整保留
-11. 不要总结、解释、扩展，禁止添加原文不存在的内容`;
-
   // ── 文档整理页 HTML ──
 
   const DEFAULT_DEEPSEEK_PROMPT = `你是一个视频笔记整理助手，将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
@@ -232,6 +194,19 @@
 {markdown}
 
 直接输出整理后的 Markdown 文档，不要输出任何额外内容。`;
+
+  const DEFAULT_DEEPSEEK_SUMMARY = `你是一个视频总结助手，根据视频字幕文档生成简洁的视频总结。
+
+要求：
+1. 用 3-5 句话概括视频核心内容。
+2. 列出 3-8 个关键要点。
+3. 不要添加原文不存在的信息。
+
+待总结文档：
+
+{markdown}
+
+直接输出总结，不要输出任何额外说明。`;
 
   function buildDocHTML() {
     const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
@@ -295,9 +270,8 @@
           <div><div class="bn-radio-title">自动整理</div><div class="bn-radio-desc">调用 DeepSeek</div></div>
         </label>
         <div class="bn-setting-label">提示词管理</div>
-        <div class="bn-prompt-toggle" data-prompt="noimg">▸ 手动无截图</div>
-        <div class="bn-prompt-toggle" data-prompt="img">▸ 手动有截图</div>
-        <div class="bn-prompt-toggle" data-prompt="ds">▸ deepseek自动</div>
+        <div class="bn-prompt-toggle" data-prompt="ds">▸ 文档清洗</div>
+        <div class="bn-prompt-toggle" data-prompt="summary">▸ 文档总结</div>
         <div class="bn-setting-label">字体大小</div>
         <div class="bn-chip-group" data-setting="fontSize">
           <input type="radio" name="bn-fontSize" id="bn-fs-s" value="small"><label for="bn-fs-s">小</label>
@@ -311,7 +285,7 @@
           <input type="radio" name="bn-lineHeight" id="bn-lh-s" value="standard" checked><label for="bn-lh-s">标准</label>
           <input type="radio" name="bn-lineHeight" id="bn-lh-w" value="wide"><label for="bn-lh-w">宽</label>
         </div>
-        <div class="bn-setting-label">帧步长</div>
+        <div class="bn-setting-label">帧步长 <span class="bn-tooltip-icon" data-tooltip="帧步长控制逐帧浏览时每次移动的时间间隔。1/5 表示每帧 0.2 秒（适用于 5fps 视频），1/30 表示每帧约 0.033 秒（适用于 30fps 视频）。数值越小，帧精度越高。">?</span></div>
         <div class="bn-chip-group" data-setting="frameStep">
           <input type="radio" name="bn-frameStep" id="bn-fs1" value="1" checked><label for="bn-fs1">1/1</label>
           <input type="radio" name="bn-frameStep" id="bn-fs5" value="0.2"><label for="bn-fs5">1/5</label>
@@ -319,7 +293,7 @@
           <input type="radio" name="bn-frameStep" id="bn-fs30" value="0.033333"><label for="bn-fs30">1/30</label>
         </div>
         <div class="bn-switch">
-          <span>自动滚动</span>
+          <span>字幕自动滚动</span>
           <input type="checkbox" id="bn-auto-scroll" checked>
           <label class="bn-switch-track" for="bn-auto-scroll"></label>
         </div>
@@ -329,7 +303,7 @@
           <label class="bn-switch-track" for="bn-dark-mode"></label>
         </div>
         <div class="bn-switch">
-          <span>预览截图暂停</span>
+          <span>预览截图暂停视频</span>
           <input type="checkbox" id="bn-pause-preview" checked>
           <label class="bn-switch-track" for="bn-pause-preview"></label>
         </div>
@@ -342,7 +316,7 @@
       </div>
       <div id="bn-settings-editor" style="display:none">
         <div class="bn-editor-title">提示词管理</div>
-        <div class="bn-prompt-toggle bn-editor-back" id="bn-editor-back">▾ 手动无截图</div>
+        <div class="bn-prompt-toggle bn-editor-back" id="bn-editor-back">▾ 文档清洗</div>
         <textarea class="bn-prompt-textarea" id="bn-editor-textarea"></textarea>
         <div class="bn-doc-actions">
           <button id="bn-editor-save" class="bn-btn-primary">保存</button>
@@ -427,9 +401,8 @@
 
     // 提示词管理 - 全屏编辑模式
     const PROMPT_MAP = {
-      noimg: { key: 'promptNoImage', default: DEFAULT_PROMPT_NO_IMAGE, label: '手动无截图' },
-      img:   { key: 'promptWithImage', default: DEFAULT_PROMPT_WITH_IMAGE, label: '手动有截图' },
-      ds:    { key: 'deepseekPrompt', default: DEFAULT_DEEPSEEK_PROMPT, label: 'deepseek自动' },
+      ds:      { key: 'deepseekPrompt', default: DEFAULT_DEEPSEEK_PROMPT, label: '文档清洗' },
+      summary: { key: 'deepseekSummary', default: DEFAULT_DEEPSEEK_SUMMARY, label: '文档总结' },
     };
     let editingType = null;
 
@@ -535,14 +508,6 @@
   }
 
   // ── 文档整理页事件 ──
-
-  function hasScreenshots() {
-    return window.BiViNote.state.screenshots.size > 0;
-  }
-
-  function getPromptType() {
-    return hasScreenshots() ? 'img' : 'noimg';
-  }
 
   function bindDocEvents() {
     const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
@@ -804,11 +769,8 @@
     const mode = window.BiViNote.state.settings.docOrganizeMode || 'manual';
     if (mode === 'auto') return;
 
-    const type = getPromptType();
-    const stored = type === 'img'
-      ? window.BiViNote.state.settings.promptWithImage
-      : window.BiViNote.state.settings.promptNoImage;
-    const template = stored || (type === 'img' ? DEFAULT_PROMPT_WITH_IMAGE : DEFAULT_PROMPT_NO_IMAGE);
+    const stored = window.BiViNote.state.settings.deepseekPrompt;
+    const template = stored || DEFAULT_DEEPSEEK_PROMPT;
 
     const displayEl = panelEl.querySelector('#bn-prompt-display');
     if (displayEl) {
