@@ -265,9 +265,13 @@
 
         .edit-area-title svg { color: #409EFF; }
 
+        .edit-area-actions {
+            display: flex;
+            gap: 8px;
+        }
+
         .btn-cancel {
-            width: 28px;
-            height: 28px;
+            padding: 6px 16px;
             border: 1px solid #dcdfe6;
             background: #fff;
             cursor: pointer;
@@ -276,8 +280,7 @@
             align-items: center;
             justify-content: center;
             color: #606266;
-            font-size: 18px;
-            font-weight: 500;
+            font-size: 14px;
             transition: all 0.15s ease;
         }
 
@@ -336,14 +339,8 @@
             border-color: #409EFF;
         }
 
-        .edit-actions {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 16px;
-        }
-
         .btn-save {
-            padding: 8px 24px;
+            padding: 6px 16px;
             background: #409EFF;
             color: #fff;
             border: none;
@@ -394,15 +391,15 @@
                 <div class="edit-area">
                     <div class="edit-area-header">
                         <span class="edit-area-title" id="edit-title">新建提示词</span>
-                        <button class="btn-cancel" id="btn-cancel" title="取消编辑">×</button>
+                        <div class="edit-area-actions">
+                            <button class="btn-cancel" id="btn-cancel" title="取消编辑">取消</button>
+                            <button class="btn-save" id="btn-save" disabled>保存</button>
+                        </div>
                     </div>
                     <textarea class="edit-textarea" id="edit-content" placeholder="输入提示词内容..."></textarea>
                     <div class="edit-name-row">
                         <label class="edit-name-label">提示词名称</label>
                         <input type="text" class="edit-name-input" id="edit-name" placeholder="输入提示词名称">
-                    </div>
-                    <div class="edit-actions">
-                        <button class="btn-save" id="btn-save" disabled>保存</button>
                     </div>
                 </div>
             </div>
