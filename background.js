@@ -111,10 +111,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'ds-abort') {
-    // 获取当前请求的 chatId 和 messageId，发送 stop_stream 到 DeepSeek 标签页
-    const processorIds = Object.keys(dsSseProcessors);
-    if (processorIds.length > 0) {
-      const processor = dsSseProcessors[processorIds[0]];
+    const abortRid = message.requestId;
+    // 只终止指定请求的处理器，不影响其他并行任务
+    if (abortRid && dsSseProcessors[abortRid]) {
+      const processor = dsSseProcessors[abortRid];
       const chatId = processor.getChatId();
       const messageId = processor.getMessageId();
       chrome.tabs.query({ url: '*://chat.deepseek.com/*' }, (tabs) => {
@@ -126,8 +126,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }).catch(() => {});
         }
       });
+      delete dsSseProcessors[abortRid];
+    } else {
+      // 无 requestId 时降级：终止第一个处理器（向后兼容）
+      const processorIds = Object.keys(dsSseProcessors);
+      if (processorIds.length > 0) {
+        const processor = dsSseProcessors[processorIds[0]];
+        const chatId = processor.getChatId();
+        const messageId = processor.getMessageId();
+        chrome.tabs.query({ url: '*://chat.deepseek.com/*' }, (tabs) => {
+          if (tabs[0]?.id) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              type: 'ds-abort-stop',
+              chatId,
+              messageId,
+            }).catch(() => {});
+          }
+        });
+      }
+      dsSseProcessors = {};
     }
-    dsSseProcessors = {};
     return false;
   }
 
@@ -567,8 +585,7 @@ function dsSendToBilibiliTab(msg) {
 }
 
 async function dsHandleSend(markdown, prompt, requestId, thinking, taskId = 'clear') {
-  dsSseProcessors = {};
-  dsSenderTabId = null;
+  // 不清空 dsSseProcessors，保留运行中任务的处理器状态（如 inThink）
   dsRequestIdToTaskId[requestId] = taskId;
 
   const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });

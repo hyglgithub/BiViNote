@@ -217,7 +217,7 @@
   // 中断
   function abort(taskId) {
     const task = getTask(taskId);
-    chrome.runtime.sendMessage({ type: 'ds-abort' });
+    chrome.runtime.sendMessage({ type: 'ds-abort', requestId: task.activeRequestId });
     task.activeRequestId = null;
     clear(taskId);
   }
@@ -238,16 +238,7 @@
       }
     }
 
-    // 如果找不到任务，可能是全局登录检查消息
-    if (!task) {
-      // 尝试匹配所有任务
-      for (const id in tasks) {
-        if (msg.type === 'ds-chunk' || msg.type === 'ds-done' || msg.type === 'ds-error') {
-          task = tasks[id];
-          break;
-        }
-      }
-    }
+    // 不使用 fallback 匹配：requestId 不匹配时丢弃消息，避免并行任务互相干扰
 
     if (!task) return;
 
