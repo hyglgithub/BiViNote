@@ -1329,6 +1329,20 @@
   border-color: var(--bn-accent);
 }
 
+.bn-prompt-add-btn {
+  width: 26px; height: 26px; padding: 0;
+  border: 1px dashed var(--bn-border); border-radius: 50%;
+  background: transparent; color: var(--bn-text-secondary);
+  font-size: 16px; line-height: 1;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.bn-prompt-add-btn:hover {
+  border-color: var(--bn-accent); color: var(--bn-accent);
+  background: var(--bn-btn-bg);
+}
+
 .bn-prompt-preview {
   margin: 0 12px 8px; max-height: 120px; overflow-y: auto;
   border: 1px solid var(--bn-border); border-radius: 4px;

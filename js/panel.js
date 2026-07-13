@@ -479,6 +479,7 @@
         html += `<button class="bn-prompt-btn${currentPromptType === p.id ? ' active' : ''}" data-prompt="${p.id}">${escapeHtml(p.name)}</button>`;
         bindTaskEvents(p.id);
       });
+      html += `<button class="bn-prompt-add-btn" id="bn-prompt-add-btn" title="提示词管理">+</button>`;
       switcherEl.innerHTML = html;
 
       // 绑定按钮点击事件
@@ -492,6 +493,14 @@
           refreshCurrentTaskUI();
         });
       });
+
+      // 绑定"+"按钮点击事件 - 打开提示词管理
+      const addBtn = switcherEl.querySelector('#bn-prompt-add-btn');
+      if (addBtn) {
+        addBtn.addEventListener('click', () => {
+          chrome.runtime.sendMessage({ type: 'open-options' });
+        });
+      }
     }
 
     // 提示词预览
