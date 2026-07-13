@@ -95,7 +95,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // 打开选项页面
   if (message.type === 'open-options') {
-    chrome.runtime.openOptionsPage();
+    if (message.section) {
+      chrome.tabs.create({ url: chrome.runtime.getURL(`options.html?section=${message.section}`) });
+    } else {
+      chrome.runtime.openOptionsPage();
+    }
     return false;
   }
 

@@ -349,14 +349,17 @@ async function renderHistory() {
     promptNameCache[t] = await getPromptName(t);
   }));
 
-  listEl.innerHTML = videos.map(video => `
+  listEl.innerHTML = videos.map(video => {
+    const pageParam = video.pageIndex > 1 ? `?p=${video.pageIndex}` : '';
+    const videoUrl = `https://www.bilibili.com/video/${video.bvid}${pageParam}`;
+    return `
     <div class="history-card">
       <div class="history-header">
         <div class="history-title">${escapeHtml(video.title)}</div>
         <div class="history-time">${formatTime(video.timestamp)}</div>
       </div>
       <div class="history-meta">
-        <span class="history-bvid">${video.bvid}${video.pageIndex > 1 ? ' P' + video.pageIndex : ''}</span>
+        <a class="history-bvid" href="${videoUrl}" target="_blank">${video.bvid}${video.pageIndex > 1 ? ' P' + video.pageIndex : ''}</a>
         <span class="history-prompt-types">
           ${video.promptTypes.map(t => `<span class="history-tag">${escapeHtml(promptNameCache[t])}</span>`).join('')}
         </span>
@@ -366,7 +369,8 @@ async function renderHistory() {
         <button class="btn-delete" data-bvid="${video.bvid}" data-page="${video.pageIndex}">删除</button>
       </div>
     </div>
-  `).join('');
+    `;
+  }).join('');
 
   // 绑定事件
   listEl.querySelectorAll('.btn-view').forEach(btn => {
@@ -533,6 +537,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 渲染关于页面
   renderAboutPage();
+
+  // 检查 URL 参数，自动切换到指定 section
+  const urlParams = new URLSearchParams(window.location.search);
+  const sectionParam = urlParams.get('section');
+  if (sectionParam) {
+    const targetNav = document.querySelector(`.nav-item[data-section="${sectionParam}"]`);
+    if (targetNav) {
+      targetNav.click();
+    }
+  }
 
   // 输入监听
   document.getElementById('edit-name').addEventListener('input', updateSaveButton);
