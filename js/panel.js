@@ -623,12 +623,6 @@
     const initialTask = ds.getTask(currentPromptType);
     updateUI(initialTask.state);
 
-    // 自动检查登录状态
-    ds.checkLogin(currentPromptType).then(result => {
-      const task = ds.getTask(currentPromptType);
-      updateUI(task.state);
-    });
-
     // 自动滚动：离开底部暂停，回到底部恢复
     const isAtBottom = (el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 5;
     if (thinkEl) {
@@ -860,9 +854,15 @@
       footerEl.classList.toggle('bn-show', tabId === 'subtitle');
     }
 
-    // 点击文档整理标签时恢复任务状态 UI
+    // 点击文档整理标签时恢复任务状态 UI 并检测登录
     if (tabId === 'doc') {
       if (refreshDocUI) refreshDocUI();
+      const ds = window.BiViNote.deepseek;
+      if (ds) {
+        ds.checkLogin('summary').then(() => {
+          if (refreshDocUI) refreshDocUI();
+        });
+      }
     }
   }
 
