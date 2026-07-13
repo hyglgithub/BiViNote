@@ -311,16 +311,19 @@ function formatTime(timestamp) {
 }
 
 function getPromptName(promptType) {
-  if (promptType === 'summary') return Promise.resolve('文档总结');
-  if (promptType === 'clear') return Promise.resolve('文档清洗');
-
-  // 从 chrome.storage.local 获取自定义提示词
+  // 从 chrome.storage.local 获取提示词名称
   return new Promise((resolve) => {
     chrome.storage.local.get('bivinote_settings', (result) => {
       const settings = result.bivinote_settings || {};
-      const customPrompts = settings.customPrompts || [];
-      const custom = customPrompts.find(p => p.id === promptType);
-      resolve(custom ? custom.name : promptType);
+      if (promptType === 'summary') {
+        resolve(settings.deepseekSummaryName || '文档总结');
+      } else if (promptType === 'clear') {
+        resolve(settings.deepseekPromptName || '文档清洗');
+      } else {
+        const customPrompts = settings.customPrompts || [];
+        const custom = customPrompts.find(p => p.id === promptType);
+        resolve(custom ? custom.name : promptType);
+      }
     });
   });
 }
