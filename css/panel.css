@@ -52,23 +52,23 @@
 .bn-panel {
   --bn-font-size: 13px;
   --bn-line-height: 1.5;
-  position: fixed;
-  top: 100px;
-  right: 20px;
-  width: 400px;
+  /* 宽度自适应 */
+  width: 100%;
   height: 600px;
+  /* 添加嵌入样式 */
+  margin-bottom: 10px;
   border: 1px solid var(--bn-border);
+  border-radius: 8px;
+  background: var(--bn-card);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  overflow: hidden;
+  /* 保持其他样式 */
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  background: var(--bn-card);
-  color: var(--bn-text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: var(--bn-font-size);
   line-height: var(--bn-line-height);
-  z-index: 2147483647;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  border-radius: 8px;
+  color: var(--bn-text);
   box-sizing: border-box;
 }
 
@@ -80,6 +80,21 @@
 
 .bn-panel.bn-hidden {
   display: none;
+}
+
+/* 收起模式：扁平标签导航条 */
+.bn-panel.bn-collapsed {
+  height: auto;
+  min-height: auto;
+}
+
+.bn-panel.bn-collapsed .bn-main {
+  display: none;
+}
+
+.bn-panel.bn-collapsed .bn-header {
+  border-bottom: none;
+  box-shadow: none;
 }
 
 /* 折叠浮动组件 */
