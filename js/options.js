@@ -83,12 +83,12 @@ async function getAllPrompts() {
   const packImagesMap = settings.promptPackImages || {};
 
   const list = [
-    { id: 'summary', name: '文档总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true, packImages: packImagesMap.summary ?? true },
+    { id: 'summary', name: '文档总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true, packImages: packImagesMap.summary ?? false },
     { id: 'clear', name: '文档清洗', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.clear.prompt, builtin: true, packImages: packImagesMap.clear ?? true }
   ];
 
   customPrompts.forEach(p => {
-    list.push({ id: p.id, name: p.name, prompt: p.prompt, builtin: false, packImages: p.packImages ?? true });
+    list.push({ id: p.id, name: p.name, prompt: p.prompt, builtin: false, packImages: p.packImages ?? false });
   });
 
   return list;
@@ -192,7 +192,7 @@ function resetToCreateMode() {
   selectedCardId = null;
   document.getElementById('edit-content').value = '';
   document.getElementById('edit-name').value = '';
-  document.getElementById('edit-pack-images').checked = true;
+  document.getElementById('edit-pack-images').checked = false;
 
   document.getElementById('edit-title').textContent = '新建提示词';
 

@@ -741,11 +741,11 @@
     const settings = window.BiViNote.state.settings;
     if (taskId === 'clear' || taskId === 'summary') {
       const packImagesMap = settings.promptPackImages || {};
-      return packImagesMap[taskId] ?? true;
+      return packImagesMap[taskId] ?? (taskId === 'clear');
     }
     const customPrompts = settings.customPrompts || [];
     const custom = customPrompts.find(p => p.id === taskId);
-    return custom ? (custom.packImages ?? true) : true;
+    return custom ? (custom.packImages ?? false) : false;
   }
 
   // 生成下载文件名：视频标题_提示词名
