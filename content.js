@@ -29,7 +29,7 @@
           }
           // 都没显示，按上次使用的模式打开
           const lastMode = s.settings.lastOpenMode || 'panel';
-          if (lastMode === 'menu') {
+          if (lastMode === 'collapsed') {
             BN.panel.toggleCollapse();
           } else {
             BN.panel.show();

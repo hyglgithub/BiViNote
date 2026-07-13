@@ -52,12 +52,9 @@
 
     arrowEl = document.createElement('button');
     arrowEl.className = 'bn-arrow';
-    arrowEl.title = '折叠';
+    arrowEl.title = '收起';
     arrowEl.addEventListener('click', toggleCollapse);
     headerEl.appendChild(arrowEl);
-
-    // 拖动
-    setupDrag(headerEl);
 
     panelEl.appendChild(headerEl);
 
@@ -108,7 +105,14 @@
     mainWrapEl.appendChild(footerEl);
 
     panelEl.appendChild(mainWrapEl);
-    document.body.appendChild(panelEl);
+
+    // 注入到 #danmukuBox 作为第一个子节点
+    const danmukuBox = document.getElementById('danmukuBox');
+    if (danmukuBox) {
+      danmukuBox.insertBefore(panelEl, danmukuBox.firstChild);
+    } else {
+      document.body.appendChild(panelEl);
+    }
 
     // 阻止滚轮事件穿透到背景网页
     panelEl.addEventListener('wheel', (e) => {
@@ -151,10 +155,10 @@
       </div>
     `;
 
-    // icon 点击 → 展开面板
+    // icon 点击 → 无操作（不再展开面板）
     collapseContainerEl.querySelector('.bn-collapse-icon').addEventListener('click', (e) => {
       e.stopPropagation();
-      if (!isDraggingCollapse) toggleCollapse();
+      // 无操作
     });
 
     // 菜单项点击
@@ -843,45 +847,14 @@
     s.collapsed = !s.collapsed;
 
     if (s.collapsed) {
-      // 折叠：隐藏面板，显示浮动组件
-      if (savedIconLeft !== null) {
-        // 先显示以获取实际尺寸
-        collapseContainerEl.style.left = savedIconLeft + 'px';
-        collapseContainerEl.style.top = savedIconTop + 'px';
-        collapseContainerEl.classList.remove('bn-hidden');
-        const rect = collapseContainerEl.getBoundingClientRect();
-        const x = clamp(savedIconLeft, EDGE_MARGIN, window.innerWidth - rect.width - EDGE_MARGIN);
-        const y = clamp(savedIconTop, EDGE_MARGIN, window.innerHeight - rect.height - EDGE_MARGIN);
-        collapseContainerEl.style.left = x + 'px';
-        collapseContainerEl.style.top = y + 'px';
-      } else {
-        // 默认位置：右上角（与面板 CSS 默认 right:20px top:100px 对齐）
-        const panelRight = window.innerWidth - 20;
-        const x = clamp(panelRight - BTN_SIZE - 8, EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
-        const y = clamp(100 + 2, EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
-        collapseContainerEl.style.left = x + 'px';
-        collapseContainerEl.style.top = y + 'px';
-        savedIconLeft = x;
-        savedIconTop = y;
-      }
-      panelEl.classList.add('bn-hidden');
-      collapseContainerEl.classList.remove('bn-hidden');
+      // 收起：隐藏主内容区域，显示扁平标签导航条
+      panelEl.classList.add('bn-collapsed');
       // 记住用户选择的模式
-      window.BiViNote.state.settings.lastOpenMode = 'menu';
+      window.BiViNote.state.settings.lastOpenMode = 'collapsed';
       window.BiViNote.settings.save();
     } else {
-      // 展开：隐藏浮动组件，显示面板
-      const iconRect = collapseContainerEl.getBoundingClientRect();
-      const panelW = 400;
-      const panelH = 600;
-      const x = clamp(iconRect.left - panelW + BTN_SIZE + 8, EDGE_MARGIN, window.innerWidth - panelW - EDGE_MARGIN);
-      const y = clamp(iconRect.top - 2, EDGE_MARGIN, window.innerHeight - panelH - EDGE_MARGIN);
-      panelEl.style.left = x + 'px';
-      panelEl.style.top = y + 'px';
-      panelEl.style.right = 'auto';
-      collapseContainerEl.classList.add('bn-hidden');
-      panelEl.classList.remove('bn-hidden');
-      s.panelVisible = true;
+      // 展开：显示主内容区域
+      panelEl.classList.remove('bn-collapsed');
       // 记住用户选择的模式
       window.BiViNote.state.settings.lastOpenMode = 'panel';
       window.BiViNote.settings.save();
@@ -1049,7 +1022,7 @@
     // 确保非折叠状态
     window.BiViNote.state.collapsed = false;
     panelEl.classList.remove('bn-hidden');
-    if (collapseContainerEl) collapseContainerEl.classList.add('bn-hidden');
+    panelEl.classList.remove('bn-collapsed');
     window.BiViNote.state.panelVisible = true;
     // 记住用户选择的模式
     window.BiViNote.state.settings.lastOpenMode = 'panel';
@@ -1070,9 +1043,14 @@
   function hide() {
     if (panelEl) {
       panelEl.classList.add('bn-hidden');
-      if (collapseContainerEl) collapseContainerEl.classList.add('bn-hidden');
       window.BiViNote.state.panelVisible = false;
       window.BiViNote.state.collapsed = false;
+    }
+  }
+
+  function showCollapse() {
+    if (collapseContainerEl) {
+      collapseContainerEl.classList.remove('bn-hidden');
     }
   }
 
@@ -1080,7 +1058,6 @@
     if (collapseContainerEl) {
       collapseContainerEl.classList.add('bn-hidden');
     }
-    window.BiViNote.state.collapsed = false;
   }
 
   function toggle() {
@@ -1158,6 +1135,7 @@
     show,
     hide,
     hideCollapse,
+    showCollapse,
     toggle,
     toggleCollapse,
     switchTab,
