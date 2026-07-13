@@ -854,14 +854,18 @@
       footerEl.classList.toggle('bn-show', tabId === 'subtitle');
     }
 
-    // 点击文档整理标签时恢复任务状态 UI 并检测登录
+    // 点击文档整理标签时恢复任务状态 UI，仅未登录时检测
     if (tabId === 'doc') {
-      if (refreshDocUI) refreshDocUI();
       const ds = window.BiViNote.deepseek;
       if (ds) {
-        ds.checkLogin('summary').then(() => {
+        const task = ds.getTask('summary');
+        if (task.state === 'not_logged_in') {
+          ds.checkLogin('summary').then(() => {
+            if (refreshDocUI) refreshDocUI();
+          });
+        } else {
           if (refreshDocUI) refreshDocUI();
-        });
+        }
       }
     }
   }
