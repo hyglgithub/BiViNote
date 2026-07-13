@@ -15,6 +15,7 @@
   let collapseContainerEl = null;
   let tabs = [];
   let views = {};
+  let refreshDocUI = null; // 文档整理页刷新函数
 
   const TAB_DEFS = [
     { id: 'subtitle', label: '字幕' },
@@ -518,6 +519,9 @@
       if (resultEl) resultEl.textContent = task.responseText;
     }
 
+    // 暴露给 switchTab 使用
+    refreshDocUI = refreshCurrentTaskUI;
+
     // 已绑定事件的任务 ID 集合（防止重复绑定）
     const boundTaskIds = new Set();
 
@@ -843,13 +847,9 @@
       footerEl.classList.toggle('bn-show', tabId === 'subtitle');
     }
 
-    // 点击文档整理标签时检测 DeepSeek 登录状态（全局检测一次即可）
+    // 点击文档整理标签时恢复任务状态 UI
     if (tabId === 'doc') {
-      const ds = window.BiViNote.deepseek;
-      if (ds?.checkLogin) {
-        // 只检测一次，会自动同步到所有任务
-        ds.checkLogin('clear');
-      }
+      if (refreshDocUI) refreshDocUI();
     }
   }
 
