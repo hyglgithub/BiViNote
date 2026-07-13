@@ -285,6 +285,73 @@ async function deleteCustomPrompt(id) {
   await renderPromptCards();
 }
 
+// ============ 关于页面 ============
+
+function renderAboutPage() {
+  // 版本号
+  const versionEl = document.getElementById('about-version');
+  if (versionEl) {
+    const manifest = chrome.runtime.getManifest();
+    versionEl.textContent = 'v' + manifest.version;
+  }
+
+  // 更新日志
+  renderChangelog();
+}
+
+async function renderChangelog() {
+  const container = document.getElementById('about-changelog');
+  if (!container) return;
+
+  try {
+    const response = await fetch(chrome.runtime.getURL('CHANGELOG.md'));
+    const text = await response.text();
+    const versions = parseChangelog(text);
+
+    container.innerHTML = versions.map(v => `
+      <div class="changelog-version">
+        <div class="changelog-header">
+          <span class="changelog-tag">${escapeHtml(v.version)}</span>
+          <span class="changelog-date">${escapeHtml(v.date)}</span>
+        </div>
+        <ul class="changelog-items">
+          ${v.items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+        </ul>
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = '<p style="color: #999; font-size: 14px;">无法加载更新日志</p>';
+  }
+}
+
+function parseChangelog(text) {
+  const versions = [];
+  const lines = text.split('\n');
+  let currentVersion = null;
+
+  for (const line of lines) {
+    // 匹配版本标题：## [x.y.z] - YYYY-MM-DD
+    const versionMatch = line.match(/^##\s+\[?(\d+\.\d+\.\d+)\]?\s*-\s*(\d{4}-\d{2}-\d{2})/);
+    if (versionMatch) {
+      currentVersion = {
+        version: versionMatch[1],
+        date: versionMatch[2],
+        items: []
+      };
+      versions.push(currentVersion);
+      continue;
+    }
+
+    // 匹配列表项：- xxx
+    const itemMatch = line.match(/^-\s+(.+)/);
+    if (itemMatch && currentVersion) {
+      currentVersion.items.push(itemMatch[1]);
+    }
+  }
+
+  return versions;
+}
+
 // ============ 初始化 ============
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -304,6 +371,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 渲染卡片
   await renderPromptCards();
+
+  // 渲染关于页面
+  renderAboutPage();
 
   // 输入监听
   document.getElementById('edit-name').addEventListener('input', updateSaveButton);

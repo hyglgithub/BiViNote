@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "BiViNote",
-  "version": "2.3.0",
+  "version": "2.2.0",
   "description": "B站视频字幕笔记工具 - 截图+字幕+Markdown",
   "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "host_permissions": [
@@ -39,7 +39,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["icons/*"],
+      "resources": ["icons/*", "CHANGELOG.md"],
       "matches": ["*://*.bilibili.com/*"]
     }
   ]
