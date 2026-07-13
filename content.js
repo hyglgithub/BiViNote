@@ -14,28 +14,27 @@
       // 加载设置
       await BN.settings.load();
 
-      // 监听 background 消息（toggle-panel）
-      chrome.runtime.onMessage.addListener((message) => {
-        if (message.type === 'toggle-panel') {
-          const s = BN.state;
-          // 如果有东西显示着，先隐藏
-          if (s.panelVisible) {
-            BN.panel.hide();
-            return;
-          }
-          if (s.collapsed) {
-            BN.panel.hideCollapse();
-            return;
-          }
-          // 都没显示，按上次使用的模式打开
-          const lastMode = s.settings.lastOpenMode || 'panel';
-          if (lastMode === 'collapsed') {
-            BN.panel.toggleCollapse();
-          } else {
-            BN.panel.show();
-          }
+      // 延迟 2 秒初始化 UI，等待 B 站 Vue 应用渲染
+      setTimeout(() => {
+        // 创建嵌入面板
+        BN.panel.create();
+
+        // 自动显示面板
+        BN.panel.show();
+
+        // 根据设置显示悬浮功能条
+        if (BN.state.settings.showFloatToolbar !== false) {
+          BN.panel.showCollapse();
         }
-      });
+
+        // 自动加载字幕
+        const currentBvid = BN.subtitle?.extractBvid(location.href) || '';
+        if (BN.subtitle && (!BN.state.bvid || BN.state.bvid !== currentBvid)) {
+          BN.subtitle.refresh();
+        }
+
+        console.log('[BiViNote] UI initialized');
+      }, 2000);
 
       console.log('[BiViNote] Initialized successfully');
     } catch (err) {
