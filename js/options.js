@@ -361,32 +361,64 @@ async function renderHistory() {
       <div class="history-meta">
         <a class="history-bvid" href="${videoUrl}" target="_blank">${video.bvid}${video.pageIndex > 1 ? ' P' + video.pageIndex : ''}</a>
         <span class="history-prompt-types">
-          ${video.promptTypes.map(t => `<span class="history-tag">${escapeHtml(promptNameCache[t])}</span>`).join('')}
+          ${video.promptTypes.map(t => `<span class="history-tag clickable" data-bvid="${video.bvid}" data-page="${video.pageIndex}" data-prompt="${t}">${escapeHtml(promptNameCache[t])}</span>`).join('')}
         </span>
-      </div>
-      <div class="history-actions">
-        <button class="btn-view" data-bvid="${video.bvid}" data-page="${video.pageIndex}">查看</button>
-        <button class="btn-delete" data-bvid="${video.bvid}" data-page="${video.pageIndex}">删除</button>
       </div>
     </div>
     `;
   }).join('');
 
-  // 绑定事件
-  listEl.querySelectorAll('.btn-view').forEach(btn => {
-    btn.addEventListener('click', () => viewHistory(btn.dataset.bvid, parseInt(btn.dataset.page)));
-  });
-  listEl.querySelectorAll('.btn-delete').forEach(btn => {
-    btn.addEventListener('click', () => deleteHistory(btn.dataset.bvid, parseInt(btn.dataset.page)));
+  // 绑定提示词标签点击事件
+  listEl.querySelectorAll('.history-tag.clickable').forEach(tag => {
+    tag.addEventListener('click', () => {
+      const bvid = tag.dataset.bvid;
+      const pageIndex = parseInt(tag.dataset.page);
+      const promptType = tag.dataset.prompt;
+      showSinglePromptModal(bvid, pageIndex, promptType);
+    });
   });
 }
 
-async function viewHistory(bvid, pageIndex) {
+async function showSinglePromptModal(bvid, pageIndex, promptType) {
   const cache = window.BiViNote.cache;
   const data = await cache.getCache(bvid, pageIndex);
-  if (!data) return;
+  if (!data || !data[promptType]) return;
 
-  showHistoryModal(bvid, pageIndex, data);
+  const result = data[promptType];
+  const promptName = await getPromptName(promptType);
+
+  // 创建或复用模态框
+  let modal = document.getElementById('history-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'history-modal';
+    modal.className = 'history-modal';
+    modal.innerHTML = `
+      <div class="history-modal-content">
+        <div class="history-modal-header">
+          <span class="history-modal-title"></span>
+          <button class="history-modal-close">✕</button>
+        </div>
+        <div class="history-modal-body"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector('.history-modal-close').addEventListener('click', () => {
+      modal.classList.remove('show');
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('show');
+    });
+  }
+
+  // 更新标题和内容
+  modal.querySelector('.history-modal-title').textContent = promptName;
+  modal.querySelector('.history-modal-body').innerHTML = `
+    <div class="history-result-content">${escapeHtml(result.response)}</div>
+  `;
+
+  modal.classList.add('show');
 }
 
 async function showHistoryModal(bvid, pageIndex, data) {
