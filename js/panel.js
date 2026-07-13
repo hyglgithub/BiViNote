@@ -107,13 +107,8 @@
 
     panelEl.appendChild(mainWrapEl);
 
-    // 注入到 #danmukuBox 作为第一个子节点
-    const danmukuBox = document.getElementById('danmukuBox');
-    if (danmukuBox) {
-      danmukuBox.insertBefore(panelEl, danmukuBox.firstChild);
-    } else {
-      document.body.appendChild(panelEl);
-    }
+    // 始终插入 document.body，避免干涉 Vue 管理的 #danmukuBox 导致渲染失败
+    document.body.appendChild(panelEl);
 
     // 阻止滚轮事件穿透到背景网页
     panelEl.addEventListener('wheel', (e) => {
