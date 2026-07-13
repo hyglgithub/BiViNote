@@ -311,6 +311,11 @@
           <input type="checkbox" id="bn-pause-preview" checked>
           <label class="bn-switch-track" for="bn-pause-preview"></label>
         </div>
+        <div class="bn-switch">
+          <span>显示悬浮功能条</span>
+          <input type="checkbox" id="bn-show-float-toolbar" checked>
+          <label class="bn-switch-track" for="bn-show-float-toolbar"></label>
+        </div>
         <div class="bn-setting-actions">
           <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
           <button class="bn-setting-btn" id="bn-open-options-btn">更多设置</button>
@@ -383,6 +388,22 @@
       });
     }
 
+    // 显示悬浮功能条
+    const showFloatToolbarEl = panelEl.querySelector('#bn-show-float-toolbar');
+    if (showFloatToolbarEl) {
+      showFloatToolbarEl.addEventListener('change', () => {
+        window.BiViNote.state.settings.showFloatToolbar = showFloatToolbarEl.checked;
+        window.BiViNote.settings.save();
+
+        // 实时更新悬浮功能条显示状态
+        if (showFloatToolbarEl.checked) {
+          showCollapse();
+        } else {
+          hideCollapse();
+        }
+      });
+    }
+
     // 打开选项页面
     const openOptionsBtn = document.getElementById('bn-open-options-btn');
     if (openOptionsBtn) {
@@ -398,6 +419,8 @@
         window.BiViNote.settings.resetDefaults();
         loadSettingsToUI();
         applyDisplaySettings();
+        // 恢复悬浮功能条显示状态
+        showCollapse();
         // 同步暗色模式到面板和折叠按钮
         panelEl.setAttribute('data-bn-theme', '');
         if (collapseContainerEl) collapseContainerEl.setAttribute('data-bn-theme', '');
@@ -785,6 +808,9 @@
 
     const pausePreviewEl = panelEl.querySelector('#bn-pause-preview');
     if (pausePreviewEl) pausePreviewEl.checked = s.pauseOnPreview;
+
+    const showFloatToolbarEl = panelEl.querySelector('#bn-show-float-toolbar');
+    if (showFloatToolbarEl) showFloatToolbarEl.checked = s.showFloatToolbar !== false;
   }
 
   // ── 应用显示设置 ──
