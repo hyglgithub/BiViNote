@@ -527,6 +527,18 @@
 }
 
 /* 视频信息页 */
+#bn-view-video.bn-show {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+#bn-video-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 .bn-info-item {
   display: flex;
   gap: 8px;
@@ -546,7 +558,21 @@
   word-break: break-all;
 }
 
+.bn-video-info-footer {
+  margin-top: auto;
+  padding: 12px;
+  text-align: center;
+  font-size: 0.82em;
+  color: var(--bn-text-sub);
+}
+
 /* 设置页 */
+#bn-settings-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 .bn-setting-label {
   font-size: 1em;
   font-weight: bold;
@@ -708,6 +734,7 @@
 
 /* About 区域 */
 .bn-about {
+  margin-top: auto;
   text-align: center;
   padding: 12px 0 8px;
 }
@@ -1262,22 +1289,25 @@
 }
 
 .bn-prompt-switcher {
-  display: flex; gap: 0; margin: 0 12px 8px;
-  border: 1px solid var(--bn-border); border-radius: 4px; overflow: hidden;
+  display: flex; flex-wrap: wrap; gap: 6px; margin: 0 12px 8px;
 }
 
 .bn-prompt-btn {
-  flex: 1; padding: 5px 12px; font-size: 0.9em;
-  border: none; background: var(--bn-btn-bg); color: var(--bn-text);
-  cursor: pointer; transition: background 0.15s;
+  padding: 4px 12px; font-size: 0.82em;
+  border: 1px solid var(--bn-border); border-radius: 12px;
+  background: var(--bn-btn-bg); color: var(--bn-text);
+  cursor: pointer; transition: all 0.15s;
+  white-space: nowrap;
 }
 
-.bn-prompt-btn:not(:last-child) {
-  border-right: 1px solid var(--bn-border);
+.bn-prompt-btn:hover {
+  border-color: var(--bn-accent);
+  color: var(--bn-accent);
 }
 
 .bn-prompt-btn.active {
   background: var(--bn-accent); color: #fff;
+  border-color: var(--bn-accent);
 }
 
 .bn-prompt-preview {

@@ -60,6 +60,12 @@
         window.BiViNote.settings.save();
       });
     });
+
+    // 底部说明文字
+    const footer = document.createElement('div');
+    footer.className = 'bn-video-info-footer';
+    footer.textContent = '勾选的内容将出现在导出的 Markdown 文件中';
+    container.appendChild(footer);
   }
 
   function onInfoClick(e) {
