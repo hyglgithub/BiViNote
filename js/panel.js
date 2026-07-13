@@ -1194,7 +1194,9 @@
     });
   }
 
-  // 检测导航栏丢失并尝试恢复
+  // 检测导航栏丢失并尝试恢复（带防抖，避免反复刷新）
+  let lastReloadTime = 0;
+
   function checkNavRecovery() {
     const nav = document.getElementById('biliMainHeader');
     if (nav && nav.childElementCount > 0) return; // 导航栏有内容，正常
@@ -1211,9 +1213,15 @@
       } catch(e) { console.warn(e); }
       window.dispatchEvent(new PopStateEvent('popstate'));
     } else {
-      // Vue 未挂载（#app 被替换后未重新初始化），刷新页面恢复
+      // Vue 未挂载，5秒内只刷新一次，避免反复刷新
+      const now = Date.now();
+      if (now - lastReloadTime < 5000) {
+        console.warn('[BiViNote] Nav bar empty, Vue NOT mounted, but recently reloaded — skipping');
+        return;
+      }
       console.warn('[BiViNote] Nav bar empty, Vue NOT mounted, reloading page...');
-      stopPanelSurvival(); // 防止刷新前重复触发
+      lastReloadTime = now;
+      stopPanelSurvival();
       location.reload();
     }
   }
