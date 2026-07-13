@@ -19,7 +19,8 @@
     lastOpenMode: 'panel',
     deepseekPrompt: '',
     deepseekSummary: '',
-    customPrompts: []
+    customPrompts: [],
+    showFloatToolbar: true
   };
 
   const DEFAULT_CHECKED = {
