@@ -875,12 +875,14 @@
     if (s.collapsed) {
       // 收起：隐藏主内容区域，显示扁平标签导航条
       panelEl.classList.add('bn-collapsed');
+      if (arrowEl) arrowEl.classList.add('bn-collapsed');
       // 记住用户选择的模式
       window.BiViNote.state.settings.lastOpenMode = 'collapsed';
       window.BiViNote.settings.save();
     } else {
       // 展开：显示主内容区域
       panelEl.classList.remove('bn-collapsed');
+      if (arrowEl) arrowEl.classList.remove('bn-collapsed');
       // 记住用户选择的模式
       window.BiViNote.state.settings.lastOpenMode = 'panel';
       window.BiViNote.settings.save();
@@ -1076,6 +1078,11 @@
 
   function showCollapse() {
     if (collapseContainerEl) {
+      // 设置默认位置（右上角）
+      if (!collapseContainerEl.style.left) {
+        collapseContainerEl.style.left = (window.innerWidth - BTN_SIZE - EDGE_MARGIN) + 'px';
+        collapseContainerEl.style.top = '100px';
+      }
       collapseContainerEl.classList.remove('bn-hidden');
     }
   }
