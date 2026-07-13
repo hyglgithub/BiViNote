@@ -322,9 +322,7 @@
           <button class="bn-setting-btn" id="bn-open-options-btn">更多设置</button>
         </div>
         <div class="bn-about">
-          <div class="bn-about-divider"></div>
           <div class="bn-about-version">BiViNote <span id="bn-version"></span></div>
-          <a class="bn-about-link" href="https://github.com/hyglgithub/BiViNote/releases" target="_blank">GitHub Releases ↗</a>
         </div>
       </div>
     `;
