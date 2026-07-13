@@ -358,6 +358,7 @@
   function invalidateRowCache() {
     cachedSubtitleList = null;
     cachedRows = null;
+    cachedActiveRow = null;
   }
 
   // 性能优化：使用 requestAnimationFrame 节流 timeupdate
@@ -459,6 +460,7 @@
 
     // 清除缓存
     invalidateRowCache();
+    cachedScrollWrap = null;
 
     lastActiveIndex = -1;
     lastProcessedTime = -1;
@@ -511,23 +513,36 @@
     return -1;
   }
 
+  // 性能优化：直接引用当前高亮行，避免遍历所有行
+  let cachedActiveRow = null;
+
   function updateHighlight(activeIndex) {
     const rows = getCachedRows();
     if (rows.length === 0) return;
 
-    // 批量更新：先移除旧高亮，再添加新高亮
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      if (i === activeIndex) {
-        row.classList.add('bn-active');
-      } else if (row.classList.contains('bn-active')) {
-        row.classList.remove('bn-active');
-      }
+    // 移除旧高亮（O(1)）
+    if (cachedActiveRow) {
+      cachedActiveRow.classList.remove('bn-active');
+      cachedActiveRow = null;
+    }
+
+    // 添加新高亮（O(1)）
+    if (activeIndex >= 0 && activeIndex < rows.length) {
+      cachedActiveRow = rows[activeIndex];
+      cachedActiveRow.classList.add('bn-active');
     }
   }
 
-  // 节流滚动
+  // 节流滚动 + 缓存 scrollWrap
   let scrollRafId = null;
+  let cachedScrollWrap = null;
+
+  function getScrollWrap() {
+    if (!cachedScrollWrap || !cachedScrollWrap.parentNode) {
+      cachedScrollWrap = window.BiViNote.panel.getScrollWrap();
+    }
+    return cachedScrollWrap;
+  }
 
   function scrollToItem(index) {
     if (scrollRafId) return; // 已有待处理的滚动
@@ -535,7 +550,7 @@
     scrollRafId = requestAnimationFrame(() => {
       scrollRafId = null;
 
-      const scrollWrap = window.BiViNote.panel.getScrollWrap();
+      const scrollWrap = getScrollWrap();
       const rows = getCachedRows();
       if (!scrollWrap || rows.length === 0) return;
 

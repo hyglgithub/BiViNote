@@ -70,6 +70,8 @@
   line-height: var(--bn-line-height);
   color: var(--bn-text);
   box-sizing: border-box;
+  /* 性能优化：隔离面板布局，防止触发 B站 Vue 响应式级联重排 */
+  contain: content;
 }
 
 .bn-panel *,
@@ -268,6 +270,8 @@
 .bn-scroll {
   flex: 1;
   overflow-y: auto;
+  /* 性能优化：隔离滚动区域，减少重排范围 */
+  contain: layout style;
 }
 
 #bn-view-doc.bn-show {
