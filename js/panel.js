@@ -1207,16 +1207,17 @@
   function checkNavRecovery() {
     requestAnimationFrame(() => {
       const nav = document.getElementById('biliMainHeader');
-      if (nav && nav.offsetHeight > 0) return; // 导航栏正常
-      console.warn('[BiViNote] Nav bar missing, attempting recovery...');
+      // min-height:64px 使 offsetHeight 永远 >0，需检查是否有实际子内容
+      if (nav && nav.childElementCount > 0) return; // 导航栏有内容，正常
+      console.warn('[BiViNote] Nav bar empty, attempting recovery...');
       // 尝试触发 Vue 重新渲染：向 Vue 根实例发送自定义事件
       const app = document.getElementById('app');
-      if (app && app.__vue_app__) {
-        // Vue 3
-        app.__vue_app__.$forceUpdate?.();
-      } else if (app && app.__vue__) {
-        // Vue 2
-        app.__vue__.$forceUpdate();
+      if (app) {
+        if (app.__vue_app__) {
+          app.__vue_app__.$forceUpdate?.();
+        } else if (app.__vue__) {
+          app.__vue__.$forceUpdate();
+        }
       }
       // 备用方案：触发 popstate 让 Vue Router 重新匹配路由
       window.dispatchEvent(new PopStateEvent('popstate'));
