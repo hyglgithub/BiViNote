@@ -18,7 +18,9 @@
     downloadDir: '',
     lastOpenMode: 'panel',
     deepseekPrompt: '',
+    deepseekPromptName: '',
     deepseekSummary: '',
+    deepseekSummaryName: '',
     customPrompts: [],
     showFloatToolbar: true,
     defaultExpand: true

@@ -83,8 +83,8 @@ async function getAllPrompts() {
   const packImagesMap = settings.promptPackImages || {};
 
   const list = [
-    { id: 'summary', name: '文档总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true, packImages: packImagesMap.summary ?? false },
-    { id: 'clear', name: '文档清洗', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.clear.prompt, builtin: true, packImages: packImagesMap.clear ?? true }
+    { id: 'summary', name: settings.deepseekSummaryName || '文档总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true, packImages: packImagesMap.summary ?? false },
+    { id: 'clear', name: settings.deepseekPromptName || '文档清洗', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.clear.prompt, builtin: true, packImages: packImagesMap.clear ?? true }
   ];
 
   customPrompts.forEach(p => {
@@ -224,12 +224,12 @@ async function savePrompt() {
       const settings = await loadSettings();
       const packImagesMap = settings.promptPackImages || {};
       packImagesMap.clear = packImages;
-      await saveSettings({ deepseekPrompt: content, promptPackImages: packImagesMap });
+      await saveSettings({ deepseekPrompt: content, deepseekPromptName: name, promptPackImages: packImagesMap });
     } else if (selectedCardId === 'summary') {
       const settings = await loadSettings();
       const packImagesMap = settings.promptPackImages || {};
       packImagesMap.summary = packImages;
-      await saveSettings({ deepseekSummary: content, promptPackImages: packImagesMap });
+      await saveSettings({ deepseekSummary: content, deepseekSummaryName: name, promptPackImages: packImagesMap });
     } else {
       // 自定义提示词
       const settings = await loadSettings();
@@ -257,9 +257,9 @@ async function savePrompt() {
 
 async function resetPrompt(id) {
   if (id === 'clear') {
-    await saveSettings({ deepseekPrompt: DEFAULT_PROMPTS.clear.prompt });
+    await saveSettings({ deepseekPrompt: DEFAULT_PROMPTS.clear.prompt, deepseekPromptName: null });
   } else if (id === 'summary') {
-    await saveSettings({ deepseekSummary: DEFAULT_PROMPTS.summary.prompt });
+    await saveSettings({ deepseekSummary: DEFAULT_PROMPTS.summary.prompt, deepseekSummaryName: null });
   } else {
     // 自定义提示词重置 = 删除
     await deleteCustomPrompt(id);

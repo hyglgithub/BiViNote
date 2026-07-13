@@ -486,10 +486,13 @@
     function renderPromptSwitcher() {
       const switcherEl = panelEl.querySelector('#bn-prompt-switcher');
       if (!switcherEl) return;
-      const customPrompts = window.BiViNote.state.settings.customPrompts || [];
+      const settings = window.BiViNote.state.settings;
+      const customPrompts = settings.customPrompts || [];
+      const summaryName = settings.deepseekSummaryName || '文档总结';
+      const clearName = settings.deepseekPromptName || '文档清洗';
       let html = `
-        <button class="bn-prompt-btn${currentPromptType === 'summary' ? ' active' : ''}" data-prompt="summary">文档总结</button>
-        <button class="bn-prompt-btn${currentPromptType === 'clear' ? ' active' : ''}" data-prompt="clear">文档清洗</button>
+        <button class="bn-prompt-btn${currentPromptType === 'summary' ? ' active' : ''}" data-prompt="summary">${escapeHtml(summaryName)}</button>
+        <button class="bn-prompt-btn${currentPromptType === 'clear' ? ' active' : ''}" data-prompt="clear">${escapeHtml(clearName)}</button>
       `;
       customPrompts.forEach(p => {
         html += `<button class="bn-prompt-btn${currentPromptType === p.id ? ' active' : ''}" data-prompt="${p.id}">${escapeHtml(p.name)}</button>`;
@@ -755,9 +758,10 @@
 
   // 根据 taskId 获取提示词名称
   function getPromptName(taskId) {
-    if (taskId === 'clear') return '文档清洗';
-    if (taskId === 'summary') return '文档总结';
-    const customPrompts = window.BiViNote.state.settings.customPrompts || [];
+    const settings = window.BiViNote.state.settings;
+    if (taskId === 'clear') return settings.deepseekPromptName || '文档清洗';
+    if (taskId === 'summary') return settings.deepseekSummaryName || '文档总结';
+    const customPrompts = settings.customPrompts || [];
     const custom = customPrompts.find(p => p.id === taskId);
     return custom ? custom.name : '整理结果';
   }
