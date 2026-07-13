@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "BiViNote",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "B站视频字幕笔记工具 — 截图+字幕+Markdown",
   "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "host_permissions": [
