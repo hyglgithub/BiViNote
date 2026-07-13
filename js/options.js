@@ -335,7 +335,7 @@ async function renderHistory() {
   }
 
   listEl.innerHTML = videos.map(video => `
-    <div class="history-card" data-key="${video.key}">
+    <div class="history-card">
       <div class="history-header">
         <div class="history-title">${escapeHtml(video.title)}</div>
         <div class="history-time">${formatTime(video.timestamp)}</div>
@@ -504,9 +504,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 渲染卡片
   await renderPromptCards();
-
-  // 渲染历史记录
-  await renderHistory();
 
   // 渲染关于页面
   renderAboutPage();

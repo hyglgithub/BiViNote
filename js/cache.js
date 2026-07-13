@@ -134,6 +134,59 @@
   }
 
   /**
+   * 删除指定 promptType 的缓存条目
+   * 如果删除后无剩余 promptType，则删除整个缓存条目
+   * @param {string} bvid
+   * @param {number|string} pageIndex
+   * @param {string} promptType
+   */
+  async function removePromptType(bvid, pageIndex, promptType) {
+    const key = buildCacheKey(bvid, pageIndex);
+    const storageKey = `bivinote_cache_${key}`;
+
+    const [cacheData, index] = await Promise.all([
+      getCache(bvid, pageIndex),
+      getIndex()
+    ]);
+
+    if (!cacheData || !cacheData[promptType]) return;
+
+    // 删除指定 promptType
+    delete cacheData[promptType];
+
+    // 更新索引中的 promptTypes 数组
+    const entry = index[key];
+    if (entry && entry.promptTypes) {
+      entry.promptTypes = entry.promptTypes.filter(t => t !== promptType);
+    }
+
+    const remainingTypes = Object.keys(cacheData);
+
+    if (remainingTypes.length === 0) {
+      // 无剩余 promptType，删除整个缓存条目
+      delete index[key];
+      return new Promise(resolve => {
+        chrome.storage.local.remove([storageKey], () => {
+          if (chrome.runtime.lastError) {
+            console.warn('[BiViNote Cache] Remove promptType error:', chrome.runtime.lastError);
+          }
+          saveIndex(index).then(resolve);
+        });
+      });
+    }
+
+    // 保存更新后的缓存数据和索引
+    return new Promise(resolve => {
+      chrome.storage.local.set({ [storageKey]: cacheData }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn('[BiViNote Cache] Remove promptType error:', chrome.runtime.lastError);
+        }
+        saveIndex(index).then(resolve);
+      });
+    });
+  }
+
+  /**
    * 删除缓存
    * @param {string} bvid
    * @param {number|string} pageIndex
@@ -206,6 +259,7 @@
     getCache,
     saveCache,
     deleteCache,
+    removePromptType,
     getRecentVideos,
     buildCacheKey
   };

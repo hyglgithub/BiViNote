@@ -712,11 +712,11 @@
         ds.clear(currentPromptType);
         savedScreenshots[currentPromptType] = null;
 
-        // 同步清除缓存
+        // 同步清除缓存（仅移除当前 promptType，不影响其他类型）
         const cache = window.BiViNote.cache;
         if (cache) {
           const s = window.BiViNote.state;
-          await cache.deleteCache(s.bvid, s.pageIndex || 1);
+          await cache.removePromptType(s.bvid, s.pageIndex || 1, currentPromptType);
         }
 
         if (thinkEl) thinkEl.textContent = '';
@@ -922,6 +922,8 @@
               const data = cached[promptType];
               task.thinkText = data.think;
               task.responseText = data.response;
+              // Direct assignment is intentional here: we're hydrating from cache before
+              // any listeners are active, and refreshDocUI() is called immediately after.
               task.state = 'done';
             });
           }

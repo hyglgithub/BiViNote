@@ -259,7 +259,7 @@
       flush(task);
       setState(task, 'done');
       emit(task, 'done', getResult(task.id));
-      autoSaveCache(task);
+      autoSaveCache(task).catch(err => console.warn('[BiViNote Cache] Auto-save failed:', err));
     } else if (msg.type === 'ds-error') {
       if (msg.requestId && msg.requestId !== task.activeRequestId) return;
       emit(task, 'error', msg.error);
