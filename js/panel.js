@@ -1190,13 +1190,36 @@
       if (box) {
         box.insertBefore(panelEl, box.firstChild);
         console.log('[BiViNote] Panel re-inserted into new #danmukuBox');
+        // 检查导航栏是否丢失，尝试触发 Vue 重新渲染
+        checkNavRecovery();
       } else if (attempts < 60) {
         // #danmukuBox 还没出现，继续等待（最多约1秒）
         reinsertWhenReady(attempts + 1);
       } else {
         document.body.appendChild(panelEl);
         console.warn('[BiViNote] Panel re-inserted into body (fallback)');
+        checkNavRecovery();
       }
+    });
+  }
+
+  // 检测导航栏丢失并尝试恢复
+  function checkNavRecovery() {
+    requestAnimationFrame(() => {
+      const nav = document.getElementById('biliMainHeader');
+      if (nav && nav.offsetHeight > 0) return; // 导航栏正常
+      console.warn('[BiViNote] Nav bar missing, attempting recovery...');
+      // 尝试触发 Vue 重新渲染：向 Vue 根实例发送自定义事件
+      const app = document.getElementById('app');
+      if (app && app.__vue_app__) {
+        // Vue 3
+        app.__vue_app__.$forceUpdate?.();
+      } else if (app && app.__vue__) {
+        // Vue 2
+        app.__vue__.$forceUpdate();
+      }
+      // 备用方案：触发 popstate 让 Vue Router 重新匹配路由
+      window.dispatchEvent(new PopStateEvent('popstate'));
     });
   }
 
