@@ -1197,40 +1197,25 @@
   // 检测导航栏丢失并尝试恢复
   function checkNavRecovery() {
     const nav = document.getElementById('biliMainHeader');
-    const app = document.getElementById('app');
-    const hasVue2 = app && !!app.__vue__;
-    const hasVue3 = app && !!app.__vue_app__;
-    console.log('[BiViNote] checkNavRecovery:', {
-      navExists: !!nav,
-      childCount: nav ? nav.childElementCount : -1,
-      appExists: !!app,
-      hasVue2,
-      hasVue3,
-      innerHTML: nav ? nav.innerHTML.substring(0, 100) : 'N/A'
-    });
-
     if (nav && nav.childElementCount > 0) return; // 导航栏有内容，正常
 
-    console.warn('[BiViNote] Nav bar empty, attempting recovery...');
+    const app = document.getElementById('app');
+    const hasVue = app && (app.__vue__ || app.__vue_app__);
 
-    // 尝试触发 Vue 重新渲染
-    if (hasVue3) {
-      try { app.__vue_app__.$forceUpdate?.(); } catch(e) { console.warn(e); }
-    } else if (hasVue2) {
-      try { app.__vue__.$forceUpdate(); } catch(e) { console.warn(e); }
+    if (hasVue) {
+      // Vue 已挂载，尝试强制重渲染
+      console.warn('[BiViNote] Nav bar empty, Vue mounted, attempting forceUpdate...');
+      try {
+        if (app.__vue_app__) app.__vue_app__.$forceUpdate?.();
+        else if (app.__vue__) app.__vue__.$forceUpdate();
+      } catch(e) { console.warn(e); }
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } else {
+      // Vue 未挂载（#app 被替换后未重新初始化），刷新页面恢复
+      console.warn('[BiViNote] Nav bar empty, Vue NOT mounted, reloading page...');
+      stopPanelSurvival(); // 防止刷新前重复触发
+      location.reload();
     }
-
-    // 触发 popstate 让 Vue Router 重新匹配路由
-    window.dispatchEvent(new PopStateEvent('popstate'));
-
-    // 再次检查
-    setTimeout(() => {
-      const nav2 = document.getElementById('biliMainHeader');
-      console.log('[BiViNote] Nav recovery result:', {
-        childCount: nav2 ? nav2.childElementCount : -1,
-        innerHTML: nav2 ? nav2.innerHTML.substring(0, 100) : 'N/A'
-      });
-    }, 1000);
   }
 
   // ── 显示/隐藏面板 ──
