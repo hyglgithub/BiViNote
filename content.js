@@ -46,34 +46,28 @@
   }
 
   // ── SPA 路由监听 ──
-  // 用 History API 拦截 + popstate 代替 MutationObserver
-  // 避免监听 document.body subtree 导致大量 DOM 变化触发误判
+  // 恢复 MutationObserver 方式（B站 SPA 导航依赖此机制）
+  // 优化：节流回调，避免高频触发
 
   let lastUrl = location.href;
   let lastBvid = '';
   let lastPage = 1;
+  let urlCheckTimer = null;
 
-  function checkUrlChange() {
-    if (location.href !== lastUrl) {
-      lastUrl = location.href;
-      onRouteChange();
-    }
-  }
-
-  // 拦截 pushState / replaceState
-  const origPushState = history.pushState;
-  const origReplaceState = history.replaceState;
-  history.pushState = function (...args) {
-    origPushState.apply(this, args);
-    checkUrlChange();
-  };
-  history.replaceState = function (...args) {
-    origReplaceState.apply(this, args);
-    checkUrlChange();
-  };
-  window.addEventListener('popstate', checkUrlChange);
+  const urlObserver = new MutationObserver(() => {
+    if (urlCheckTimer) return;
+    urlCheckTimer = setTimeout(() => {
+      urlCheckTimer = null;
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        onRouteChange();
+      }
+    }, 300);
+  });
+  urlObserver.observe(document.body, { childList: true, subtree: true });
 
   function onRouteChange() {
+    console.warn('[BiViNote] onRouteChange triggered!', location.href);
     const oldBvid = lastBvid;
     const oldPage = lastPage;
     // 重置状态

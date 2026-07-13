@@ -1162,6 +1162,7 @@
       for (const m of mutations) {
         for (const node of m.removedNodes) {
           if (node === panelEl || node.contains?.(panelEl)) {
+            console.warn('[BiViNote] Panel removed from DOM, re-inserting...', node);
             // 面板被移除，重新插入
             const box = document.getElementById('danmukuBox');
             if (box) {
