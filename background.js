@@ -188,9 +188,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// 扩展图标点击 → 切换面板
+// 扩展图标点击 → 无操作（面板自动显示）
 chrome.action.onClicked.addListener((tab) => {
-  chrome.tabs.sendMessage(tab.id, { type: 'toggle-panel' }).catch(() => {});
+  // 无操作
 });
 
 /**
