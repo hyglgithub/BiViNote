@@ -224,6 +224,9 @@
     const container = document.getElementById('bn-subtitle-list');
     if (!container) return;
 
+    // 清除 DOM 缓存
+    invalidateRowCache();
+
     container.innerHTML = '';
 
     // 只绑定一次事件委托
@@ -337,16 +340,44 @@
   let manualScrollPauseUntil = 0;
   let scrollHandlers = null;
 
-  function startSync() {
-    stopSync();
-    const video = getVideoElement();
-    if (!video) return;
+  // 性能优化：缓存 DOM 元素引用
+  let cachedSubtitleList = null;
+  let cachedRows = null;
 
-    const onTimeUpdate = () => {
+  function getCachedRows() {
+    if (!cachedSubtitleList || !cachedSubtitleList.parentNode) {
+      cachedSubtitleList = document.getElementById('bn-subtitle-list');
+      cachedRows = null;
+    }
+    if (!cachedRows && cachedSubtitleList) {
+      cachedRows = cachedSubtitleList.querySelectorAll('.bn-row, .bn-row-img');
+    }
+    return cachedRows || [];
+  }
+
+  function invalidateRowCache() {
+    cachedSubtitleList = null;
+    cachedRows = null;
+  }
+
+  // 性能优化：使用 requestAnimationFrame 节流 timeupdate
+  let rafId = null;
+  let lastProcessedTime = -1;
+
+  function processTimeUpdate(video) {
+    if (rafId) return; // 已有待处理的帧
+
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
       const s = window.BiViNote.state;
       if (s.activeTab !== 'subtitle') return;
 
       const currentTime = video.currentTime;
+
+      // 跳过重复处理同一时间点
+      if (Math.abs(currentTime - lastProcessedTime) < 0.1) return;
+      lastProcessedTime = currentTime;
+
       const activeIndex = findActiveIndex(currentTime);
 
       // 高亮始终生效（不受 autoScroll 影响）
@@ -361,7 +392,18 @@
           scrollToItem(activeIndex);
         }
       }
-    };
+    });
+  }
+
+  function startSync() {
+    stopSync();
+    const video = getVideoElement();
+    if (!video) return;
+
+    // 清除缓存，获取最新 DOM
+    invalidateRowCache();
+
+    const onTimeUpdate = () => processTimeUpdate(video);
 
     // seek 完成后立即更新高亮（解决暂停状态跳转后高亮不更新的问题）
     const onSeeked = () => {
@@ -404,7 +446,22 @@
       scrollHandlers.el.removeEventListener('touchmove', scrollHandlers.touch);
       scrollHandlers = null;
     }
+
+    // 清理 RAF
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    if (scrollRafId) {
+      cancelAnimationFrame(scrollRafId);
+      scrollRafId = null;
+    }
+
+    // 清除缓存
+    invalidateRowCache();
+
     lastActiveIndex = -1;
+    lastProcessedTime = -1;
   }
 
   function setupManualScrollDetection() {
@@ -419,43 +476,81 @@
     scrollHandlers = { el: scrollWrap, wheel: handler, touch: handler };
   }
 
+  // 性能优化：使用缓存的二分查找
   function findActiveIndex(currentTime) {
     const body = window.BiViNote.state.subtitleBody;
-    for (let i = 0; i < body.length; i++) {
-      const item = body[i];
+    if (!body || body.length === 0) return -1;
+
+    // 先检查上一个位置（常见情况：连续播放）
+    if (lastActiveIndex >= 0 && lastActiveIndex < body.length) {
+      const item = body[lastActiveIndex];
       const to = item.to || item.from + 2;
       if (currentTime >= item.from && currentTime < to) {
-        return i;
+        return lastActiveIndex;
       }
     }
+
+    // 二分查找
+    let left = 0;
+    let right = body.length - 1;
+
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2);
+      const item = body[mid];
+      const to = item.to || item.from + 2;
+
+      if (currentTime >= item.from && currentTime < to) {
+        return mid;
+      } else if (currentTime < item.from) {
+        right = mid - 1;
+      } else {
+        left = mid + 1;
+      }
+    }
+
     return -1;
   }
 
   function updateHighlight(activeIndex) {
-    const container = document.getElementById('bn-subtitle-list');
-    if (!container) return;
-    const rows = container.querySelectorAll('.bn-row, .bn-row-img');
-    rows.forEach((row, i) => {
-      row.classList.toggle('bn-active', i === activeIndex);
-    });
+    const rows = getCachedRows();
+    if (rows.length === 0) return;
+
+    // 批量更新：先移除旧高亮，再添加新高亮
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (i === activeIndex) {
+        row.classList.add('bn-active');
+      } else if (row.classList.contains('bn-active')) {
+        row.classList.remove('bn-active');
+      }
+    }
   }
 
+  // 节流滚动
+  let scrollRafId = null;
+
   function scrollToItem(index) {
-    const container = document.getElementById('bn-subtitle-list');
-    const scrollWrap = window.BiViNote.panel.getScrollWrap();
-    if (!container || !scrollWrap) return;
-    const rows = container.querySelectorAll('.bn-row, .bn-row-img');
-    const target = rows[index];
-    if (!target) return;
+    if (scrollRafId) return; // 已有待处理的滚动
 
-    // 目标位置：距滚动容器顶部约 3 行高度
-    const rowHeight = target.offsetHeight || 40;
-    const offset = rowHeight * 5.0
-    const targetTop = target.offsetTop - offset;
+    scrollRafId = requestAnimationFrame(() => {
+      scrollRafId = null;
 
-    scrollWrap.scrollTo({
-      top: Math.max(0, targetTop),
-      behavior: 'smooth'
+      const scrollWrap = window.BiViNote.panel.getScrollWrap();
+      const rows = getCachedRows();
+      if (!scrollWrap || rows.length === 0) return;
+
+      const target = rows[index];
+      if (!target) return;
+
+      // 目标位置：距滚动容器顶部约 5 行高度
+      const rowHeight = target.offsetHeight || 40;
+      const offset = rowHeight * 5.0;
+      const targetTop = target.offsetTop - offset;
+
+      scrollWrap.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: 'smooth'
+      });
     });
   }
 
