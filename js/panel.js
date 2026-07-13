@@ -107,12 +107,16 @@
 
     panelEl.appendChild(mainWrapEl);
 
-    // 不直接插入 Vue 管理的容器（#danmukuBox 及其父节点都是 Vue 组件）
-    // 插入到 document.body，通过 CSS 定位到正确位置
-    const wrapEl = document.createElement('div');
-    wrapEl.id = 'bivinote-wrap';
-    wrapEl.appendChild(panelEl);
-    document.body.appendChild(wrapEl);
+    // 注入到 #danmukuBox 作为第一个子节点
+    const danmukuBox = document.getElementById('danmukuBox');
+    if (danmukuBox) {
+      danmukuBox.insertBefore(panelEl, danmukuBox.firstChild);
+    } else {
+      document.body.appendChild(panelEl);
+    }
+
+    // 监测面板是否被 Vue 重渲染移除，自动重新插入
+    startPanelSurvival();
 
     // 阻止滚轮事件穿透到背景网页
     panelEl.addEventListener('wheel', (e) => {
@@ -1141,6 +1145,59 @@
     } else if (action === 'download-md') {
       if (window.BiViNote.exportUtil) window.BiViNote.exportUtil.downloadMarkdown();
     }
+  }
+
+  // ── 面板存活保护 ──
+  // Vue 重渲染可能把面板一起销毁，监测 document.body 的子树变化并自动恢复
+
+  let panelSurvivalObserver = null;
+
+  function startPanelSurvival() {
+    stopPanelSurvival();
+    if (!panelEl) return;
+
+    panelSurvivalObserver = new MutationObserver((mutations) => {
+      if (!panelEl || panelEl.isConnected) return;
+      // 面板被移除了，检查是否和本次 DOM 变化有关
+      for (const m of mutations) {
+        for (const node of m.removedNodes) {
+          if (node === panelEl || node.contains?.(panelEl)) {
+            console.warn('[BiViNote] Panel removed from DOM, waiting for new DOM...', node.tagName, node.id);
+            // B站视频脚本可能替换了整个 #app，等新 DOM 渲染完成再插入
+            reinsertWhenReady();
+            return;
+          }
+        }
+      }
+    });
+
+    panelSurvivalObserver.observe(document.body, { childList: true, subtree: true });
+  }
+
+  function stopPanelSurvival() {
+    if (panelSurvivalObserver) {
+      panelSurvivalObserver.disconnect();
+      panelSurvivalObserver = null;
+    }
+  }
+
+  // 等待新 #app 渲染完成后重新插入面板
+  function reinsertWhenReady(attempts) {
+    attempts = attempts || 0;
+    requestAnimationFrame(() => {
+      if (panelEl.isConnected) return; // 已被其他逻辑插入
+      const box = document.getElementById('danmukuBox');
+      if (box) {
+        box.insertBefore(panelEl, box.firstChild);
+        console.log('[BiViNote] Panel re-inserted into new #danmukuBox');
+      } else if (attempts < 60) {
+        // #danmukuBox 还没出现，继续等待（最多约1秒）
+        reinsertWhenReady(attempts + 1);
+      } else {
+        document.body.appendChild(panelEl);
+        console.warn('[BiViNote] Panel re-inserted into body (fallback)');
+      }
+    });
   }
 
   // ── 显示/隐藏面板 ──
