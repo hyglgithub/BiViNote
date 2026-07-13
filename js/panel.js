@@ -317,6 +317,11 @@
           <input type="checkbox" id="bn-show-float-toolbar" checked>
           <label class="bn-switch-track" for="bn-show-float-toolbar"></label>
         </div>
+        <div class="bn-switch">
+          <span>默认展开面板</span>
+          <input type="checkbox" id="bn-default-expand" checked>
+          <label class="bn-switch-track" for="bn-default-expand"></label>
+        </div>
         <div class="bn-setting-actions">
           <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
           <button class="bn-setting-btn" id="bn-open-options-btn">更多设置</button>
@@ -403,6 +408,15 @@
       });
     }
 
+    // 默认展开面板
+    const defaultExpandEl = panelEl.querySelector('#bn-default-expand');
+    if (defaultExpandEl) {
+      defaultExpandEl.addEventListener('change', () => {
+        window.BiViNote.state.settings.defaultExpand = defaultExpandEl.checked;
+        window.BiViNote.settings.save();
+      });
+    }
+
     // 打开选项页面
     const openOptionsBtn = document.getElementById('bn-open-options-btn');
     if (openOptionsBtn) {
@@ -420,6 +434,10 @@
         applyDisplaySettings();
         // 恢复悬浮功能条显示状态
         showCollapse();
+        // 恢复面板展开状态（默认展开）
+        window.BiViNote.state.collapsed = false;
+        panelEl.classList.remove('bn-collapsed');
+        if (arrowEl) arrowEl.classList.remove('bn-collapsed');
         // 同步暗色模式到面板和折叠按钮
         panelEl.setAttribute('data-bn-theme', '');
         if (collapseContainerEl) collapseContainerEl.setAttribute('data-bn-theme', '');
@@ -845,6 +863,9 @@
 
     const showFloatToolbarEl = panelEl.querySelector('#bn-show-float-toolbar');
     if (showFloatToolbarEl) showFloatToolbarEl.checked = s.showFloatToolbar !== false;
+
+    const defaultExpandEl = panelEl.querySelector('#bn-default-expand');
+    if (defaultExpandEl) defaultExpandEl.checked = s.defaultExpand !== false;
   }
 
   // ── 应用显示设置 ──
@@ -1087,18 +1108,29 @@
 
   function show() {
     if (!panelEl) createPanel();
-    // 确保非折叠状态
-    window.BiViNote.state.collapsed = false;
     panelEl.classList.remove('bn-hidden');
-    panelEl.classList.remove('bn-collapsed');
     window.BiViNote.state.panelVisible = true;
-    // 记住用户选择的模式
-    window.BiViNote.state.settings.lastOpenMode = 'panel';
+
+    // 根据设置决定是否展开
+    const s = window.BiViNote.state;
+    const defaultExpand = s.settings.defaultExpand !== false;
+    if (defaultExpand) {
+      // 展开面板
+      s.collapsed = false;
+      panelEl.classList.remove('bn-collapsed');
+      if (arrowEl) arrowEl.classList.remove('bn-collapsed');
+      s.settings.lastOpenMode = 'panel';
+    } else {
+      // 折叠面板
+      s.collapsed = true;
+      panelEl.classList.add('bn-collapsed');
+      if (arrowEl) arrowEl.classList.add('bn-collapsed');
+      s.settings.lastOpenMode = 'collapsed';
+    }
     window.BiViNote.settings.save();
     loadSettingsToUI();
     applyDisplaySettings();
     // 自动加载字幕：无数据或 URL 变化时刷新
-    const s = window.BiViNote.state;
     const currentBvid = window.BiViNote.subtitle?.extractBvid(location.href) || '';
     const currentBvidChanged = currentBvid && s.bvid !== currentBvid;
     const currentPage = window.BiViNote.subtitle?.extractPageIndex(location.href) || 1;

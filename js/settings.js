@@ -20,7 +20,8 @@
     deepseekPrompt: '',
     deepseekSummary: '',
     customPrompts: [],
-    showFloatToolbar: true
+    showFloatToolbar: true,
+    defaultExpand: true
   };
 
   const DEFAULT_CHECKED = {
