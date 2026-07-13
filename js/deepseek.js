@@ -38,6 +38,29 @@
     return task;
   }
 
+  // 自动保存缓存
+  async function autoSaveCache(task) {
+    const cache = window.BiViNote.cache;
+    if (!cache) return;
+
+    const s = window.BiViNote.state;
+    const bvid = s.bvid;
+    const pageIndex = s.pageIndex || 1;
+    const title = document.title || '未知视频';
+
+    // 提取视频标题（去掉网站名等后缀）
+    const cleanTitle = title.replace(/_哔哩哔哩.*$/, '').trim();
+
+    await cache.saveCache(
+      bvid,
+      pageIndex,
+      cleanTitle,
+      task.id,
+      task.thinkText.trim(),
+      task.responseText.trim()
+    );
+  }
+
   // 获取任务
   function getTask(taskId) {
     if (!tasks[taskId]) {
@@ -236,6 +259,7 @@
       flush(task);
       setState(task, 'done');
       emit(task, 'done', getResult(task.id));
+      autoSaveCache(task);
     } else if (msg.type === 'ds-error') {
       if (msg.requestId && msg.requestId !== task.activeRequestId) return;
       emit(task, 'error', msg.error);
