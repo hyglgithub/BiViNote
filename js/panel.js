@@ -107,16 +107,14 @@
 
     panelEl.appendChild(mainWrapEl);
 
-    // 注入到 #danmukuBox 作为第一个子节点
-    const danmukuBox = document.getElementById('danmukuBox');
-    if (danmukuBox) {
-      danmukuBox.insertBefore(panelEl, danmukuBox.firstChild);
-    } else {
-      document.body.appendChild(panelEl);
-    }
-
-    // 监测面板是否被 Vue 重渲染移除，自动重新插入
-    startPanelSurvival();
+    // 不插入 Vue 管理的 DOM（#danmukuBox），避免 Vue 重渲染时组件树崩溃
+    // 使用独立容器，CSS 定位到 #danmukuBox 的位置
+    const wrapEl = document.createElement('div');
+    wrapEl.id = 'bivinote-wrap';
+    wrapEl.style.cssText = 'width:100%;pointer-events:none;';
+    wrapEl.appendChild(panelEl);
+    panelEl.style.pointerEvents = 'auto';
+    document.body.appendChild(wrapEl);
 
     // 阻止滚轮事件穿透到背景网页
     panelEl.addEventListener('wheel', (e) => {
@@ -1144,45 +1142,6 @@
       if (window.BiViNote.exportUtil) window.BiViNote.exportUtil.downloadSrt();
     } else if (action === 'download-md') {
       if (window.BiViNote.exportUtil) window.BiViNote.exportUtil.downloadMarkdown();
-    }
-  }
-
-  // ── 面板存活保护 ──
-  // Vue 重渲染可能把面板一起销毁，监测 document.body 的子树变化并自动恢复
-
-  let panelSurvivalObserver = null;
-
-  function startPanelSurvival() {
-    stopPanelSurvival();
-    if (!panelEl) return;
-
-    panelSurvivalObserver = new MutationObserver((mutations) => {
-      if (!panelEl || panelEl.isConnected) return;
-      // 面板被移除了，检查是否和本次 DOM 变化有关
-      for (const m of mutations) {
-        for (const node of m.removedNodes) {
-          if (node === panelEl || node.contains?.(panelEl)) {
-            console.warn('[BiViNote] Panel removed from DOM, re-inserting...', node);
-            // 面板被移除，重新插入
-            const box = document.getElementById('danmukuBox');
-            if (box) {
-              box.insertBefore(panelEl, box.firstChild);
-            } else {
-              document.body.appendChild(panelEl);
-            }
-            return;
-          }
-        }
-      }
-    });
-
-    panelSurvivalObserver.observe(document.body, { childList: true, subtree: true });
-  }
-
-  function stopPanelSurvival() {
-    if (panelSurvivalObserver) {
-      panelSurvivalObserver.disconnect();
-      panelSurvivalObserver = null;
     }
   }
 
