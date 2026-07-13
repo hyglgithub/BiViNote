@@ -1148,36 +1148,28 @@
   }
 
   // ── 面板存活保护 ──
-  // Vue 重渲染可能把面板一起销毁，监测 document.body 的子树变化并自动恢复
+  // B站视频脚本会多次替换整个 #app，用 setInterval 持续守护面板
 
-  let panelSurvivalObserver = null;
+  let panelSurvivalTimer = null;
 
   function startPanelSurvival() {
     stopPanelSurvival();
     if (!panelEl) return;
 
-    panelSurvivalObserver = new MutationObserver((mutations) => {
-      if (!panelEl || panelEl.isConnected) return;
-      // 面板被移除了，检查是否和本次 DOM 变化有关
-      for (const m of mutations) {
-        for (const node of m.removedNodes) {
-          if (node === panelEl || node.contains?.(panelEl)) {
-            console.warn('[BiViNote] Panel removed from DOM, waiting for new DOM...', node.tagName, node.id);
-            // B站视频脚本可能替换了整个 #app，等新 DOM 渲染完成再插入
-            reinsertWhenReady();
-            return;
-          }
-        }
-      }
-    });
+    panelSurvivalTimer = setInterval(() => {
+      if (!panelEl) return;
+      if (panelEl.isConnected) return; // 面板正常在 DOM 中
 
-    panelSurvivalObserver.observe(document.body, { childList: true, subtree: true });
+      // 面板被移除了，等新 #danmukuBox 出现后重新插入
+      console.warn('[BiViNote] Panel detached, re-inserting...');
+      reinsertWhenReady();
+    }, 200);
   }
 
   function stopPanelSurvival() {
-    if (panelSurvivalObserver) {
-      panelSurvivalObserver.disconnect();
-      panelSurvivalObserver = null;
+    if (panelSurvivalTimer) {
+      clearInterval(panelSurvivalTimer);
+      panelSurvivalTimer = null;
     }
   }
 
@@ -1190,38 +1182,39 @@
       if (box) {
         box.insertBefore(panelEl, box.firstChild);
         console.log('[BiViNote] Panel re-inserted into new #danmukuBox');
-        // 检查导航栏是否丢失，尝试触发 Vue 重新渲染
-        checkNavRecovery();
+        // 延迟检查导航栏（等 Vue 渲染完成）
+        setTimeout(checkNavRecovery, 500);
       } else if (attempts < 60) {
-        // #danmukuBox 还没出现，继续等待（最多约1秒）
         reinsertWhenReady(attempts + 1);
       } else {
         document.body.appendChild(panelEl);
         console.warn('[BiViNote] Panel re-inserted into body (fallback)');
-        checkNavRecovery();
+        setTimeout(checkNavRecovery, 500);
       }
     });
   }
 
   // 检测导航栏丢失并尝试恢复
   function checkNavRecovery() {
-    requestAnimationFrame(() => {
-      const nav = document.getElementById('biliMainHeader');
-      // min-height:64px 使 offsetHeight 永远 >0，需检查是否有实际子内容
-      if (nav && nav.childElementCount > 0) return; // 导航栏有内容，正常
-      console.warn('[BiViNote] Nav bar empty, attempting recovery...');
-      // 尝试触发 Vue 重新渲染：向 Vue 根实例发送自定义事件
-      const app = document.getElementById('app');
-      if (app) {
-        if (app.__vue_app__) {
-          app.__vue_app__.$forceUpdate?.();
-        } else if (app.__vue__) {
-          app.__vue__.$forceUpdate();
-        }
+    const nav = document.getElementById('biliMainHeader');
+    if (nav && nav.childElementCount > 0) return; // 导航栏有内容，正常
+    console.warn('[BiViNote] Nav bar empty, attempting recovery...');
+    const app = document.getElementById('app');
+    if (app) {
+      if (app.__vue_app__) {
+        app.__vue_app__.$forceUpdate?.();
+      } else if (app.__vue__) {
+        app.__vue__.$forceUpdate();
       }
-      // 备用方案：触发 popstate 让 Vue Router 重新匹配路由
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    });
+    }
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    // 如果恢复失败，再次检查并重试
+    setTimeout(() => {
+      const nav2 = document.getElementById('biliMainHeader');
+      if (!nav2 || nav2.childElementCount === 0) {
+        console.warn('[BiViNote] Nav bar still empty after recovery attempt');
+      }
+    }, 1000);
   }
 
   // ── 显示/隐藏面板 ──
