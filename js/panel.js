@@ -736,6 +736,18 @@
     return custom ? custom.name : '整理结果';
   }
 
+  // 获取提示词的打包图片设置
+  function getPromptPackImages(taskId) {
+    const settings = window.BiViNote.state.settings;
+    if (taskId === 'clear' || taskId === 'summary') {
+      const packImagesMap = settings.promptPackImages || {};
+      return packImagesMap[taskId] ?? true;
+    }
+    const customPrompts = settings.customPrompts || [];
+    const custom = customPrompts.find(p => p.id === taskId);
+    return custom ? (custom.packImages ?? true) : true;
+  }
+
   // 生成下载文件名：视频标题_提示词名
   function buildDownloadFilename(taskId) {
     const s = window.BiViNote.state;
@@ -749,7 +761,8 @@
     if (!result.response) return;
     const shots = savedScreenshots;
     const filename = buildDownloadFilename(taskId);
-    const hasScreenshots = shots && shots.size > 0;
+    const packImages = getPromptPackImages(taskId);
+    const hasScreenshots = packImages && shots && shots.size > 0;
     if (hasScreenshots && typeof JSZip !== 'undefined') {
       const zip = new JSZip();
       zip.file('note.md', result.response);

@@ -338,6 +338,35 @@
             border-color: #409EFF;
         }
 
+        .edit-option-row {
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .edit-option-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #606266;
+            cursor: pointer;
+        }
+
+        .edit-checkbox {
+            width: 16px;
+            height: 16px;
+            accent-color: #409EFF;
+            cursor: pointer;
+        }
+
+        .edit-option-hint {
+            font-size: 12px;
+            color: #909399;
+        }
+
         .btn-save {
             padding: 6px 16px;
             background: #409EFF;
@@ -625,6 +654,13 @@
                     <div class="edit-name-row">
                         <label class="edit-name-label">提示词名称</label>
                         <input type="text" class="edit-name-input" id="edit-name" placeholder="输入提示词名称">
+                    </div>
+                    <div class="edit-option-row">
+                        <label class="edit-option-label">
+                            <input type="checkbox" id="edit-pack-images" class="edit-checkbox">
+                            <span>打包图片</span>
+                        </label>
+                        <span class="edit-option-hint">开启后有截图时下载ZIP，关闭则只下载MD</span>
                     </div>
                 </div>
             </div>

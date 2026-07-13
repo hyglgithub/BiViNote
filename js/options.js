@@ -80,14 +80,15 @@ let selectedCardId = null; // null = 新建模式, 'ds'|'summary'|'custom_xxx' =
 async function getAllPrompts() {
   const settings = await loadSettings();
   const customPrompts = settings.customPrompts || [];
+  const packImagesMap = settings.promptPackImages || {};
 
   const list = [
-    { id: 'summary', name: '文档总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true },
-    { id: 'clear', name: '文档清洗', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.clear.prompt, builtin: true }
+    { id: 'summary', name: '文档总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true, packImages: packImagesMap.summary ?? true },
+    { id: 'clear', name: '文档清洗', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.clear.prompt, builtin: true, packImages: packImagesMap.clear ?? true }
   ];
 
   customPrompts.forEach(p => {
-    list.push({ id: p.id, name: p.name, prompt: p.prompt, builtin: false });
+    list.push({ id: p.id, name: p.name, prompt: p.prompt, builtin: false, packImages: p.packImages ?? true });
   });
 
   return list;
@@ -172,6 +173,7 @@ async function selectCard(id) {
 
   document.getElementById('edit-content').value = p.prompt;
   document.getElementById('edit-name').value = p.name;
+  document.getElementById('edit-pack-images').checked = p.packImages;
 
   document.getElementById('edit-title').textContent = '编辑提示词';
 
@@ -190,6 +192,7 @@ function resetToCreateMode() {
   selectedCardId = null;
   document.getElementById('edit-content').value = '';
   document.getElementById('edit-name').value = '';
+  document.getElementById('edit-pack-images').checked = true;
 
   document.getElementById('edit-title').textContent = '新建提示词';
 
@@ -212,21 +215,28 @@ function updateSaveButton() {
 async function savePrompt() {
   const name = document.getElementById('edit-name').value.trim();
   const content = document.getElementById('edit-content').value.trim();
+  const packImages = document.getElementById('edit-pack-images').checked;
   if (!name || !content) return;
 
   if (selectedCardId) {
     // 编辑模式
     if (selectedCardId === 'clear') {
-      await saveSettings({ deepseekPrompt: content });
+      const settings = await loadSettings();
+      const packImagesMap = settings.promptPackImages || {};
+      packImagesMap.clear = packImages;
+      await saveSettings({ deepseekPrompt: content, promptPackImages: packImagesMap });
     } else if (selectedCardId === 'summary') {
-      await saveSettings({ deepseekSummary: content });
+      const settings = await loadSettings();
+      const packImagesMap = settings.promptPackImages || {};
+      packImagesMap.summary = packImages;
+      await saveSettings({ deepseekSummary: content, promptPackImages: packImagesMap });
     } else {
       // 自定义提示词
       const settings = await loadSettings();
       const customPrompts = settings.customPrompts || [];
       const index = customPrompts.findIndex(p => p.id === selectedCardId);
       if (index !== -1) {
-        customPrompts[index] = { ...customPrompts[index], name, prompt: content };
+        customPrompts[index] = { ...customPrompts[index], name, prompt: content, packImages };
         await saveSettings({ customPrompts });
       }
     }
@@ -235,7 +245,7 @@ async function savePrompt() {
     const settings = await loadSettings();
     const customPrompts = settings.customPrompts || [];
     const id = 'custom_' + Date.now();
-    customPrompts.push({ id, name, prompt: content });
+    customPrompts.push({ id, name, prompt: content, packImages });
     await saveSettings({ customPrompts });
   }
 
