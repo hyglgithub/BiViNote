@@ -1148,37 +1148,34 @@
   }
 
   // ── 面板存活保护 ──
-  // Vue 重渲染 #danmukuBox 时会把面板一起销毁，这里监测并自动恢复
+  // Vue 重渲染可能把面板一起销毁，监测 document.body 的子树变化并自动恢复
 
   let panelSurvivalObserver = null;
-  let isReinserting = false;
 
   function startPanelSurvival() {
     stopPanelSurvival();
     if (!panelEl) return;
 
-    const parent = panelEl.parentNode;
-    if (!parent) return;
-
-    panelSurvivalObserver = new MutationObserver(() => {
-      if (isReinserting) return;
-      // 检测面板是否被移除
-      if (panelEl && !panelEl.isConnected) {
-        isReinserting = true;
-        // 重新插入面板
-        const box = document.getElementById('danmukuBox');
-        if (box) {
-          box.insertBefore(panelEl, box.firstChild);
-        } else {
-          document.body.appendChild(panelEl);
+    panelSurvivalObserver = new MutationObserver((mutations) => {
+      if (!panelEl || panelEl.isConnected) return;
+      // 面板被移除了，检查是否和本次 DOM 变化有关
+      for (const m of mutations) {
+        for (const node of m.removedNodes) {
+          if (node === panelEl || node.contains?.(panelEl)) {
+            // 面板被移除，重新插入
+            const box = document.getElementById('danmukuBox');
+            if (box) {
+              box.insertBefore(panelEl, box.firstChild);
+            } else {
+              document.body.appendChild(panelEl);
+            }
+            return;
+          }
         }
-        isReinserting = false;
-        // 重新开始监测新的父节点
-        startPanelSurvival();
       }
     });
 
-    panelSurvivalObserver.observe(parent, { childList: true });
+    panelSurvivalObserver.observe(document.body, { childList: true, subtree: true });
   }
 
   function stopPanelSurvival() {
