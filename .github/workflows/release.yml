@@ -24,7 +24,7 @@ jobs:
       - name: Create ZIP package
         run: |
           mkdir -p package
-          cp manifest.json background.js content.js package/
+          cp manifest.json background.js content.js options.html package/
           cp -r css js libs icons package/
           cd package
           zip -r ../bivinote-v${{ steps.get_version.outputs.VERSION }}-chrome.zip *
