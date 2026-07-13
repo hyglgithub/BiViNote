@@ -411,23 +411,22 @@
             flex: 1;
         }
 
+        .about-app-name-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
         .about-app-name {
             font-size: 28px;
             font-weight: 700;
             color: #1a1a1a;
-            margin-bottom: 4px;
         }
 
         .about-app-desc {
             font-size: 15px;
             color: #666;
-            margin-bottom: 12px;
-        }
-
-        .about-app-version {
-            display: flex;
-            align-items: center;
-            gap: 12px;
         }
 
         .version-badge {
@@ -645,20 +644,12 @@
                         <div class="about-app-header">
                             <img src="icons/icon-128.png" alt="BiViNote" class="about-app-icon">
                             <div class="about-app-info">
-                                <h3 class="about-app-name">BiViNote</h3>
-                                <p class="about-app-desc">B站视频字幕笔记工具</p>
-                                <div class="about-app-version">
+                                <div class="about-app-name-row">
+                                    <h3 class="about-app-name">BiViNote</h3>
                                     <span class="version-badge" id="about-version">v0.0.0</span>
                                 </div>
+                                <p class="about-app-desc">B站视频字幕笔记工具</p>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- 开发者信息 -->
-                    <div class="about-card about-developer">
-                        <h4 class="about-card-title">开发者</h4>
-                        <div class="about-developer-info">
-                            <p class="about-developer-name">wok</p>
                         </div>
                     </div>
 
