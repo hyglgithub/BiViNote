@@ -617,6 +617,203 @@
         .about-thanks-projects a:hover {
             text-decoration: underline;
         }
+
+        /* ============ 历史记录 ============ */
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .history-card {
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #e8e8e8;
+            padding: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .history-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .history-title {
+            font-weight: 600;
+            font-size: 15px;
+            color: #1a1a1a;
+        }
+
+        .history-time {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .history-meta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+
+        .history-bvid {
+            color: #666;
+        }
+
+        .history-prompt-types {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .history-tag {
+            background: #f0f0ff;
+            color: #4f46e5;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .btn-view {
+            padding: 6px 16px;
+            background: #409EFF;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .btn-view:hover { background: #337ecc; }
+
+        .btn-delete {
+            padding: 6px 16px;
+            background: #fff;
+            color: #ef4444;
+            border: 1px solid #ef4444;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .btn-delete:hover { background: #fef2f2; }
+
+        .history-empty {
+            text-align: center;
+            color: #999;
+            padding: 60px 20px;
+            font-size: 14px;
+        }
+
+        /* 历史详情模态框 */
+        .history-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .history-modal.show {
+            display: flex;
+        }
+
+        .history-modal-content {
+            background: #fff;
+            border-radius: 12px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .history-modal-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .history-modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            transition: all 0.15s ease;
+        }
+
+        .history-modal-close:hover { background: #f5f5f5; }
+
+        .history-modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .history-result-item {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .history-result-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .history-result-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .history-result-content {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -629,6 +826,7 @@
             </div>
             <ul class="nav-list">
                 <li class="nav-item active" data-section="prompts">提示词管理</li>
+                <li class="nav-item" data-section="history">整理历史</li>
                 <li class="nav-item" data-section="about">更多信息</li>
             </ul>
         </div>
@@ -662,6 +860,14 @@
                         </label>
                         <span class="edit-option-hint">开启后有截图时下载ZIP，关闭则只下载MD</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- 历史记录页面 -->
+            <div class="section" id="section-history">
+                <h2 class="section-title">📚 文档整理历史</h2>
+                <div id="history-list" class="history-list">
+                    <!-- 动态生成 -->
                 </div>
             </div>
 
@@ -727,6 +933,7 @@
         </div>
     </div>
 
+    <script src="js/cache.js"></script>
     <script src="js/options.js"></script>
 </body>
 </html>
