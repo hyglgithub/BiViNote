@@ -22,14 +22,14 @@
         .options-page {
             display: flex;
             height: calc(100vh - 20px);
-            width: 70%;
-            margin: 20px auto 0;
-            gap: 20px;
+            margin: 20px 0 0;
+            gap: 0;
         }
 
         /* ============ 左侧导航栏 ============ */
         .sider {
             width: 240px;
+            margin-left: calc((100vw - 240px) * 0.15);
             background: #fff;
             display: flex;
             flex-direction: column;
@@ -89,7 +89,6 @@
             background: #fafafa;
             border-radius: 12px 12px 0 0;
             overscroll-behavior: contain;
-            padding-right: 20px;
         }
 
         .section {
@@ -98,7 +97,6 @@
             border-radius: 12px 12px 0 0;
             padding: 32px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-            margin-right: 20px;
         }
 
         .section.active { display: block; }
