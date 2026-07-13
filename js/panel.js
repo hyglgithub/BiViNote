@@ -708,9 +708,17 @@
     }
 
     if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
+      clearBtn.addEventListener('click', async () => {
         ds.clear(currentPromptType);
         savedScreenshots[currentPromptType] = null;
+
+        // 同步清除缓存
+        const cache = window.BiViNote.cache;
+        if (cache) {
+          const s = window.BiViNote.state;
+          await cache.deleteCache(s.bvid, s.pageIndex || 1);
+        }
+
         if (thinkEl) thinkEl.textContent = '';
         if (resultEl) resultEl.textContent = '';
       });
@@ -898,10 +906,36 @@
       footerEl.classList.toggle('bn-show', tabId === 'subtitle');
     }
 
-    // 点击文档整理标签时恢复任务状态 UI，仅未登录时检测
+    // 点击文档整理标签时加载缓存并恢复任务状态 UI
     if (tabId === 'doc') {
       const ds = window.BiViNote.deepseek;
-      if (ds) {
+      const cache = window.BiViNote.cache;
+
+      if (ds && cache) {
+        const bvid = s.bvid;
+        const pageIndex = s.pageIndex || 1;
+
+        cache.getCache(bvid, pageIndex).then(cached => {
+          if (cached) {
+            Object.keys(cached).forEach(promptType => {
+              const task = ds.getTask(promptType);
+              const data = cached[promptType];
+              task.thinkText = data.think;
+              task.responseText = data.response;
+              task.state = 'done';
+            });
+          }
+
+          const task = ds.getTask('summary');
+          if (task.state === 'not_logged_in') {
+            ds.checkLogin('summary').then(() => {
+              if (refreshDocUI) refreshDocUI();
+            });
+          } else {
+            if (refreshDocUI) refreshDocUI();
+          }
+        });
+      } else if (ds) {
         const task = ds.getTask('summary');
         if (task.state === 'not_logged_in') {
           ds.checkLogin('summary').then(() => {
