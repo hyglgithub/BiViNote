@@ -1194,26 +1194,42 @@
     });
   }
 
-  // 检测导航栏丢失并尝试恢复（不刷新页面，避免无限循环）
+  // 检测导航栏丢失并尝试恢复
+  // B站视频脚本替换 #app 后，新的 MainHeaderV3 组件可能未正确渲染
+  // 此时从 Vue 组件树中找到旧的（已分离但内容完整）的 MainHeaderV3，复制其 HTML
   function checkNavRecovery() {
     const nav = document.getElementById('biliMainHeader');
     if (nav && nav.childElementCount > 0) return; // 导航栏有内容，正常
 
     const app = document.getElementById('app');
-    const hasVue = app && (app.__vue__ || app.__vue_app__);
+    const vue = app?.__vue__;
 
-    if (hasVue) {
-      // Vue 已挂载，尝试强制重渲染
-      console.warn('[BiViNote] Nav bar empty, Vue mounted, attempting forceUpdate...');
+    // 尝试从 Vue 组件树恢复导航栏内容
+    if (vue && vue.$children) {
+      // 找到所有 MainHeaderV3 组件
+      const headerComponents = vue.$children.filter(c => {
+        const tag = c.$options?.tag || c.$options?._componentTag || c.$options?.name;
+        return tag === 'MainHeaderV3';
+      });
+
+      // 找到有内容但已分离的旧组件（elConnected: false, innerHTML 有内容）
+      const oldHeader = headerComponents.find(c => !c.$el.isConnected && c.$el.innerHTML.length > 0);
+
+      if (oldHeader) {
+        console.log('[BiViNote] Nav bar empty, recovering from old MainHeaderV3 component...');
+        nav.innerHTML = oldHeader.$el.innerHTML;
+        return;
+      }
+
+      // 备用：强制重渲染
+      console.warn('[BiViNote] Nav bar empty, attempting forceUpdate...');
       try {
-        if (app.__vue_app__) app.__vue_app__.$forceUpdate?.();
-        else if (app.__vue__) app.__vue__.$forceUpdate();
+        vue.$forceUpdate();
       } catch(e) { console.warn(e); }
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    } else {
-      // Vue 未挂载，无法自动恢复，只记录日志
-      console.warn('[BiViNote] Nav bar empty, Vue NOT mounted — manual page refresh needed');
     }
+
+    // 以上方法都无效，尝试触发 popstate
+    window.dispatchEvent(new PopStateEvent('popstate'));
   }
 
   // ── 显示/隐藏面板 ──
