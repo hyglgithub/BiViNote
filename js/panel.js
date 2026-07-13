@@ -107,13 +107,11 @@
 
     panelEl.appendChild(mainWrapEl);
 
-    // 不插入 Vue 管理的 DOM（#danmukuBox），避免 Vue 重渲染时组件树崩溃
-    // 使用独立容器，CSS 定位到 #danmukuBox 的位置
+    // 不直接插入 Vue 管理的容器（#danmukuBox 及其父节点都是 Vue 组件）
+    // 插入到 document.body，通过 CSS 定位到正确位置
     const wrapEl = document.createElement('div');
     wrapEl.id = 'bivinote-wrap';
-    wrapEl.style.cssText = 'width:100%;pointer-events:none;';
     wrapEl.appendChild(panelEl);
-    panelEl.style.pointerEvents = 'auto';
     document.body.appendChild(wrapEl);
 
     // 阻止滚轮事件穿透到背景网页
