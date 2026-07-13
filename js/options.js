@@ -82,8 +82,8 @@ async function getAllPrompts() {
   const customPrompts = settings.customPrompts || [];
 
   const list = [
-    { id: 'clear', name: '文档清洗', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.clear.prompt, builtin: true },
-    { id: 'summary', name: '文档总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true }
+    { id: 'summary', name: '文档总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true },
+    { id: 'clear', name: '文档清洗', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.clear.prompt, builtin: true }
   ];
 
   customPrompts.forEach(p => {
