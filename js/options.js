@@ -311,13 +311,18 @@ function formatTime(timestamp) {
 }
 
 function getPromptName(promptType) {
-  if (promptType === 'summary') return '文档总结';
-  if (promptType === 'clear') return '文档清洗';
+  if (promptType === 'summary') return Promise.resolve('文档总结');
+  if (promptType === 'clear') return Promise.resolve('文档清洗');
 
-  // 从 settings 获取自定义提示词
-  const customPrompts = window.BiViNote.state?.settings?.customPrompts || [];
-  const custom = customPrompts.find(p => p.id === promptType);
-  return custom ? custom.name : promptType;
+  // 从 chrome.storage.local 获取自定义提示词
+  return new Promise((resolve) => {
+    chrome.storage.local.get('bivinote_settings', (result) => {
+      const settings = result.bivinote_settings || {};
+      const customPrompts = settings.customPrompts || [];
+      const custom = customPrompts.find(p => p.id === promptType);
+      resolve(custom ? custom.name : promptType);
+    });
+  });
 }
 
 async function renderHistory() {
@@ -334,6 +339,13 @@ async function renderHistory() {
     return;
   }
 
+  // 预加载所有提示词名称
+  const promptNameCache = {};
+  const allPromptTypes = [...new Set(videos.flatMap(v => v.promptTypes))];
+  await Promise.all(allPromptTypes.map(async (t) => {
+    promptNameCache[t] = await getPromptName(t);
+  }));
+
   listEl.innerHTML = videos.map(video => `
     <div class="history-card">
       <div class="history-header">
@@ -343,7 +355,7 @@ async function renderHistory() {
       <div class="history-meta">
         <span class="history-bvid">${video.bvid}${video.pageIndex > 1 ? ' P' + video.pageIndex : ''}</span>
         <span class="history-prompt-types">
-          ${video.promptTypes.map(t => `<span class="history-tag">${getPromptName(t)}</span>`).join('')}
+          ${video.promptTypes.map(t => `<span class="history-tag">${escapeHtml(promptNameCache[t])}</span>`).join('')}
         </span>
       </div>
       <div class="history-actions">
@@ -370,7 +382,7 @@ async function viewHistory(bvid, pageIndex) {
   showHistoryModal(bvid, pageIndex, data);
 }
 
-function showHistoryModal(bvid, pageIndex, data) {
+async function showHistoryModal(bvid, pageIndex, data) {
   // 创建模态框
   let modal = document.getElementById('history-modal');
   if (!modal) {
@@ -396,10 +408,16 @@ function showHistoryModal(bvid, pageIndex, data) {
     });
   }
 
+  // 预加载所有提示词名称
+  const promptNames = {};
+  await Promise.all(Object.keys(data).map(async (promptType) => {
+    promptNames[promptType] = await getPromptName(promptType);
+  }));
+
   const body = modal.querySelector('.history-modal-body');
   body.innerHTML = Object.entries(data).map(([promptType, result]) => `
     <div class="history-result-item">
-      <div class="history-result-label">${getPromptName(promptType)}</div>
+      <div class="history-result-label">${escapeHtml(promptNames[promptType])}</div>
       <div class="history-result-content">${escapeHtml(result.response)}</div>
     </div>
   `).join('');
