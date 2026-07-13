@@ -107,8 +107,16 @@
 
     panelEl.appendChild(mainWrapEl);
 
-    // 始终插入 document.body，避免干涉 Vue 管理的 #danmukuBox 导致渲染失败
-    document.body.appendChild(panelEl);
+    // 注入到 #danmukuBox 作为第一个子节点
+    const danmukuBox = document.getElementById('danmukuBox');
+    if (danmukuBox) {
+      danmukuBox.insertBefore(panelEl, danmukuBox.firstChild);
+    } else {
+      document.body.appendChild(panelEl);
+    }
+
+    // 监测面板是否被 Vue 重渲染移除，自动重新插入
+    startPanelSurvival();
 
     // 阻止滚轮事件穿透到背景网页
     panelEl.addEventListener('wheel', (e) => {
@@ -1136,6 +1144,47 @@
       if (window.BiViNote.exportUtil) window.BiViNote.exportUtil.downloadSrt();
     } else if (action === 'download-md') {
       if (window.BiViNote.exportUtil) window.BiViNote.exportUtil.downloadMarkdown();
+    }
+  }
+
+  // ── 面板存活保护 ──
+  // Vue 重渲染 #danmukuBox 时会把面板一起销毁，这里监测并自动恢复
+
+  let panelSurvivalObserver = null;
+  let isReinserting = false;
+
+  function startPanelSurvival() {
+    stopPanelSurvival();
+    if (!panelEl) return;
+
+    const parent = panelEl.parentNode;
+    if (!parent) return;
+
+    panelSurvivalObserver = new MutationObserver(() => {
+      if (isReinserting) return;
+      // 检测面板是否被移除
+      if (panelEl && !panelEl.isConnected) {
+        isReinserting = true;
+        // 重新插入面板
+        const box = document.getElementById('danmukuBox');
+        if (box) {
+          box.insertBefore(panelEl, box.firstChild);
+        } else {
+          document.body.appendChild(panelEl);
+        }
+        isReinserting = false;
+        // 重新开始监测新的父节点
+        startPanelSurvival();
+      }
+    });
+
+    panelSurvivalObserver.observe(parent, { childList: true });
+  }
+
+  function stopPanelSurvival() {
+    if (panelSurvivalObserver) {
+      panelSurvivalObserver.disconnect();
+      panelSurvivalObserver = null;
     }
   }
 
