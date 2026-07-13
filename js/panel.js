@@ -1197,23 +1197,39 @@
   // 检测导航栏丢失并尝试恢复
   function checkNavRecovery() {
     const nav = document.getElementById('biliMainHeader');
-    if (nav && nav.childElementCount > 0) return; // 导航栏有内容，正常
-    console.warn('[BiViNote] Nav bar empty, attempting recovery...');
     const app = document.getElementById('app');
-    if (app) {
-      if (app.__vue_app__) {
-        app.__vue_app__.$forceUpdate?.();
-      } else if (app.__vue__) {
-        app.__vue__.$forceUpdate();
-      }
+    const hasVue2 = app && !!app.__vue__;
+    const hasVue3 = app && !!app.__vue_app__;
+    console.log('[BiViNote] checkNavRecovery:', {
+      navExists: !!nav,
+      childCount: nav ? nav.childElementCount : -1,
+      appExists: !!app,
+      hasVue2,
+      hasVue3,
+      innerHTML: nav ? nav.innerHTML.substring(0, 100) : 'N/A'
+    });
+
+    if (nav && nav.childElementCount > 0) return; // 导航栏有内容，正常
+
+    console.warn('[BiViNote] Nav bar empty, attempting recovery...');
+
+    // 尝试触发 Vue 重新渲染
+    if (hasVue3) {
+      try { app.__vue_app__.$forceUpdate?.(); } catch(e) { console.warn(e); }
+    } else if (hasVue2) {
+      try { app.__vue__.$forceUpdate(); } catch(e) { console.warn(e); }
     }
+
+    // 触发 popstate 让 Vue Router 重新匹配路由
     window.dispatchEvent(new PopStateEvent('popstate'));
-    // 如果恢复失败，再次检查并重试
+
+    // 再次检查
     setTimeout(() => {
       const nav2 = document.getElementById('biliMainHeader');
-      if (!nav2 || nav2.childElementCount === 0) {
-        console.warn('[BiViNote] Nav bar still empty after recovery attempt');
-      }
+      console.log('[BiViNote] Nav recovery result:', {
+        childCount: nav2 ? nav2.childElementCount : -1,
+        innerHTML: nav2 ? nav2.innerHTML.substring(0, 100) : 'N/A'
+      });
     }, 1000);
   }
 
