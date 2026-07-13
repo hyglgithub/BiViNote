@@ -295,6 +295,126 @@ async function deleteCustomPrompt(id) {
   await renderPromptCards();
 }
 
+// ============ 历史记录 ============
+
+function formatTime(timestamp) {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diff = now - date;
+
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+  if (diff < 604800000) return Math.floor(diff / 86400000) + '天前';
+
+  return date.toLocaleDateString('zh-CN');
+}
+
+function getPromptName(promptType) {
+  if (promptType === 'summary') return '文档总结';
+  if (promptType === 'clear') return '文档清洗';
+
+  // 从 settings 获取自定义提示词
+  const customPrompts = window.BiViNote.state?.settings?.customPrompts || [];
+  const custom = customPrompts.find(p => p.id === promptType);
+  return custom ? custom.name : promptType;
+}
+
+async function renderHistory() {
+  const cache = window.BiViNote.cache;
+  if (!cache) return;
+
+  const listEl = document.getElementById('history-list');
+  if (!listEl) return;
+
+  const videos = await cache.getRecentVideos();
+
+  if (videos.length === 0) {
+    listEl.innerHTML = '<div class="history-empty">暂无整理记录</div>';
+    return;
+  }
+
+  listEl.innerHTML = videos.map(video => `
+    <div class="history-card" data-key="${video.key}">
+      <div class="history-header">
+        <div class="history-title">${escapeHtml(video.title)}</div>
+        <div class="history-time">${formatTime(video.timestamp)}</div>
+      </div>
+      <div class="history-meta">
+        <span class="history-bvid">${video.bvid}${video.pageIndex > 1 ? ' P' + video.pageIndex : ''}</span>
+        <span class="history-prompt-types">
+          ${video.promptTypes.map(t => `<span class="history-tag">${getPromptName(t)}</span>`).join('')}
+        </span>
+      </div>
+      <div class="history-actions">
+        <button class="btn-view" data-bvid="${video.bvid}" data-page="${video.pageIndex}">查看</button>
+        <button class="btn-delete" data-bvid="${video.bvid}" data-page="${video.pageIndex}">删除</button>
+      </div>
+    </div>
+  `).join('');
+
+  // 绑定事件
+  listEl.querySelectorAll('.btn-view').forEach(btn => {
+    btn.addEventListener('click', () => viewHistory(btn.dataset.bvid, parseInt(btn.dataset.page)));
+  });
+  listEl.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', () => deleteHistory(btn.dataset.bvid, parseInt(btn.dataset.page)));
+  });
+}
+
+async function viewHistory(bvid, pageIndex) {
+  const cache = window.BiViNote.cache;
+  const data = await cache.getCache(bvid, pageIndex);
+  if (!data) return;
+
+  showHistoryModal(bvid, pageIndex, data);
+}
+
+function showHistoryModal(bvid, pageIndex, data) {
+  // 创建模态框
+  let modal = document.getElementById('history-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'history-modal';
+    modal.className = 'history-modal';
+    modal.innerHTML = `
+      <div class="history-modal-content">
+        <div class="history-modal-header">
+          <span class="history-modal-title">整理结果</span>
+          <button class="history-modal-close">✕</button>
+        </div>
+        <div class="history-modal-body"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector('.history-modal-close').addEventListener('click', () => {
+      modal.classList.remove('show');
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('show');
+    });
+  }
+
+  const body = modal.querySelector('.history-modal-body');
+  body.innerHTML = Object.entries(data).map(([promptType, result]) => `
+    <div class="history-result-item">
+      <div class="history-result-label">${getPromptName(promptType)}</div>
+      <div class="history-result-content">${escapeHtml(result.response)}</div>
+    </div>
+  `).join('');
+
+  modal.classList.add('show');
+}
+
+async function deleteHistory(bvid, pageIndex) {
+  if (!confirm('确定删除这条记录？')) return;
+
+  const cache = window.BiViNote.cache;
+  await cache.deleteCache(bvid, pageIndex);
+  await renderHistory();
+}
+
 // ============ 关于页面 ============
 
 function renderAboutPage() {
@@ -376,11 +496,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       sections.forEach(sec => sec.classList.remove('active'));
       item.classList.add('active');
       document.getElementById('section-' + sectionId).classList.add('active');
+      if (sectionId === 'history') {
+        renderHistory();
+      }
     });
   });
 
   // 渲染卡片
   await renderPromptCards();
+
+  // 渲染历史记录
+  await renderHistory();
 
   // 渲染关于页面
   renderAboutPage();
