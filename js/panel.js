@@ -719,10 +719,36 @@
     });
   }
 
+  function sanitize(str) {
+    return String(str || 'untitled')
+      .replace(/[\\/:*?"<>|]/g, '_')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 100);
+  }
+
+  // 根据 taskId 获取提示词名称
+  function getPromptName(taskId) {
+    if (taskId === 'clear') return '文档清洗';
+    if (taskId === 'summary') return '文档总结';
+    const customPrompts = window.BiViNote.state.settings.customPrompts || [];
+    const custom = customPrompts.find(p => p.id === taskId);
+    return custom ? custom.name : '整理结果';
+  }
+
+  // 生成下载文件名：视频标题_提示词名
+  function buildDownloadFilename(taskId) {
+    const s = window.BiViNote.state;
+    const videoTitle = s.title || 'note';
+    const promptName = getPromptName(taskId);
+    return sanitize(`${videoTitle}_${promptName}`);
+  }
+
   async function downloadResult(ds, savedScreenshots, taskId = 'clear') {
     const result = ds.getResult(taskId);
     if (!result.response) return;
     const shots = savedScreenshots;
+    const filename = buildDownloadFilename(taskId);
     const hasScreenshots = shots && shots.size > 0;
     if (hasScreenshots && typeof JSZip !== 'undefined') {
       const zip = new JSZip();
@@ -735,7 +761,7 @@
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = extractFilename(result.response).replace(/\.md$/, '.zip');
+      a.download = `${filename}.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } else {
@@ -743,26 +769,10 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = extractFilename(result.response);
+      a.download = `${filename}.md`;
       a.click();
       URL.revokeObjectURL(url);
     }
-  }
-
-  function extractFilename(text) {
-    const fmMatch = text.match(/^---\s*\n[\s\S]*?title:\s*["']?(.+?)["']?\s*\n[\s\S]*?---/);
-    if (fmMatch) {
-      const title = fmMatch[1].trim().replace(/[<>:"/\\|?*]/g, '_');
-      if (title) return title + '.md';
-    }
-    const h1Match = text.match(/^#\s+(.+)$/m);
-    if (h1Match) {
-      const title = h1Match[1].trim().replace(/[<>:"/\\|?*]/g, '_');
-      if (title) return title + '.md';
-    }
-    const now = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    return `整理结果_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.md`;
   }
 
   function buildExportMarkdown() {
