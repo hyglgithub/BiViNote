@@ -43,15 +43,39 @@
   }
 
   // ── SPA 路由监听 ──
+  // 使用 History API 钩子替代 MutationObserver，避免高频回调
 
   let lastUrl = location.href;
-  const urlObserver = new MutationObserver(() => {
-    if (location.href !== lastUrl) {
-      lastUrl = location.href;
-      onRouteChange();
-    }
-  });
-  urlObserver.observe(document.body, { childList: true, subtree: true });
+
+  // 监听 pushState/replaceState
+  const origPushState = history.pushState;
+  const origReplaceState = history.replaceState;
+
+  history.pushState = function (...args) {
+    origPushState.apply(this, args);
+    checkUrlChange();
+  };
+
+  history.replaceState = function (...args) {
+    origReplaceState.apply(this, args);
+    checkUrlChange();
+  };
+
+  // 监听 popstate（浏览器前进/后退）
+  window.addEventListener('popstate', checkUrlChange);
+
+  // 节流：500ms 内只触发一次
+  let urlCheckTimer = null;
+  function checkUrlChange() {
+    if (urlCheckTimer) return;
+    urlCheckTimer = setTimeout(() => {
+      urlCheckTimer = null;
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        onRouteChange();
+      }
+    }, 500);
+  }
 
   let lastBvid = '';
   let lastPage = 1;
