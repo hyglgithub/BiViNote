@@ -96,9 +96,9 @@
       getIndex()
     ]);
 
-    // 更新缓存数据
+    // 更新缓存数据（包含时间戳）
     const cacheData = existingCache || {};
-    cacheData[promptType] = { think, response };
+    cacheData[promptType] = { think, response, timestamp: now };
 
     // 更新索引
     const entry = index[key] || {

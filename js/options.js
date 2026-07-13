@@ -414,8 +414,13 @@ async function showHistoryModal(bvid, pageIndex, data) {
     promptNames[promptType] = await getPromptName(promptType);
   }));
 
+  // 按时间戳排序（最新在前）
+  const sortedEntries = Object.entries(data).sort((a, b) => {
+    return (b[1].timestamp || 0) - (a[1].timestamp || 0);
+  });
+
   const body = modal.querySelector('.history-modal-body');
-  body.innerHTML = Object.entries(data).map(([promptType, result]) => `
+  body.innerHTML = sortedEntries.map(([promptType, result]) => `
     <div class="history-result-item">
       <div class="history-result-label">${escapeHtml(promptNames[promptType])}</div>
       <div class="history-result-content">${escapeHtml(result.response)}</div>
