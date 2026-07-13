@@ -67,7 +67,6 @@
   urlObserver.observe(document.body, { childList: true, subtree: true });
 
   function onRouteChange() {
-    console.warn('[BiViNote] onRouteChange triggered!', location.href);
     const oldBvid = lastBvid;
     const oldPage = lastPage;
     // 重置状态
