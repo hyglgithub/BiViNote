@@ -52,8 +52,8 @@
 .bn-panel {
   --bn-font-size: 13px;
   --bn-line-height: 1.5;
-  /* 宽度自适应 */
-  width: 100%;
+  /* 宽度自适应（收窄 2px，避免右侧边框被页面元素恰好盖住） */
+  width: calc(100% - 2px);
   height: 600px;
   /* 添加嵌入样式 */
   margin-bottom: 10px;
@@ -1330,10 +1330,15 @@
 }
 
 .bn-prompt-add-btn {
-  width: 26px; height: 26px; padding: 0;
+  /* 直径始终等于胶囊按钮高度（胶囊随字号/行高设置变化）：
+     胶囊高 = 文字行高(0.82em × --bn-line-height) + 上下内边距 8px + 上下边框 2px */
+  width: calc(1em * var(--bn-line-height) + 10px);
+  height: calc(1em * var(--bn-line-height) + 10px);
+  font-size: 0.82em; /* 让上面 calc 里的 1em 与胶囊文字同字号，直径精确对应 */
+  flex: none;
+  padding: 0;
   border: 1px dashed var(--bn-border); border-radius: 50%;
   background: transparent; color: var(--bn-text-secondary);
-  font-size: 16px; line-height: 1;
   cursor: pointer; transition: all 0.2s;
   display: flex; align-items: center; justify-content: center;
 }
