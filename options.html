@@ -136,9 +136,12 @@
         }
 
         .prompt-card.selected {
-            border-color: #409EFF;
-            box-shadow: 0 4px 12px rgba(64,158,255,0.15);
+            border-color: #4f46e5;
+            background: #eef2ff;
+            box-shadow: 0 4px 12px rgba(79,70,229,0.15);
         }
+
+        .prompt-card.selected .prompt-card-name { color: #4f46e5; }
 
         .prompt-card-header {
             display: flex;
@@ -263,7 +266,7 @@
             gap: 8px;
         }
 
-        .edit-area-title svg { color: #409EFF; }
+        .edit-area-title svg { color: #4f46e5; }
 
         .edit-area-actions {
             display: flex;
@@ -303,13 +306,13 @@
 
         .edit-textarea:focus {
             outline: none;
-            border-color: #409EFF;
+            border-color: #4f46e5;
         }
 
 
         .edit-name-input:focus {
             outline: none;
-            border-color: #409EFF;
+            border-color: #4f46e5;
         }
 
         .edit-name-row {
@@ -336,7 +339,7 @@
 
         .edit-name-input:focus {
             outline: none;
-            border-color: #409EFF;
+            border-color: #4f46e5;
         }
 
         .edit-option-row {
@@ -359,7 +362,7 @@
         .edit-checkbox {
             width: 16px;
             height: 16px;
-            accent-color: #409EFF;
+            accent-color: #4f46e5;
             cursor: pointer;
         }
 
@@ -370,7 +373,7 @@
 
         .btn-save {
             padding: 6px 16px;
-            background: #409EFF;
+            background: #4f46e5;
             color: #fff;
             border: none;
             border-radius: 6px;
@@ -379,7 +382,7 @@
             transition: all 0.2s ease;
         }
 
-        .btn-save:hover:not(:disabled) { background: #337ecc; }
+        .btn-save:hover:not(:disabled) { background: #4338ca; }
         .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* ============ 滚动条 ============ */
@@ -912,7 +915,6 @@
             <!-- 模型设置页面 -->
             <div class="section" id="section-model">
                 <h2 class="section-title">模型设置</h2>
-                <p class="model-desc">配置「文档整理」发往 DeepSeek 的请求参数，文档清洗/文档总结/B站专属笔记/自定义提示词统一生效。</p>
 
                 <div class="model-group">
                     <div class="model-group-title">模型类型</div>
