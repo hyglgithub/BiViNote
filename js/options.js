@@ -109,6 +109,95 @@ async function saveSettings(patch) {
   });
 }
 
+// ============ 模型设置 ============
+
+async function getModelConfig() {
+  const settings = await loadSettings();
+  return {
+    modelType: settings.deepseekModelType === 'expert' ? 'expert' : 'default',
+    search: settings.deepseekSearch === true,
+    thinking: settings.deepseekThinking !== false, // 默认 true
+  };
+}
+
+function currentModelType() {
+  const checked = document.querySelector('#model-type-cards .model-card input:checked');
+  return checked ? checked.value : 'default';
+}
+
+function applyModelConstraints() {
+  const isExpert = currentModelType() === 'expert';
+  const searchEl = document.getElementById('model-search');
+  const hintEl = document.getElementById('model-search-hint');
+  searchEl.disabled = isExpert;
+  if (isExpert) {
+    searchEl.checked = false;
+    hintEl.textContent = 'Expert 模式不支持联网搜索（已固定关闭）。';
+  } else {
+    hintEl.textContent = '从互联网检索补充信息，回答更及时。';
+  }
+}
+
+async function clearModelChatIds() {
+  const settings = await loadSettings();
+  const keys = ['chatId_clear', 'chatId_summary', 'chatId_bili'];
+  (settings.customPrompts || []).forEach(p => { if (p && p.id) keys.push('chatId_' + p.id); });
+  return new Promise((resolve) => chrome.storage.local.remove(keys, resolve));
+}
+
+async function renderModelSection() {
+  const cfg = await getModelConfig();
+  document.querySelectorAll('#model-type-cards .model-card').forEach(card => {
+    const on = card.dataset.modelType === cfg.modelType;
+    card.classList.toggle('selected', on);
+    card.querySelector('input').checked = on;
+  });
+  document.getElementById('model-search').checked = cfg.search;
+  document.getElementById('model-thinking').checked = cfg.thinking;
+  applyModelConstraints();
+}
+
+async function onModelChange() {
+  const modelType = currentModelType();
+  const searchEl = document.getElementById('model-search');
+  const thinkingEl = document.getElementById('model-thinking');
+  const prev = await getModelConfig();
+
+  const patch = { deepseekModelType: modelType, deepseekThinking: thinkingEl.checked };
+  if (modelType === 'expert') {
+    searchEl.checked = false;
+    patch.deepseekSearch = false;
+  } else {
+    patch.deepseekSearch = searchEl.checked;
+  }
+  await saveSettings(patch);
+  applyModelConstraints();
+
+  if (modelType !== prev.modelType) {
+    await clearModelChatIds(); // 切换模型类型 → 重开会话
+  }
+}
+
+function wireModelSection() {
+  document.querySelectorAll('#model-type-cards .model-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('#model-type-cards .model-card').forEach(c => {
+        c.classList.toggle('selected', c === card);
+        c.querySelector('input').checked = c === card;
+      });
+      onModelChange();
+    });
+  });
+  document.getElementById('model-search').addEventListener('change', onModelChange);
+  document.getElementById('model-thinking').addEventListener('change', onModelChange);
+  document.getElementById('btn-reset-model').addEventListener('click', async () => {
+    const prev = await getModelConfig();
+    await saveSettings({ deepseekModelType: 'default', deepseekSearch: false, deepseekThinking: true });
+    await renderModelSection();
+    if (prev.modelType !== 'default') await clearModelChatIds();
+  });
+}
+
 // ============ 状态 ============
 
 let selectedCardId = null; // null = 新建模式, 'ds'|'summary'|'custom_xxx' = 编辑模式
@@ -617,6 +706,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 渲染关于页面
   renderAboutPage();
+
+  // 渲染模型设置
+  await renderModelSection();
+  wireModelSection();
 
   // 检查 URL 参数，自动切换到指定 section
   const urlParams = new URLSearchParams(window.location.search);

@@ -827,6 +827,38 @@
             white-space: pre-wrap;
             word-break: break-word;
         }
+
+        .model-desc { font-size: 13px; color: #888; margin: 0 0 18px; line-height: 1.6; }
+        .model-group { margin-bottom: 22px; }
+        .model-group-title { font-size: 13px; color: #555; font-weight: 600; margin-bottom: 10px; }
+        .model-cards { display: flex; gap: 12px; }
+        .model-card { flex: 1; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px;
+                      cursor: pointer; display: flex; flex-direction: column; gap: 6px;
+                      background: #fff; transition: border-color .2s, box-shadow .2s, background .2s; }
+        .model-card:hover { border-color: #c7d2fe; }
+        .model-card.selected { border-color: #4f46e5; background: #eef2ff; box-shadow: 0 0 0 1px #4f46e5; }
+        .model-card input { display: none; }
+        .model-card-name { font-weight: 600; font-size: 15px; color: #1f2937; }
+        .model-card.selected .model-card-name { color: #4f46e5; }
+        .model-card-desc { font-size: 12px; color: #6b7280; line-height: 1.5; }
+        .model-switch-row { display: flex; align-items: center; justify-content: space-between;
+                            gap: 16px; padding: 12px 4px; border-bottom: 1px solid #f0f0f5; }
+        .model-switch-label { font-size: 14px; color: #1f2937; font-weight: 500; }
+        .model-badge { font-size: 11px; background: #eef2ff; color: #4f46e5;
+                       padding: 1px 8px; border-radius: 10px; margin-left: 6px; }
+        .model-switch-hint { font-size: 12px; color: #9ca3af; margin-top: 3px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background: #cbd5e1;
+                  border-radius: 22px; transition: background .2s; }
+        .slider::before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; top: 3px;
+                          background: #fff; border-radius: 50%; transition: transform .2s; }
+        .switch input:checked + .slider { background: #4f46e5; }
+        .switch input:checked + .slider::before { transform: translateX(18px); }
+        .switch input:disabled + .slider { background: #e5e7eb; opacity: .6; cursor: not-allowed; }
+        .btn-reset-model { margin-top: 16px; padding: 8px 16px; border: 1px solid #e5e7eb;
+                           background: #fff; color: #555; border-radius: 8px; cursor: pointer; font-size: 13px; }
+        .btn-reset-model:hover { border-color: #4f46e5; color: #4f46e5; }
     </style>
 </head>
 <body>
@@ -839,6 +871,7 @@
             </div>
             <ul class="nav-list">
                 <li class="nav-item active" data-section="prompts">提示词管理</li>
+                <li class="nav-item" data-section="model">模型设置</li>
                 <li class="nav-item" data-section="history">文档整理历史</li>
                 <li class="nav-item" data-section="about">更多信息</li>
             </ul>
@@ -874,6 +907,48 @@
                         <span class="edit-option-hint">开启后有截图时下载ZIP，关闭则只下载MD</span>
                     </div>
                 </div>
+            </div>
+
+            <!-- 模型设置页面 -->
+            <div class="section" id="section-model">
+                <h2 class="section-title">模型设置</h2>
+                <p class="model-desc">配置「文档整理」发往 DeepSeek 的请求参数，文档清洗/文档总结/B站专属笔记/自定义提示词统一生效。</p>
+
+                <div class="model-group">
+                    <div class="model-group-title">模型类型</div>
+                    <div class="model-cards" id="model-type-cards">
+                        <label class="model-card selected" data-model-type="default">
+                            <input type="radio" name="model-type" value="default" checked>
+                            <span class="model-card-name">Default</span>
+                            <span class="model-card-desc">通用模型。支持联网搜索与深度思考，可分别开关。</span>
+                        </label>
+                        <label class="model-card" data-model-type="expert">
+                            <input type="radio" name="model-type" value="expert">
+                            <span class="model-card-name">Expert</span>
+                            <span class="model-card-desc">进阶模型。不支持联网搜索（固定关闭），可开关深度思考。</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="model-group">
+                    <div class="model-group-title">能力开关</div>
+                    <div class="model-switch-row">
+                        <div>
+                            <div class="model-switch-label">联网搜索 <span class="model-badge">仅 Default</span></div>
+                            <div class="model-switch-hint" id="model-search-hint">从互联网检索补充信息，回答更及时。</div>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="model-search"><span class="slider"></span></label>
+                    </div>
+                    <div class="model-switch-row">
+                        <div>
+                            <div class="model-switch-label">深度思考</div>
+                            <div class="model-switch-hint">推理更深、回答更严谨，速度略慢。</div>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="model-thinking"><span class="slider"></span></label>
+                    </div>
+                </div>
+
+                <button class="btn-reset-model" id="btn-reset-model">恢复默认</button>
             </div>
 
             <!-- 历史记录页面 -->
