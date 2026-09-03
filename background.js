@@ -182,7 +182,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  // 查看笔记：打开当前视频的 B站笔记浮层；同链接已在某标签页则激活它，避免堆叠
+  // 查看笔记：打开 B站笔记列表。同链接已在某标签页则激活并刷新（列表页是旧内容，
+  // 不刷新看不到刚保存的最新笔记），否则新建标签页
   if (message.type === 'bn-open-note') {
     const url = String(message.url || '');
     if (!url) return false;
@@ -191,6 +192,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (hit && hit.id != null) {
         chrome.tabs.update(hit.id, { active: true });
         if (hit.windowId != null) chrome.windows.update(hit.windowId, { focused: true });
+        chrome.tabs.reload(hit.id);
       } else {
         chrome.tabs.create({ url });
       }
