@@ -15,6 +15,8 @@
 - 📄 **多格式导出** — SRT 字幕、Markdown 笔记（含截图时打包 ZIP）
 - 🤖 **AI 文档整理** — 接入 DeepSeek 自动整理字幕文档，流式输出思考过程和整理结果
 - 💾 **整理缓存** — 文档整理结果按视频缓存，无需重复整理
+- ✍️ **B站笔记保存** — 整理结果一键保存为 B站笔记，随时「查看笔记」回看
+- 🎛️ **全局模型配置** — Options 统一设置 DeepSeek 模型、联网搜索与深度思考，对所有整理任务生效
 - 🔄 **自动刷新** — 视频切换时自动获取新字幕
 - 🎯 **字幕同步** — 播放时高亮当前字幕，支持自动滚动
 - 🌙 **夜间模式** — 日/夜两套配色全局切换
@@ -70,7 +72,7 @@ git clone https://github.com/hyglgithub/BiViNote.git
 | 字幕 | 字幕列表、添加截图、复制、跳转、高亮同步 |
 | 章节 | 章节列表、添加截图、复制、跳转 |
 | 视频信息 | 勾选需要写入笔记的视频属性（标题/作者/日期/时长/地址/简介/时间戳） |
-| 文档整理 | DeepSeek AI 自动整理（流式输出思考+结果），一键下载/复制，支持多任务并行 |
+| 文档整理 | DeepSeek AI 自动整理（流式输出思考+结果），一键下载/复制，多任务并行，可保存为 B站笔记 |
 | 设置 | 字体大小、行高、帧步长、自动滚动、夜间模式、悬浮功能条、默认展开面板 |
 
 ### 文档整理（AI）
@@ -84,7 +86,10 @@ git clone https://github.com/hyglgithub/BiViNote.git
 5. 整理完成后可下载 Markdown（含截图时打包 ZIP）、复制文本、继续在 DeepSeek 追问
 6. 整理结果自动缓存，同一视频无需重复整理
 
+> B站笔记保存：整理完成后点击「记笔记」可将结果保存为 B站笔记（需开通 B站「记笔记」权限），保存成功后按钮切换为「查看笔记」，点击即跳转查看。
+
 提示词可在 Options 页面自定义，支持新增自定义提示词。
+DeepSeek 的模型类型、联网搜索、深度思考可在 Options 页「模型设置」统一配置，对所有整理任务生效。
 
 ### 底部按钮
 
@@ -147,7 +152,7 @@ BiViNote/
 ├── manifest.json      # 扩展配置 (Manifest V3)
 ├── background.js      # Service Worker - API 代理、图标状态、SSE 处理、DeepSeek 通信
 ├── content.js         # 入口脚本 - 面板注入、路由监听、视频切换检测
-├── options.html       # 选项页面 - 提示词管理、文档历史
+├── options.html       # 选项页面 - 提示词管理、模型设置、文档历史
 ├── js/
 │   ├── state.js       # 全局状态管理
 │   ├── panel.js       # 面板 UI - 标签页、折叠、拖动、设置、提示词管理、文档整理
@@ -158,8 +163,9 @@ BiViNote/
 │   ├── crop-viewer.js # 截图浏览 - Cropper.js 裁剪、缩放、旋转、翻转
 │   ├── export.js      # 导出 - SRT、Markdown、ZIP
 │   ├── deepseek.js    # DeepSeek 通信模块 - 状态机、chunk 处理、请求生命周期
-│   ├── options.js     # Options 页面 - 提示词管理、文档历史
+│   ├── options.js     # Options 页面 - 提示词管理、模型设置、文档历史
 │   ├── cache.js       # 文档整理缓存 - chrome.storage.local 持久化
+│   ├── bili-note.js   # B站笔记 - 笔记内容持久化与保存逻辑
 │   └── settings.js    # 设置 - chrome.storage.local 持久化
 ├── css/
 │   └── panel.css      # 面板样式（含暗色主题）
@@ -169,6 +175,7 @@ BiViNote/
 │   ├── cropper.min.css
 │   ├── deepseek-api.js    # DeepSeek MAIN world - PoW、completion、stop_stream
 │   ├── deepseek-bridge.js # DeepSeek ISOLATED world - 消息桥接
+│   ├── bili-markup.js     # B站笔记 bili-markup 解析器
 │   └── wasm-solver.js     # DeepSeek PoW WASM 求解器
 └── icons/             # 扩展图标（正常 + 变暗状态）
 ```
@@ -185,7 +192,8 @@ BiViNote/
 - **请求取消**：fetchRunId 机制防止过期请求污染状态
 - **截图裁剪**：基于 Cropper.js，支持裁剪、缩放、旋转、翻转
 - **折叠面板**：可拖动圆形图标，点击展开，功能菜单快捷操作
-- **DeepSeek 集成**：多世界脚本注入（MAIN + ISOLATED）、SSE 流式解析（7 种事件格式）、PoW 挑战求解、stop_stream 终止、cookie 降级检测
+- **DeepSeek 集成**：多世界脚本注入（MAIN + ISOLATED）、SSE 流式解析（7 种事件格式）、PoW 挑战求解、stop_stream 终止、cookie 降级检测、官方客户端 v2.4.0 适配
+- **B站笔记保存**：bili-markup 解析、笔记内容持久化、MAIN world 保存 handler
 - **自动滚动控制**：用户上滑暂停自动滚动，回到底部恢复
 - **文档整理缓存**：按视频/页码缓存整理结果，Options 页面查看历史
 - **面板存活保护**：setInterval 监控 + Vue 组件树恢复，应对 B站 #app 替换
