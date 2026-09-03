@@ -208,6 +208,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     dsSendToBilibiliTab({ type: 'ds-error', error: message.error, requestId: message.requestId });
     return false;
   }
+
+  // ── B站笔记保存（记笔记）：注入视频页 MAIN world 执行 ──
+  if (message.type === 'bn-note-save') {
+    const tabId = sender.tab?.id;
+    if (!tabId) {
+      sendResponse({ ok: false, error: '请在 bilibili 视频页使用' });
+      return false;
+    }
+    chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: bnSaveNoteMain,
+      args: [message.payload],
+    })
+      .then((injectionResults) => {
+        const result = injectionResults?.[0]?.result || { ok: false, step: 'inject', error: '未获得执行结果' };
+        sendResponse({ ok: !!result.ok, result });
+      })
+      .catch((err) => sendResponse({ ok: false, error: String((err && err.message) || err) }));
+    return true; // async sendResponse
+  }
 });
 
 // 扩展图标点击 → 无操作（面板自动显示）
@@ -788,5 +809,128 @@ function dsCreateSSEProcessor(requestId) {
   }
 
   return { processChunk, flush, getChatId: () => chatId, getMessageId: () => messageId };
+}
+
+// ── B站笔记保存（记笔记）────────────────────────────
+// 把面板「记笔记」的 payload 注入 bilibili 视频页 MAIN world 执行：
+// 主世界 fetch(credentials:'include') 才能带全 HttpOnly SESSDATA；csrf 读 bili_jct。
+// payload = { plan, images, noteId, aid, cid, title }
+//   plan  : libs/bili-markup.js toPlan 产物
+//     {kind:'t', t, a?}  文字（a = bold/underline/strike/size）
+//     {kind:'nl', list?} 段界（list='bullet'|'ordered'）
+//     {kind:'img', label?} 图片占位（label 形如 '0043.png'，按 label 到 images 取图）
+//     {kind:'tag', seconds} 视频时间点
+//   images: { [label]: {dataUrl, width} }（content 侧已转好 dataURL；同 label 复用一次上传）
+async function bnSaveNoteMain(payload) {
+  const fail = (step, error, extra) => Object.assign({ ok: false, step, error }, extra || {});
+  try {
+    const aid = Number(payload.aid) || 0;
+    const cid = Number(payload.cid) || 0;
+    if (!aid || !cid) return fail('meta', '未识别到视频信息(aid/cid)，请确认在 bilibili 视频页');
+    const title = String(payload.title || '').slice(0, 40);
+    const mc = document.cookie.match(/(?:^|; )bili_jct=([^;]*)/);
+    const csrf = mc ? decodeURIComponent(mc[1]) : '';
+    if (!csrf) return fail('csrf', '读取不到 bili_jct，请确认已登录 bilibili');
+    const tagKeyBase = Date.now();
+
+    const plan = Array.isArray(payload.plan) ? payload.plan : [];
+    const images = (payload.images && typeof payload.images === 'object') ? payload.images : {};
+    if (!plan.length) return fail('empty', '没有任何内容可保存');
+
+    // 预检：plan 里每个 img 的 label 都必须在 images 里
+    for (const tok of plan) {
+      if (tok.kind === 'img' && !images[tok.label]) {
+        return fail('img', '缺少图片 ' + tok.label + '，请重新整理后再保存');
+      }
+    }
+
+    const uploadCache = {};   // label -> location（同名复用，避免重复上传同一张）
+    const upload = async (label) => {
+      if (uploadCache[label]) return uploadCache[label];
+      const im = images[label];
+      const blob = await (await fetch(im.dataUrl)).blob();
+      const fd = new FormData();
+      fd.append('file', blob);
+      fd.append('csrf', csrf);
+      const r = await fetch('https://api.bilibili.com/x/note/image/upload', {
+        method: 'POST', credentials: 'include', body: fd,
+      });
+      const j = await r.json();
+      if (j.code !== 0) throw new Error('图片上传失败: ' + (j.message || j.code));
+      uploadCache[label] = j.data.location;
+      return j.data.location;
+    };
+
+    const ops = [];            // 最终 Quill delta ops
+    const tagObjs = [];        // 时间标签（服务端用 tags 串排章节）
+    let plainBuf = '';         // 纯文本（供 summary / cont_len）
+    let imgSeq = 0;
+
+    for (const tok of plan) {
+      if (tok.kind === 't') {
+        const o = { insert: tok.t };
+        if (tok.a && Object.keys(tok.a).length) o.attributes = tok.a;
+        ops.push(o);
+        plainBuf += tok.t;
+      } else if (tok.kind === 'nl') {
+        const o = { insert: '\n' };
+        if (tok.list) o.attributes = { list: tok.list };
+        ops.push(o);
+        plainBuf += '\n';
+      } else if (tok.kind === 'img') {
+        const location = await upload(tok.label);   // 上传一次，复用
+        imgSeq++;
+        ops.push({
+          insert: {
+            imageUpload: {
+              url: location, status: 'done', width: images[tok.label].width || 600,
+              id: 'IMAGE_' + Date.now() + '_' + imgSeq, source: 'video',
+            },
+          },
+        });
+        // markup.js 已在图片占位后放 nl，此处无需再补
+      } else if (tok.kind === 'tag') {
+        // 时间点 chip 与真实编辑器同构：cid=当前视频、index/cidCount 恒 1/1（当前页单分P语义）。
+        // 若 index/cidCount 按"全文 tag 个数"递增、或漏填 cid，阅读端会渲染成多分P时间轴。
+        const t = {
+          cid, oid_type: 0, status: 0, index: 1, seconds: tok.seconds, cidCount: 1,
+          key: String(tagKeyBase + tagObjs.length),
+          title, epid: 0, desc: '',
+        };
+        tagObjs.push(t);
+        ops.push({ insert: { tag: t } });
+      }
+    }
+    if (!ops.length) return fail('empty', '没有任何内容可保存');
+
+    const content = JSON.stringify(ops);
+    const tagsStr = tagObjs.map((t, i) => `${cid}-${i + 1}-${t.seconds}-${i}-${t.desc}`).join(',');
+    // summary 服务端上限很紧：正文多长都能存，summary 超 ~100 字返回 79501。截到 77+...
+    let summary = plainBuf.trim().replace(/\s+/g, ' ');
+    summary = summary.length > 77 ? summary.slice(0, 77) + '...' : summary;
+    summary = summary || '我发布了一篇笔记，快来看看吧~';
+    const cont_len = plainBuf.trim().length;
+
+    const body = new URLSearchParams({
+      oid: String(aid), oid_type: '0',
+      note_id: String(payload.noteId || ''),
+      cls: '1', from: 'save', hash: String(Date.now()), csrf, platform: 'web',
+      title, cont_len: String(cont_len), summary, content, tags: tagsStr,
+    }).toString();
+
+    const resp = await fetch('https://api.bilibili.com/x/note/add', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    const j = await resp.json();
+    if (j.code !== 0) {
+      return fail('save', (j.message || j.code) + (j.data && j.data.note_id ? ' (note_id=' + j.data.note_id + ')' : ''),
+        { note_id: j.data && j.data.note_id });
+    }
+    return { ok: true, note_id: String(j.data.note_id), created: !payload.noteId, title };
+  } catch (err) {
+    return fail('upload', String((err && err.message) || err));
+  }
 }
 
