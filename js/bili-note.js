@@ -120,7 +120,7 @@
       }
     });
     if (!resp) return { ok: false, error: '后台无响应，请刷新页面后重试' };
-    if (!resp.ok) return { ok: false, error: resp.error || '保存失败' };
+    if (!resp.ok) return { ok: false, error: (resp.result && resp.result.error) || resp.error || '保存失败' };
 
     const result = resp.result || {};
     // 成功：回写 note_id（覆盖更新用）
