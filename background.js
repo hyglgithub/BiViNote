@@ -182,6 +182,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
+  // 查看笔记：打开当前视频的 B站笔记浮层；同链接已在某标签页则激活它，避免堆叠
+  if (message.type === 'bn-open-note') {
+    const url = String(message.url || '');
+    if (!url) return false;
+    chrome.tabs.query({ url: '*://www.bilibili.com/*' }, (tabs) => {
+      const hit = tabs.find((t) => t.url === url);
+      if (hit && hit.id != null) {
+        chrome.tabs.update(hit.id, { active: true });
+        if (hit.windowId != null) chrome.windows.update(hit.windowId, { focused: true });
+      } else {
+        chrome.tabs.create({ url });
+      }
+    });
+    return false;
+  }
+
   // DeepSeek bridge → bilibili tab 转发
   if (message.type === 'DEEPSEEK_CHUNK') {
     const rid = message.requestId;
