@@ -267,6 +267,7 @@
         <div class="bn-doc-actions">
           <button id="bn-ds-action" class="bn-btn-primary">打开 DeepSeek 登录</button>
           <button id="bn-ds-download" class="bn-btn-primary" style="display:none">下载 Markdown</button>
+          <button id="bn-ds-note" class="bn-btn-primary" style="display:none">记笔记</button>
           <button id="bn-ds-copy" style="display:none">复制</button>
           <button id="bn-ds-clear" style="display:none">清除</button>
           <button id="bn-ds-continue" style="display:none">继续询问</button>
@@ -478,6 +479,7 @@
     const thinkEl = panelEl.querySelector('#bn-ds-think');
     const resultEl = panelEl.querySelector('#bn-ds-result');
     const downloadBtn = panelEl.querySelector('#bn-ds-download');
+    const noteBtn = panelEl.querySelector('#bn-ds-note');
     const copyBtn = panelEl.querySelector('#bn-ds-copy');
     const clearBtn = panelEl.querySelector('#bn-ds-clear');
     const continueBtn = panelEl.querySelector('#bn-ds-continue');
@@ -632,11 +634,13 @@
 
       if (dsState === 'done') {
         if (downloadBtn) downloadBtn.style.display = '';
+        if (noteBtn) noteBtn.style.display = '';
         if (copyBtn) copyBtn.style.display = '';
         if (clearBtn) clearBtn.style.display = '';
         if (continueBtn) continueBtn.style.display = '';
       } else {
         if (downloadBtn) downloadBtn.style.display = 'none';
+        if (noteBtn) noteBtn.style.display = 'none';
         if (copyBtn) copyBtn.style.display = 'none';
         if (clearBtn) clearBtn.style.display = 'none';
         if (continueBtn) continueBtn.style.display = 'none';
@@ -703,6 +707,34 @@
     if (downloadBtn) {
       downloadBtn.addEventListener('click', async () => {
         downloadResult(ds, savedScreenshots[currentPromptType], currentPromptType);
+      });
+    }
+
+    if (noteBtn) {
+      noteBtn.addEventListener('click', async () => {
+        const result = ds.getResult(currentPromptType);
+        if (!result.response) return;
+        const biliNote = window.BiViNote && window.BiViNote.biliNote;
+        if (!biliNote) { showToast('记笔记模块未加载，请刷新页面'); return; }
+        noteBtn.disabled = true;
+        const originalText = noteBtn.textContent;
+        noteBtn.textContent = '保存中…';
+        try {
+          const out = await biliNote.save({
+            response: result.response,
+            shots: savedScreenshots[currentPromptType],
+          });
+          if (out.ok) {
+            showToast(out.created ? '已保存到 B站笔记' : '已更新 B站笔记');
+          } else {
+            showToast('记笔记失败：' + (out.error || '未知错误'));
+          }
+        } catch (e) {
+          showToast('记笔记失败：' + String((e && e.message) || e));
+        } finally {
+          noteBtn.disabled = false;
+          noteBtn.textContent = originalText;
+        }
       });
     }
 
