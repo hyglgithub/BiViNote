@@ -221,7 +221,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'DEEPSEEK_DONE') {
     const rid = message.requestId;
     if (dsSseProcessors[rid]) {
-      const tail = dsSseProcessors[rid].flush();
+      const processor = dsSseProcessors[rid];
+      const fatal = processor.getError();
+      if (fatal) {
+        // 服务端拒绝（如 expert 客户端版本过旧）：报错而非「完成但空白」
+        delete dsSseProcessors[rid];
+        dsSendToBilibiliTab({ type: 'ds-error', error: fatal, requestId: rid });
+        return false;
+      }
+      const tail = processor.flush();
       if (tail) dsSendToBilibiliTab({ type: 'ds-chunk', text: tail, requestId: rid });
       delete dsSseProcessors[rid];
     }
@@ -676,12 +684,11 @@ async function dsHandleSend(markdown, prompt, requestId, taskId = 'clear') {
     return;
   }
 
-  // 处理 {markdown} 占位符
+  // 处理 {markdown} 占位符（严格模式：提示词须显式包含 {markdown} 才会插入文档，
+  // 否则原样发送提示词、不附加文档）。replaceAll 让同串出现多处时全部替换。
   let fullPrompt = prompt;
   if (fullPrompt.includes('{markdown}')) {
-    fullPrompt = fullPrompt.replace('{markdown}', markdown);
-  } else {
-    fullPrompt = fullPrompt + '\n\n' + markdown;
+    fullPrompt = fullPrompt.replaceAll('{markdown}', markdown);
   }
   const chatId = chatIds[taskId] || null;
 
@@ -722,6 +729,7 @@ function dsCreateSSEProcessor(requestId) {
   let chatId = null;
   let messageId = null;
   let dataLineBuf = '';
+  let fatalError = null;  // 服务端拒绝类事件（如 unsupported_client_by_model）
   const taskId = dsRequestIdToTaskId[requestId] || 'clear';
 
   function processChunk(chunk) {
@@ -781,6 +789,15 @@ function dsCreateSSEProcessor(requestId) {
   }
 
   function processEvent(data) {
+    // 服务端拒绝类事件（官方经 event: hint 发来）：expert 因客户端版本过旧会返回
+    // {"type":"error","content":"Update to the latest version...","clear_response":true,
+    //  "finish_reason":"unsupported_client_by_model"}，且不产生任何正文。捕获它转成
+    // ds-error，避免 DEEPSEEK_DONE 后表现为「完成但空白」。
+    if (data.type === 'error' || data.clear_response === true) {
+      fatalError = data.content || data.message || data.msg ||
+        `DeepSeek 拒绝请求（${data.finish_reason || 'unknown'}）`;
+      return null;
+    }
     if (data.o === 'SET' || data.o === 'BATCH') return null;
     const path = Array.isArray(data.p) ? data.p.join('/') : data.p;
     const resp = data.v?.response;
@@ -871,7 +888,7 @@ function dsCreateSSEProcessor(requestId) {
     return '';
   }
 
-  return { processChunk, flush, getChatId: () => chatId, getMessageId: () => messageId };
+  return { processChunk, flush, getChatId: () => chatId, getMessageId: () => messageId, getError: () => fatalError };
 }
 
 // ── B站笔记保存（记笔记）────────────────────────────

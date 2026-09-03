@@ -108,21 +108,19 @@
     return c;
   }
 
-  // 获取页面版本信息
+  // 获取页面客户端版本。
+  // 官方服务端校验 x-client-version：Expert 模型要求较新的客户端，版本过旧会经 event: hint
+  // 返回 {"type":"error","finish_reason":"unsupported_client_by_model"} 拒绝（见 background 处理）。
+  // 优先读页面暴露的版本；读不到用当前官方 x-client-version（2.4.0）兜底。
+  // 注意：官方自 v2.4.0 起不再发送 x-app-version；用旧 app-version（20241129.1）配新客户端会触发
+  // HTTP 422，因此这里不再返回 appVersion、也不再发送该头。
   function getPageVersions() {
-    let clientVersion = "1.7.0";
-    let appVersion = "20241129.1";
+    let clientVersion = "2.4.0";
     try {
-      const meta = document.querySelector('meta[name="version"]');
-      if (meta && meta.getAttribute("content")) appVersion = meta.getAttribute("content");
-      const nextData = window.__NEXT_DATA__;
-      if (nextData && nextData.buildId) appVersion = nextData.buildId;
-      const appVer = window.__APP_VERSION__;
-      if (appVer) appVersion = appVer;
       const clientVer = window.__CLIENT_VERSION__;
       if (clientVer) clientVersion = clientVer;
     } catch {}
-    return { clientVersion, appVersion };
+    return { clientVersion };
   }
 
   // 发送消息到 content script（中转给 background）
@@ -155,7 +153,7 @@
     }
 
     // 构造请求头
-    const { clientVersion, appVersion } = getPageVersions();
+    const { clientVersion } = getPageVersions();
     const headers = {
       "Content-Type": "application/json",
       Accept: "*/*",
@@ -163,7 +161,6 @@
       Origin: "https://chat.deepseek.com",
       "x-client-platform": "web",
       "x-client-version": clientVersion,
-      "x-app-version": appVersion,
       Authorization: `Bearer ${token}`,
     };
 
@@ -198,7 +195,22 @@
         }
         const d = json.data;
         const biz = d && typeof d === "object" ? d.biz_data : undefined;
-        sessionId = (biz && biz.id) || (d && d.id) || (d && d.chat_session_id) || "";
+        const cs = (biz && (biz.chat_session || biz.session)) ||
+                   (d && (d.chat_session || d.session)) || undefined;
+        // 兼容不同返回形态：chat_session.id / biz_data.id / data.id / chat_session_id
+        sessionId =
+          (cs && cs.id) ||
+          (biz && biz.id) ||
+          (d && d.id) ||
+          (d && d.chat_session_id) ||
+          "";
+        if (!sessionId) {
+          postToExtension("DEEPSEEK_ERROR", {
+            requestId,
+            error: `创建会话成功但未返回会话 ID: ${JSON.stringify(json).slice(0, 200)}`,
+          });
+          return;
+        }
       } catch (e) {
         const hint = e.name === "AbortError" ? "（请求超时）" : "";
         postToExtension("DEEPSEEK_ERROR", { requestId, error: `创建会话异常: ${String(e)}${hint}` });
@@ -300,7 +312,6 @@
           ref_file_ids: [],
           thinking_enabled: thinkingEnabled,
           search_enabled: searchEnabled,
-          action: null,
           preempt: false,
         }),
       }, 60000);
@@ -424,7 +435,7 @@
   async function stopStream(chatId, messageId) {
     const token = getToken();
     if (!token || !chatId) return;
-    const { clientVersion, appVersion } = getPageVersions();
+    const { clientVersion } = getPageVersions();
     try {
       await fetch("https://chat.deepseek.com/api/v0/chat/stop_stream", {
         method: "POST",
@@ -435,7 +446,6 @@
           Origin: "https://chat.deepseek.com",
           "x-client-platform": "web",
           "x-client-version": clientVersion,
-          "x-app-version": appVersion,
           Authorization: `Bearer ${token}`,
         },
         credentials: "include",
