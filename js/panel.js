@@ -883,8 +883,18 @@
   function resetDocAuto() {
     const ds = window.BiViNote.deepseek;
     if (ds) {
-      ds.abort('clear');
-      ds.abort('summary');
+      // 切视频：把文档整理任务全部清回待整理态，让面板回到显示提示词的初始界面。
+      // 预设(clear/summary)与自定义提示词都要清——否则自定义任务的已完成结果被清空后
+      // 状态仍停在 done，提示词不显示，只剩空白（预设此前正常是因为这里 abort 了它们）。
+      // 只对真正在跑的任务 abort（activeRequestId 非空，定向停流）；done/error 的用 clear()
+      // 复位，避免发空 requestId 的 ds-abort 触发 background 的"清空全部流"兜底误伤并行任务。
+      const customPrompts = window.BiViNote.state.settings.customPrompts || [];
+      const taskIds = ['clear', 'summary'].concat(customPrompts.map((p) => p && p.id).filter(Boolean));
+      taskIds.forEach((id) => {
+        const st = ds.getState(id);
+        if (st === 'reading' || st === 'responding') ds.abort(id);
+        else if (st === 'done' || st === 'error') ds.clear(id);
+      });
     }
     const thinkEl = panelEl?.querySelector('#bn-ds-think');
     const resultEl = panelEl?.querySelector('#bn-ds-result');
