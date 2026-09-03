@@ -300,6 +300,7 @@
           ref_file_ids: [],
           thinking_enabled: thinkingEnabled,
           search_enabled: searchEnabled,
+          action: null,
           preempt: false,
         }),
       }, 60000);
