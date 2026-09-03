@@ -741,12 +741,10 @@
             ? window.BiViNote.exportUtil.buildMarkdown(s, { forceTimestamps: true })
             : buildExportMarkdown();
 
-          // 获取提示词
+          // 获取提示词（模型/思考/搜索统一走全局配置，见 options 页「模型设置」）
           let prompt;
-          let thinking = false;
           if (currentPromptType === 'clear') {
             prompt = s.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
-            thinking = true;
           } else if (currentPromptType === 'summary') {
             prompt = s.settings.deepseekSummary || DEFAULT_DEEPSEEK_SUMMARY;
           } else if (currentPromptType === 'bili') {
@@ -757,7 +755,7 @@
             const custom = customPrompts.find(p => p.id === currentPromptType);
             prompt = custom ? custom.prompt : '';
           }
-          ds.sendMarkdown(currentPromptType, md, prompt, thinking);
+          ds.sendMarkdown(currentPromptType, md, prompt);
         }
       });
     }

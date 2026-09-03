@@ -115,7 +115,7 @@
   }
 
   // 发送 markdown
-  function sendMarkdown(taskId, markdown, prompt, thinking = true) {
+  function sendMarkdown(taskId, markdown, prompt) {
     const task = getTask(taskId);
     if (task.state === 'reading' || task.state === 'responding') return;
 
@@ -133,7 +133,6 @@
       prompt,
       chatId: task.chatId,
       requestId,
-      thinking,
       taskId,
     });
 
