@@ -58,12 +58,20 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 });
 
 // 扩展安装/更新时，刷新所有标签页图标
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   try {
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
       if (tab.id && tab.url) {
         updateIconForTab(tab.id, tab.url);
+      }
+    }
+    // 更新后重载已打开的 chat.deepseek.com 标签页：其 window.__deepseekApiInjected
+    // 守卫会让旧脚本拒绝重新注入，不重载则升级后仍发送旧请求体（无 model_type 等新参数）
+    if (details && details.reason === 'update') {
+      const dsTabs = await chrome.tabs.query({ url: '*://chat.deepseek.com/*' });
+      for (const t of dsTabs) {
+        if (t.id != null) chrome.tabs.reload(t.id).catch(() => {});
       }
     }
   } catch {}
