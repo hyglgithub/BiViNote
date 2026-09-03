@@ -735,8 +735,10 @@
           savedScreenshots[currentPromptType] = s.screenshots ? new Map(s.screenshots) : null;
           organizeBvid[currentPromptType] = s.bvid;
           noteSaved[currentPromptType] = false;   // 新结果未保存 → 按钮回到「记笔记」
+          // B站专属笔记提示词依赖时间戳（供原样保留进 B站笔记）：特例，发给 AI 的内容强制带时间戳，
+          // 不受「视频信息」里章节/字幕时间戳勾选影响。
           const md = window.BiViNote.exportUtil
-            ? window.BiViNote.exportUtil.buildMarkdown(s)
+            ? window.BiViNote.exportUtil.buildMarkdown(s, { forceTimestamps: currentPromptType === 'bili' })
             : buildExportMarkdown();
 
           // 获取提示词

@@ -48,8 +48,11 @@
 
   // ── Markdown 导出 ──
 
-  function buildMarkdown(state) {
+  function buildMarkdown(state, opts) {
     const s = state;
+    // 特例：B站专属笔记等提示词依赖时间戳，即使「视频信息」里未勾选章节/字幕时间戳，
+    // 也强制在输出中带上时间戳（forceTimestamps 同时作用于章节与字幕）。
+    const forceTs = !!(opts && opts.forceTimestamps);
     const lines = [];
 
     // Frontmatter
@@ -83,7 +86,7 @@
 
     // 章节
     const chapters = s.chapters || [];
-    const chTs = s.videoInfoChecked.chapterTimestamp;
+    const chTs = s.videoInfoChecked.chapterTimestamp || forceTs;
     if (chapters.length > 0) {
       lines.push('## 章节', '');
       chapters.forEach((ch, idx) => {
@@ -100,7 +103,7 @@
 
     // 字幕
     const body = s.subtitleBody || [];
-    const subTs = s.videoInfoChecked.subtitleTimestamp;
+    const subTs = s.videoInfoChecked.subtitleTimestamp || forceTs;
     if (body.length > 0) {
       lines.push('## 字幕', '');
 
