@@ -38,7 +38,45 @@ const DEFAULT_PROMPTS = {
 
 {markdown}
 
-直接输出总结，不要输出任何额外说明。` }
+直接输出总结，不要输出任何额外说明。` },
+
+  bili: { name: 'B站专属笔记', prompt: `你是一位深度笔记知识点分析整理专家。任务：把下面这份「B站视频字幕原文」整理成一份结构化学习笔记。不要调用任何搜索/联网工具。
+
+**必守规则**
+
+- 内容无遗漏：语气词、重复、客套可删，但任何与主题相关的句子都要覆盖。不写主讲人/平台/课程具体信息。
+- 逐段处理：按视频逻辑切成段落，每段完整覆盖，段落顺序即时间顺序。
+- 术语首次出现处，紧跟一句括号/行内解释；不单独立术语表或清单。
+- 讲者说"如图所示/看这里"但无画面时，依据上下文用一句话把画面内容写进笔记。
+- 提到原理/机制时，除讲者表述外，把讲者讲到的底层原因也写进去。
+- 语音识别明显不准的词，自动修正。
+
+**输入里两类"原生素材"必须原样保留——不要改写、不要发明新记号**
+
+1. 时间戳：字幕行首那种反引号写法 \`00:00\` \`00:43\` \`1:02:03\`。整理后，凡是某条要点能对上视频某个时刻，就在该要点开头原样放一个这种时间戳（直接从原文摘，别逐句堆时间）。一个段落若跨多个时刻，可放 1～3 个关键时间。
+2. 截图：仅当原始输入字幕中明确存在 ![截图](assets/数字.png) 这一行时，才将该行原样、一字不改地放到正文相关位置。如果原始输入里没有出现任何截图引用行，则整个笔记中绝对禁止出现 ![]() 格式的图片语法，严禁凭空编造或生成任何截图引用。
+
+**输出格式**（结果会被直接粘进 B站笔记插件。**只允许下面这 8 种写法；除此之外的任何 Markdown / HTML 一律不支持，不要使用**）
+
+支持清单（只准用这些）：
+
+- 标题：\`# \` / \`## \` / \`### \`（最多 3 级；\`####\` 及更深不支持）
+- 加粗：\`**文字**\`　下划线：\`==文字==\`　删除线：\`~~文字~~\`
+- 列表：行首 \`- \` 无序列表；行首按 \`1. \` \`2. \` \`3. \`… 逐条写数字（数字仅用于识别「这是有序列表」，实际显示的编号由平台自动生成）
+- 时间点：\`MM:SS\`（反引号包住，直接从原文摘），单独成一行
+- 截图：\`![截图](assets/数字.png)\`（整行原样保留，路径与文件名一字不改）
+
+写法要求：
+
+- 第一行写 \`**一句话知识点概要**：<一句话概括本视频解决的问题/核心价值>\`。
+- 每个逻辑段落以标题起头（建议 \`## 一、<段落标题>\`，需更细用 \`### \`）；时间点放对应要点/段落开头，截图行放正文相关位置。
+- 直接输出笔记正文，**不要**用 \`\`\` 代码块包裹、不要加正文以外的任何说明。
+
+待整理文档：
+
+{markdown}
+
+直接输出整理后的 Markdown 文档，不要输出任何额外内容。` }
 };
 
 // ============ 工具函数 ============
@@ -84,7 +122,8 @@ async function getAllPrompts() {
 
   const list = [
     { id: 'summary', name: settings.deepseekSummaryName || '文档总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true, packImages: packImagesMap.summary ?? false },
-    { id: 'clear', name: settings.deepseekPromptName || '文档清洗', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.clear.prompt, builtin: true, packImages: packImagesMap.clear ?? true }
+    { id: 'clear', name: settings.deepseekPromptName || '文档清洗', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.clear.prompt, builtin: true, packImages: packImagesMap.clear ?? true },
+    { id: 'bili', name: settings.deepseekBiliName || 'B站专属笔记', prompt: settings.deepseekBili || DEFAULT_PROMPTS.bili.prompt, builtin: true, packImages: packImagesMap.bili ?? true }
   ];
 
   customPrompts.forEach(p => {
@@ -230,6 +269,11 @@ async function savePrompt() {
       const packImagesMap = settings.promptPackImages || {};
       packImagesMap.summary = packImages;
       await saveSettings({ deepseekSummary: content, deepseekSummaryName: name, promptPackImages: packImagesMap });
+    } else if (selectedCardId === 'bili') {
+      const settings = await loadSettings();
+      const packImagesMap = settings.promptPackImages || {};
+      packImagesMap.bili = packImages;
+      await saveSettings({ deepseekBili: content, deepseekBiliName: name, promptPackImages: packImagesMap });
     } else {
       // 自定义提示词
       const settings = await loadSettings();
@@ -260,6 +304,8 @@ async function resetPrompt(id) {
     await saveSettings({ deepseekPrompt: DEFAULT_PROMPTS.clear.prompt, deepseekPromptName: null });
   } else if (id === 'summary') {
     await saveSettings({ deepseekSummary: DEFAULT_PROMPTS.summary.prompt, deepseekSummaryName: null });
+  } else if (id === 'bili') {
+    await saveSettings({ deepseekBili: DEFAULT_PROMPTS.bili.prompt, deepseekBiliName: null });
   } else {
     // 自定义提示词重置 = 删除
     await deleteCustomPrompt(id);
@@ -319,6 +365,8 @@ function getPromptName(promptType) {
         resolve(settings.deepseekSummaryName || '文档总结');
       } else if (promptType === 'clear') {
         resolve(settings.deepseekPromptName || '文档清洗');
+      } else if (promptType === 'bili') {
+        resolve(settings.deepseekBiliName || 'B站专属笔记');
       } else {
         const customPrompts = settings.customPrompts || [];
         const custom = customPrompts.find(p => p.id === promptType);

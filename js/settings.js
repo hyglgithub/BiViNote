@@ -21,6 +21,8 @@
     deepseekPromptName: '',
     deepseekSummary: '',
     deepseekSummaryName: '',
+    deepseekBili: '',
+    deepseekBiliName: '',
     customPrompts: [],
     showFloatToolbar: true,
     defaultExpand: true
@@ -77,6 +79,7 @@
     const preserved = {
       deepseekPrompt: s.deepseekPrompt,
       deepseekSummary: s.deepseekSummary,
+      deepseekBili: s.deepseekBili,
       customPrompts: s.customPrompts,
     };
     Object.assign(s, { ...DEFAULTS }, preserved);

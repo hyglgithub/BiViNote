@@ -247,6 +247,45 @@
 
 直接输出总结，不要输出任何额外说明。`;
 
+  // B站专属笔记：产物直接进 B站笔记插件，只允许 8 种白名单语法（时间戳/截图保留原样）
+  const DEFAULT_DEEPSEEK_BILI = `你是一位深度笔记知识点分析整理专家。任务：把下面这份「B站视频字幕原文」整理成一份结构化学习笔记。不要调用任何搜索/联网工具。
+
+**必守规则**
+
+- 内容无遗漏：语气词、重复、客套可删，但任何与主题相关的句子都要覆盖。不写主讲人/平台/课程具体信息。
+- 逐段处理：按视频逻辑切成段落，每段完整覆盖，段落顺序即时间顺序。
+- 术语首次出现处，紧跟一句括号/行内解释；不单独立术语表或清单。
+- 讲者说"如图所示/看这里"但无画面时，依据上下文用一句话把画面内容写进笔记。
+- 提到原理/机制时，除讲者表述外，把讲者讲到的底层原因也写进去。
+- 语音识别明显不准的词，自动修正。
+
+**输入里两类"原生素材"必须原样保留——不要改写、不要发明新记号**
+
+1. 时间戳：字幕行首那种反引号写法 \`00:00\` \`00:43\` \`1:02:03\`。整理后，凡是某条要点能对上视频某个时刻，就在该要点开头原样放一个这种时间戳（直接从原文摘，别逐句堆时间）。一个段落若跨多个时刻，可放 1～3 个关键时间。
+2. 截图：仅当原始输入字幕中明确存在 ![截图](assets/数字.png) 这一行时，才将该行原样、一字不改地放到正文相关位置。如果原始输入里没有出现任何截图引用行，则整个笔记中绝对禁止出现 ![]() 格式的图片语法，严禁凭空编造或生成任何截图引用。
+
+**输出格式**（结果会被直接粘进 B站笔记插件。**只允许下面这 8 种写法；除此之外的任何 Markdown / HTML 一律不支持，不要使用**）
+
+支持清单（只准用这些）：
+
+- 标题：\`# \` / \`## \` / \`### \`（最多 3 级；\`####\` 及更深不支持）
+- 加粗：\`**文字**\`　下划线：\`==文字==\`　删除线：\`~~文字~~\`
+- 列表：行首 \`- \` 无序列表；行首按 \`1. \` \`2. \` \`3. \`… 逐条写数字（数字仅用于识别「这是有序列表」，实际显示的编号由平台自动生成）
+- 时间点：\`MM:SS\`（反引号包住，直接从原文摘），单独成一行
+- 截图：\`![截图](assets/数字.png)\`（整行原样保留，路径与文件名一字不改）
+
+写法要求：
+
+- 第一行写 \`**一句话知识点概要**：<一句话概括本视频解决的问题/核心价值>\`。
+- 每个逻辑段落以标题起头（建议 \`## 一、<段落标题>\`，需更细用 \`### \`）；时间点放对应要点/段落开头，截图行放正文相关位置。
+- 直接输出笔记正文，**不要**用 \`\`\` 代码块包裹、不要加正文以外的任何说明。
+
+待整理文档：
+
+{markdown}
+
+直接输出整理后的 Markdown 文档，不要输出任何额外内容。`;
+
   function buildDocHTML() {
     return buildDocAutoHTML();
   }
@@ -498,9 +537,11 @@
       const customPrompts = settings.customPrompts || [];
       const summaryName = settings.deepseekSummaryName || '文档总结';
       const clearName = settings.deepseekPromptName || '文档清洗';
+      const biliName = settings.deepseekBiliName || 'B站专属笔记';
       let html = `
         <button class="bn-prompt-btn${currentPromptType === 'summary' ? ' active' : ''}" data-prompt="summary">${escapeHtml(summaryName)}</button>
         <button class="bn-prompt-btn${currentPromptType === 'clear' ? ' active' : ''}" data-prompt="clear">${escapeHtml(clearName)}</button>
+        <button class="bn-prompt-btn${currentPromptType === 'bili' ? ' active' : ''}" data-prompt="bili">${escapeHtml(biliName)}</button>
       `;
       customPrompts.forEach(p => {
         html += `<button class="bn-prompt-btn${currentPromptType === p.id ? ' active' : ''}" data-prompt="${p.id}">${escapeHtml(p.name)}</button>`;
@@ -537,6 +578,8 @@
         promptEl.textContent = window.BiViNote.state.settings.deepseekPrompt || DEFAULT_DEEPSEEK_PROMPT;
       } else if (currentPromptType === 'summary') {
         promptEl.textContent = window.BiViNote.state.settings.deepseekSummary || DEFAULT_DEEPSEEK_SUMMARY;
+      } else if (currentPromptType === 'bili') {
+        promptEl.textContent = window.BiViNote.state.settings.deepseekBili || DEFAULT_DEEPSEEK_BILI;
       } else {
         // 自定义提示词
         const customPrompts = window.BiViNote.state.settings.customPrompts || [];
@@ -585,7 +628,7 @@
     }
 
     // 绑定内置任务
-    ['clear', 'summary'].forEach(bindTaskEvents);
+    ['clear', 'summary', 'bili'].forEach(bindTaskEvents);
 
     // 绑定自定义提示词任务
     const initCustomPrompts = window.BiViNote.state.settings.customPrompts || [];
@@ -704,6 +747,8 @@
             thinking = true;
           } else if (currentPromptType === 'summary') {
             prompt = s.settings.deepseekSummary || DEFAULT_DEEPSEEK_SUMMARY;
+          } else if (currentPromptType === 'bili') {
+            prompt = s.settings.deepseekBili || DEFAULT_DEEPSEEK_BILI;
           } else {
             // 自定义提示词
             const customPrompts = s.settings.customPrompts || [];
@@ -823,6 +868,7 @@
     const settings = window.BiViNote.state.settings;
     if (taskId === 'clear') return settings.deepseekPromptName || '文档清洗';
     if (taskId === 'summary') return settings.deepseekSummaryName || '文档总结';
+    if (taskId === 'bili') return settings.deepseekBiliName || 'B站专属笔记';
     const customPrompts = settings.customPrompts || [];
     const custom = customPrompts.find(p => p.id === taskId);
     return custom ? custom.name : '整理结果';
@@ -831,9 +877,9 @@
   // 获取提示词的打包图片设置
   function getPromptPackImages(taskId) {
     const settings = window.BiViNote.state.settings;
-    if (taskId === 'clear' || taskId === 'summary') {
+    if (taskId === 'clear' || taskId === 'summary' || taskId === 'bili') {
       const packImagesMap = settings.promptPackImages || {};
-      return packImagesMap[taskId] ?? (taskId === 'clear');
+      return packImagesMap[taskId] ?? (taskId === 'clear' || taskId === 'bili');
     }
     const customPrompts = settings.customPrompts || [];
     const custom = customPrompts.find(p => p.id === taskId);
@@ -902,12 +948,12 @@
     const ds = window.BiViNote.deepseek;
     if (ds) {
       // 切视频：把文档整理任务全部清回待整理态，让面板回到显示提示词的初始界面。
-      // 预设(clear/summary)与自定义提示词都要清——否则自定义任务的已完成结果被清空后
+      // 预设(clear/summary/bili)与自定义提示词都要清——否则自定义任务的已完成结果被清空后
       // 状态仍停在 done，提示词不显示，只剩空白（预设此前正常是因为这里 abort 了它们）。
       // 只对真正在跑的任务 abort（activeRequestId 非空，定向停流）；done/error 的用 clear()
       // 复位，避免发空 requestId 的 ds-abort 触发 background 的"清空全部流"兜底误伤并行任务。
       const customPrompts = window.BiViNote.state.settings.customPrompts || [];
-      const taskIds = ['clear', 'summary'].concat(customPrompts.map((p) => p && p.id).filter(Boolean));
+      const taskIds = ['clear', 'summary', 'bili'].concat(customPrompts.map((p) => p && p.id).filter(Boolean));
       taskIds.forEach((id) => {
         const st = ds.getState(id);
         if (st === 'reading' || st === 'responding') ds.abort(id);
