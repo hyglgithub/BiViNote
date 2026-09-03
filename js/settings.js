@@ -85,6 +85,13 @@
       deepseekBili: s.deepseekBili,
       customPrompts: s.customPrompts,
     };
+    // 恢复默认会把模型类型重置回 'default'；DeepSeek 会话绑定创建时的模型，
+    // 需一并清掉旧会话 id（background 的 storage.onChanged 会同步清内存），
+    // 避免复用其他模型下创建的会话。
+    const chatKeys = ['chatId_clear', 'chatId_summary', 'chatId_bili'];
+    (preserved.customPrompts || []).forEach(p => { if (p && p.id) chatKeys.push('chatId_' + p.id); });
+    try { chrome.storage.local.remove(chatKeys); } catch {}
+
     Object.assign(s, { ...DEFAULTS }, preserved);
     Object.assign(window.BiViNote.state.videoInfoChecked, { ...DEFAULT_CHECKED });
     save();
