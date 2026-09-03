@@ -186,7 +186,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'bn-open-note') {
     const url = String(message.url || '');
     if (!url) return false;
-    chrome.tabs.query({ url: '*://www.bilibili.com/*' }, (tabs) => {
+    chrome.tabs.query({ url: '*://*.bilibili.com/*' }, (tabs) => {
       const hit = tabs.find((t) => t.url === url);
       if (hit && hit.id != null) {
         chrome.tabs.update(hit.id, { active: true });

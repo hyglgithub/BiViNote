@@ -485,8 +485,8 @@
     const continueBtn = panelEl.querySelector('#bn-ds-continue');
     let savedScreenshots = {};
     let organizeBvid = {};
-    // promptType -> 该结果已成功保存到 B站笔记时的视频 bvid（仍是当前视频则按钮显示「查看笔记」）
-    let savedNoteBvid = {};
+    // promptType -> 该结果本次会话已成功保存到 B站笔记 → 按钮显示「查看笔记」（点击打开我的笔记列表）
+    let noteSaved = {};
     let currentPromptType = 'summary';
     let autoScroll = true;
 
@@ -595,12 +595,10 @@
     renderPromptSwitcher();
     updatePromptPreview();
 
-    // 「记笔记」按钮文案：结果已成功保存到 B站笔记、且仍是当前视频时 → 「查看笔记」，否则「记笔记」
+    // 「记笔记」按钮文案：结果已保存到 B站笔记 → 「查看笔记」，否则「记笔记」
     function syncNoteLabel() {
       if (!noteBtn) return;
-      const nowBvid = window.BiViNote.state.bvid;
-      noteBtn.textContent =
-        savedNoteBvid[currentPromptType] && savedNoteBvid[currentPromptType] === nowBvid ? '查看笔记' : '记笔记';
+      noteBtn.textContent = noteSaved[currentPromptType] ? '查看笔记' : '记笔记';
     }
 
     function updateUI(dsState) {
@@ -693,7 +691,7 @@
           const s = window.BiViNote.state;
           savedScreenshots[currentPromptType] = s.screenshots ? new Map(s.screenshots) : null;
           organizeBvid[currentPromptType] = s.bvid;
-          savedNoteBvid[currentPromptType] = null;   // 新结果未保存 → 按钮回到「记笔记」
+          noteSaved[currentPromptType] = false;   // 新结果未保存 → 按钮回到「记笔记」
           const md = window.BiViNote.exportUtil
             ? window.BiViNote.exportUtil.buildMarkdown(s)
             : buildExportMarkdown();
@@ -726,12 +724,9 @@
     if (noteBtn) {
       noteBtn.addEventListener('click', async () => {
         const nowBvid = window.BiViNote.state.bvid;
-        // 结果已保存到当前视频 → 按钮已是「查看笔记」，点击在 B站打开该视频的笔记浮层
-        if (savedNoteBvid[currentPromptType] && savedNoteBvid[currentPromptType] === nowBvid) {
-          chrome.runtime.sendMessage({
-            type: 'bn-open-note',
-            url: `https://www.bilibili.com/video/${nowBvid}/?note=open`,
-          });
+        // 结果已保存 → 按钮已是「查看笔记」，点击直接打开我的笔记列表
+        if (noteSaved[currentPromptType]) {
+          chrome.runtime.sendMessage({ type: 'bn-open-note', url: 'https://space.bilibili.com/v/note-list' });
           return;
         }
 
@@ -752,8 +747,8 @@
             shots: savedScreenshots[currentPromptType],
           });
           if (out.ok) {
-            // 保存成功 → 记录到该视频，按钮随之显示为「查看笔记」
-            if (nowBvid) savedNoteBvid[currentPromptType] = nowBvid;
+            // 保存成功 → 按钮随之显示为「查看笔记」
+            noteSaved[currentPromptType] = true;
             syncNoteLabel();
             showToast(out.created ? '已保存到 B站笔记' : '已更新 B站笔记');
           } else {
@@ -780,7 +775,7 @@
         ds.clear(currentPromptType);
         savedScreenshots[currentPromptType] = null;
         organizeBvid[currentPromptType] = null;
-        savedNoteBvid[currentPromptType] = null;
+        noteSaved[currentPromptType] = false;
 
         // 同步清除缓存（仅移除当前 promptType，不影响其他类型）
         const cache = window.BiViNote.cache;
