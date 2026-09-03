@@ -23,6 +23,9 @@
     deepseekSummaryName: '',
     deepseekBili: '',
     deepseekBiliName: '',
+    deepseekModelType: 'default',
+    deepseekSearch: false,
+    deepseekThinking: true,
     customPrompts: [],
     showFloatToolbar: true,
     defaultExpand: true
