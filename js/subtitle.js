@@ -588,8 +588,11 @@
       window.BiViNote.panel.showToast('没有可复制的字幕');
       return;
     }
+    // 「视频信息」勾选字幕时间戳 → 每行带上纯时间前缀（无反引号/括号），未勾选保持纯文本，
+    // 与下载 .md 的时间戳开关行为对齐
+    const withTs = !!s.videoInfoChecked.subtitleTimestamp;
     const text = s.subtitleBody
-      .map(item => item.content)
+      .map(item => (withTs ? `${plainTime(item.from)} ${item.content}` : item.content))
       .join('\n');
     navigator.clipboard.writeText(text).then(() => {
       window.BiViNote.panel.showToast('已复制全部字幕');
@@ -679,6 +682,16 @@
     const m = Math.floor(safe / 60);
     const s = safe % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  // 复制文本用的纯时间前缀：MM:SS，超过 1 小时折叠为 H:MM:SS（与导出 .md 数字格式一致）
+  function plainTime(seconds) {
+    const safe = Math.max(0, Math.floor(seconds || 0));
+    const h = Math.floor(safe / 3600);
+    const m = Math.floor((safe % 3600) / 60);
+    const s = safe % 60;
+    const pad2 = (n) => String(n).padStart(2, '0');
+    return h > 0 ? `${pad2(h)}:${pad2(m)}:${pad2(s)}` : `${pad2(m)}:${pad2(s)}`;
   }
 
   function escapeHtml(str) {

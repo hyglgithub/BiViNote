@@ -50,8 +50,9 @@
 
   function buildMarkdown(state, opts) {
     const s = state;
-    // 特例：B站专属笔记等提示词依赖时间戳，即使「视频信息」里未勾选章节/字幕时间戳，
-    // 也强制在输出中带上时间戳（forceTimestamps 同时作用于章节与字幕）。
+    // 文档整理发送给 AI 的文本需要永远包含时间戳（供提示词按原样保留/引用），
+    // 不受「视频信息」里章节/字幕时间戳勾选影响；下载 .md 仍遵循勾选。
+    // 调用方 opts.forceTimestamps = true 时强制带上章节与字幕时间戳。
     const forceTs = !!(opts && opts.forceTimestamps);
     const lines = [];
 
