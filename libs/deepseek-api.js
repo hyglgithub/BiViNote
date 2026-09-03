@@ -140,7 +140,7 @@
 
   // ========== 核心：发送消息并流式接收回复 ==========
 
-  async function sendDeepSeekMessage(prompt, chatId, requestId, thinkingEnabled = true) {
+  async function sendDeepSeekMessage(prompt, chatId, requestId, modelConfig) {
     try {
     const origin = window.location.origin;
 
@@ -284,6 +284,10 @@
 
     let response;
     try {
+      const cfg = modelConfig || {};
+      const modelType = cfg.modelType === 'expert' ? 'expert' : 'default';
+      const searchEnabled = modelType === 'expert' ? false : cfg.searchEnabled === true;
+      const thinkingEnabled = cfg.thinkingEnabled !== false; // 默认 true
       response = await fetchWithTimeout("https://chat.deepseek.com/api/v0/chat/completion", {
         method: "POST",
         headers: { ...headers, "x-ds-pow-response": powResponse },
@@ -291,10 +295,11 @@
         body: JSON.stringify({
           chat_session_id: sessionId,
           parent_message_id: null,
+          model_type: modelType,
           prompt,
           ref_file_ids: [],
           thinking_enabled: thinkingEnabled,
-          search_enabled: false,
+          search_enabled: searchEnabled,
           preempt: false,
         }),
       }, 60000);
@@ -446,8 +451,8 @@
     if (!msg) return;
 
     if (msg.type === "DEEPSEEK_SEND") {
-      const { prompt, chatId, requestId, thinking } = msg;
-      sendDeepSeekMessage(prompt, chatId, requestId || crypto.randomUUID(), thinking !== false);
+      const { prompt, chatId, requestId, modelType, searchEnabled, thinkingEnabled } = msg;
+      sendDeepSeekMessage(prompt, chatId, requestId || crypto.randomUUID(), { modelType, searchEnabled, thinkingEnabled });
     } else if (msg.type === "DEEPSEEK_ABORT") {
       stopStream(msg.chatId, msg.messageId);
     }

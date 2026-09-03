@@ -151,7 +151,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'ds-send') {
     const requestId = message.requestId || crypto.randomUUID();
-    dsHandleSend(message.markdown, message.prompt, requestId, message.thinking, message.taskId || 'clear');
+    dsHandleSend(message.markdown, message.prompt, requestId, message.taskId || 'clear');
     sendResponse({ ok: true, requestId });
     return true;
   }
@@ -511,6 +511,16 @@ chrome.storage.local.get(['chatId_clear', 'chatId_summary'], (stored) => {
   if (stored.chatId_summary) chatIds.summary = stored.chatId_summary;
 });
 
+// 会话键被外部删除（options 切换模型类型）时同步清内存，避免复用旧模型会话
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'local') return;
+  for (const key of Object.keys(changes)) {
+    if (key.startsWith('chatId_') && changes[key].newValue === undefined) {
+      delete chatIds[key.slice('chatId_'.length)];
+    }
+  }
+});
+
 async function dsEnsureTab() {
   const tabs = await chrome.tabs.query({ url: '*://chat.deepseek.com/*' });
   if (tabs.length > 0 && tabs[0].id) return tabs[0];
@@ -623,7 +633,20 @@ function dsSendToBilibiliTab(msg) {
   chrome.tabs.sendMessage(dsSenderTabId, msg).catch(() => {});
 }
 
-async function dsHandleSend(markdown, prompt, requestId, thinking, taskId = 'clear') {
+// 解析全局模型配置（文档整理统一使用），expert 模式强制关闭搜索
+async function dsResolveModelConfig() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get('bivinote_settings', (result) => {
+      const s = (result && result.bivinote_settings) || {};
+      const modelType = s.deepseekModelType === 'expert' ? 'expert' : 'default';
+      const searchEnabled = modelType === 'expert' ? false : s.deepseekSearch === true;
+      const thinkingEnabled = s.deepseekThinking !== false; // 默认 true
+      resolve({ modelType, searchEnabled, thinkingEnabled });
+    });
+  });
+}
+
+async function dsHandleSend(markdown, prompt, requestId, taskId = 'clear') {
   // 不清空 dsSseProcessors，保留运行中任务的处理器状态（如 inThink）
   dsRequestIdToTaskId[requestId] = taskId;
 
@@ -654,16 +677,30 @@ async function dsHandleSend(markdown, prompt, requestId, thinking, taskId = 'cle
   }
   const chatId = chatIds[taskId] || null;
 
+  // 读取全局模型配置（若读取失败，按默认 default + thinking 发送）
+  let modelConfig = { modelType: 'default', searchEnabled: false, thinkingEnabled: true };
+  try {
+    modelConfig = await dsResolveModelConfig();
+  } catch (e) {
+    modelConfig = { modelType: 'default', searchEnabled: false, thinkingEnabled: true };
+  }
+
   chrome.tabs.sendMessage(tab.id, {
     type: 'ds-inject-request',
-    payload: { prompt: fullPrompt, chatId, requestId, thinking, taskId }
+    payload: { prompt: fullPrompt, chatId, requestId, taskId,
+               modelType: modelConfig.modelType,
+               searchEnabled: modelConfig.searchEnabled,
+               thinkingEnabled: modelConfig.thinkingEnabled }
   }).catch((e) => {
     if (String(e).includes('Receiving end does not exist')) {
       dsInjectedTabs.delete(tab.id);
       dsInjectScripts(tab.id).then(() => {
         chrome.tabs.sendMessage(tab.id, {
           type: 'ds-inject-request',
-          payload: { prompt: fullPrompt, chatId, requestId, thinking, taskId }
+          payload: { prompt: fullPrompt, chatId, requestId, taskId,
+                     modelType: modelConfig.modelType,
+                     searchEnabled: modelConfig.searchEnabled,
+                     thinkingEnabled: modelConfig.thinkingEnabled }
         });
       });
     } else {
