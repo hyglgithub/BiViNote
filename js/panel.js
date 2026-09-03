@@ -484,6 +484,7 @@
     const clearBtn = panelEl.querySelector('#bn-ds-clear');
     const continueBtn = panelEl.querySelector('#bn-ds-continue');
     let savedScreenshots = {};
+    let organizeBvid = {};
     let currentPromptType = 'summary';
     let autoScroll = true;
 
@@ -681,6 +682,7 @@
           autoScroll = true;
           const s = window.BiViNote.state;
           savedScreenshots[currentPromptType] = s.screenshots ? new Map(s.screenshots) : null;
+          organizeBvid[currentPromptType] = s.bvid;
           const md = window.BiViNote.exportUtil
             ? window.BiViNote.exportUtil.buildMarkdown(s)
             : buildExportMarkdown();
@@ -716,6 +718,12 @@
         if (!result.response) return;
         const biliNote = window.BiViNote && window.BiViNote.biliNote;
         if (!biliNote) { showToast('记笔记模块未加载，请刷新页面'); return; }
+        const nowBvid = window.BiViNote.state.bvid;
+        const orgBvid = organizeBvid[currentPromptType];
+        if (orgBvid && orgBvid !== nowBvid) {
+          showToast('该结果是在其他视频下整理的，请切回原视频或重新整理后再保存');
+          return;
+        }
         noteBtn.disabled = true;
         const originalText = noteBtn.textContent;
         noteBtn.textContent = '保存中…';
@@ -749,6 +757,7 @@
       clearBtn.addEventListener('click', async () => {
         ds.clear(currentPromptType);
         savedScreenshots[currentPromptType] = null;
+        organizeBvid[currentPromptType] = null;
 
         // 同步清除缓存（仅移除当前 promptType，不影响其他类型）
         const cache = window.BiViNote.cache;

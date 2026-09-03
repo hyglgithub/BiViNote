@@ -113,10 +113,13 @@
     if (built.error) return { ok: false, error: built.error };
 
     const resp = await new Promise((resolve) => {
+      let settled = false;
+      const finish = (v) => { if (!settled) { settled = true; clearTimeout(timer); resolve(v); } };
+      const timer = setTimeout(() => finish({ ok: false, error: '保存超时，请重试' }), 15000);
       try {
-        chrome.runtime.sendMessage({ type: 'bn-note-save', payload: built.payload }, resolve);
+        chrome.runtime.sendMessage({ type: 'bn-note-save', payload: built.payload }, finish);
       } catch (e) {
-        resolve({ ok: false, error: String((e && e.message) || e) });
+        finish({ ok: false, error: String((e && e.message) || e) });
       }
     });
     if (!resp) return { ok: false, error: '后台无响应，请刷新页面后重试' };
