@@ -911,24 +911,38 @@ async function bnSaveNoteMain(payload) {
     summary = summary || '我发布了一篇笔记，快来看看吧~';
     const cont_len = plainBuf.trim().length;
 
-    const body = new URLSearchParams({
-      oid: String(aid), oid_type: '0',
-      note_id: String(payload.noteId || ''),
-      cls: '1', from: 'save', hash: String(Date.now()), csrf, platform: 'web',
-      title, cont_len: String(cont_len), summary, content, tags: tagsStr,
-    }).toString();
+    // 每次保存都是独立 POST，唯一区分"新建/更新"的就是 note_id → 出错可局部重试
+    const postNote = async (noteId) => {
+      const body = new URLSearchParams({
+        oid: String(aid), oid_type: '0',
+        note_id: String(noteId || ''),
+        cls: '1', from: 'save', hash: String(Date.now()), csrf, platform: 'web',
+        title, cont_len: String(cont_len), summary, content, tags: tagsStr,
+      }).toString();
+      const resp = await fetch('https://api.bilibili.com/x/note/add', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      });
+      return resp.json();
+    };
 
-    const resp = await fetch('https://api.bilibili.com/x/note/add', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    });
-    const j = await resp.json();
+    // 更新已有草稿时，若该草稿已在 B站被删除/不存在，接口会报"该笔记不存在或已被删除"。
+    // 此时草稿确实不存在 → 直接丢弃陈旧 note_id、按"新建"重存一篇即可；
+    // 成功回写时 bili-note.js 会把新 note_id 覆盖进 biliNoteIds[bvid]，映射自愈。
+    const wasUpdate = !!(payload.noteId || '');
+    const NOTE_GONE_RE = /不存在或已被删除|已被删除|不存在/;
+    let created = !wasUpdate;
+    let j = await postNote(wasUpdate ? payload.noteId : '');
+    if (j.code !== 0 && wasUpdate && NOTE_GONE_RE.test(j.message || '')) {
+      j = await postNote('');
+      created = true;
+    }
     if (j.code !== 0) {
       return fail('save', (j.message || j.code) + (j.data && j.data.note_id ? ' (note_id=' + j.data.note_id + ')' : ''),
         { note_id: j.data && j.data.note_id });
     }
-    return { ok: true, note_id: String(j.data.note_id), created: !payload.noteId, title };
+    return { ok: true, note_id: String(j.data.note_id), created, title };
   } catch (err) {
     return fail('upload', String((err && err.message) || err));
   }
