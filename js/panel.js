@@ -344,7 +344,7 @@ B站视频字幕：
         </div>
         <div class="bn-switch">
           <span>帮作者推广
-            <span class="bn-tooltip-icon" data-tooltip="开启后，点「发评论」会在评论末尾自动加上【BiViNote插件辅助生成】，让更多人认识这个插件。可随时关闭。">?</span>
+            <span class="bn-tooltip-icon" data-tooltip="开启后，点「发评论」会在评论末尾自动加上【BiViNote插件分享】，让更多人认识这个插件。可随时关闭。">?</span>
           </span>
           <input type="checkbox" id="bn-promote-comment" checked>
           <label class="bn-switch-track" for="bn-promote-comment"></label>
@@ -778,7 +778,7 @@ B站视频字幕：
         let plain = comment.toPlain(result.response);
         // 帮作者推广：开启时在评论末尾追加插件标记（空正文不加，避免只发一句推广）
         if (window.BiViNote.state.settings.promoteComment !== false && plain) {
-          plain = plain + ' 【BiViNote插件辅助生成】';
+          plain = plain + ' 【BiViNote插件分享】';
         }
         commentBtn.disabled = true;
         commentBtn.textContent = '发送中…';
