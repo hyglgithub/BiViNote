@@ -1290,7 +1290,7 @@
 }
 
 .bn-doc-actions {
-  display: flex; gap: 6px; margin: 8px 12px 12px;
+  display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 12px 12px;
 }
 
 .bn-doc-actions button:not(.bn-btn-primary) {

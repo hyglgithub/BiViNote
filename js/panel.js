@@ -305,8 +305,9 @@
         </div>
         <div class="bn-doc-actions">
           <button id="bn-ds-action" class="bn-btn-primary">打开 DeepSeek 登录</button>
-          <button id="bn-ds-download" class="bn-btn-primary" style="display:none">下载 Markdown</button>
+          <button id="bn-ds-comment" class="bn-btn-primary" style="display:none">发评论</button>
           <button id="bn-ds-note" class="bn-btn-primary" style="display:none">记笔记</button>
+          <button id="bn-ds-download" style="display:none">下载</button>
           <button id="bn-ds-copy" style="display:none">复制</button>
           <button id="bn-ds-clear" style="display:none">清除</button>
           <button id="bn-ds-continue" style="display:none">继续询问</button>
@@ -518,6 +519,7 @@
     const thinkEl = panelEl.querySelector('#bn-ds-think');
     const resultEl = panelEl.querySelector('#bn-ds-result');
     const downloadBtn = panelEl.querySelector('#bn-ds-download');
+    const commentBtn = panelEl.querySelector('#bn-ds-comment');
     const noteBtn = panelEl.querySelector('#bn-ds-note');
     const copyBtn = panelEl.querySelector('#bn-ds-copy');
     const clearBtn = panelEl.querySelector('#bn-ds-clear');
@@ -685,12 +687,14 @@
       }
 
       if (dsState === 'done') {
+        if (commentBtn) commentBtn.style.display = '';
         if (downloadBtn) downloadBtn.style.display = '';
         if (noteBtn) { noteBtn.style.display = ''; syncNoteLabel(); }
         if (copyBtn) copyBtn.style.display = '';
         if (clearBtn) clearBtn.style.display = '';
         if (continueBtn) continueBtn.style.display = '';
       } else {
+        if (commentBtn) commentBtn.style.display = 'none';
         if (downloadBtn) downloadBtn.style.display = 'none';
         if (noteBtn) noteBtn.style.display = 'none';
         if (copyBtn) copyBtn.style.display = 'none';
@@ -763,6 +767,38 @@
     if (downloadBtn) {
       downloadBtn.addEventListener('click', async () => {
         downloadResult(ds, savedScreenshots[currentPromptType], currentPromptType);
+      });
+    }
+
+    if (commentBtn) {
+      commentBtn.addEventListener('click', async () => {
+        const nowBvid = window.BiViNote.state.bvid;
+        const result = ds.getResult(currentPromptType);
+        if (!result.response) return;
+        const comment = window.BiViNote && window.BiViNote.comment;
+        if (!comment) { showToast('发评论模块未加载，请刷新页面'); return; }
+        // 评论只能发「当前页」视频评论区：结果在其他视频整理 → 拒绝（同记笔记守卫）
+        const orgBvid = organizeBvid[currentPromptType];
+        if (orgBvid && orgBvid !== nowBvid) {
+          showToast('该结果是在其他视频下整理的，请切回原视频或重新整理后再发送');
+          return;
+        }
+        const plain = comment.toPlain(result.response);
+        commentBtn.disabled = true;
+        commentBtn.textContent = '发送中…';
+        try {
+          const out = await comment.send(plain);
+          if (out.ok) {
+            showToast(out.uncertain ? ('评论已发送：' + (out.detail || '请回页面确认')) : '评论已发送');
+          } else {
+            showToast('发评论失败：' + (out.error || '未知错误'));
+          }
+        } catch (e) {
+          showToast('发评论失败：' + String((e && e.message) || e));
+        } finally {
+          commentBtn.disabled = false;
+          commentBtn.textContent = '发评论';
+        }
       });
     }
 
