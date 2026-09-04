@@ -27,6 +27,7 @@
     deepseekSearch: false,
     deepseekThinking: true,
     customPrompts: [],
+    promoteComment: true,
     showFloatToolbar: true,
     defaultExpand: true
   };

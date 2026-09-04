@@ -342,6 +342,13 @@ B站视频字幕：
           <input type="checkbox" id="bn-default-expand" checked>
           <label class="bn-switch-track" for="bn-default-expand"></label>
         </div>
+        <div class="bn-switch">
+          <span>帮作者推广
+            <span class="bn-tooltip-icon" data-tooltip="开启后，点「发评论」会在评论末尾自动加上【BiViNote插件辅助生成】，让更多人认识这个插件。可随时关闭。">?</span>
+          </span>
+          <input type="checkbox" id="bn-promote-comment" checked>
+          <label class="bn-switch-track" for="bn-promote-comment"></label>
+        </div>
         <div class="bn-setting-actions">
           <button class="bn-setting-btn" id="bn-reset-btn">恢复默认设置</button>
           <button class="bn-setting-btn" id="bn-open-options-btn">更多设置</button>
@@ -433,6 +440,15 @@ B站视频字幕：
     if (defaultExpandEl) {
       defaultExpandEl.addEventListener('change', () => {
         window.BiViNote.state.settings.defaultExpand = defaultExpandEl.checked;
+        window.BiViNote.settings.save();
+      });
+    }
+
+    // 帮作者推广
+    const promoteCommentEl = panelEl.querySelector('#bn-promote-comment');
+    if (promoteCommentEl) {
+      promoteCommentEl.addEventListener('change', () => {
+        window.BiViNote.state.settings.promoteComment = promoteCommentEl.checked;
         window.BiViNote.settings.save();
       });
     }
@@ -1008,6 +1024,9 @@ B站视频字幕：
 
     const defaultExpandEl = panelEl.querySelector('#bn-default-expand');
     if (defaultExpandEl) defaultExpandEl.checked = s.defaultExpand !== false;
+
+    const promoteCommentEl = panelEl.querySelector('#bn-promote-comment');
+    if (promoteCommentEl) promoteCommentEl.checked = s.promoteComment !== false;
   }
 
   // ── 应用显示设置 ──
