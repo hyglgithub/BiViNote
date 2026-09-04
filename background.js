@@ -263,6 +263,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((err) => sendResponse({ ok: false, error: String((err && err.message) || err) }));
     return true; // async sendResponse
   }
+
+  // ── 发评论：注入视频页 MAIN world 执行 ──
+  if (message.type === 'bn-send-comment') {
+    const tabId = sender.tab?.id;
+    if (!tabId) {
+      sendResponse({ ok: false, error: '请在 bilibili 视频页使用' });
+      return false;
+    }
+    chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: bnSendCommentMain,
+      args: [String(message.text || '')],
+    })
+      .then((injectionResults) => {
+        const result = injectionResults?.[0]?.result || { ok: false, step: 'inject', error: '未获得执行结果' };
+        sendResponse({ ok: !!result.ok, result });
+      })
+      .catch((err) => sendResponse({ ok: false, error: String((err && err.message) || err) }));
+    return true; // async sendResponse
+  }
 });
 
 // 扩展图标点击 → 无操作（面板自动显示）
@@ -1025,6 +1046,191 @@ async function bnSaveNoteMain(payload) {
     return { ok: true, note_id: String(j.data.note_id), created, title };
   } catch (err) {
     return fail('upload', String((err && err.message) || err));
+  }
+}
+
+// ── 发评论：注入视频页 MAIN world 执行 ──────────────────────
+// 移植自 bilibili-comment-extension/background.js 的 sendCommentMain（2026-09-04 实测）。
+// 两条路线，都要求页面会话已登录（SESSDATA HttpOnly，必须由视频页主世界带 cookie）：
+//   A(默认) 穿透 shadow DOM 找顶层评论区输入框 → 填入文字并点「发布」；风控参数页面自生成，最稳。
+//   B(兜底) 一直找不到输入框 → 直连 POST /x/v2/reply/add 最小参数（可能偶发触发风控）。
+async function bnSendCommentMain(text) {
+  const fail = (step, error) => ({ ok: false, step, error });
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  try {
+    // ---------- 校验：页面 / 登录 / 内容 ----------
+    const S = window.__INITIAL_STATE__ || {};
+    const vd = S.videoData || {};
+    const aid = S.aid || vd.aid || 0;
+    if (!aid) return fail('meta', '未识别到视频信息，请确认当前在 bilibili 视频页');
+    const csrf = (document.cookie.match(/(?:^|; )bili_jct=([^;]*)/) || [])[1] || '';
+    if (!csrf) return fail('csrf', '读取不到 bili_jct cookie，请先登录 bilibili');
+    let msg = String(text == null ? '' : text).replace(/\u0000/g, '').trim();
+    if (!msg) return fail('empty', '评论内容为空');
+    if (msg.length > 1000) msg = msg.slice(0, 1000);
+
+    // ---------- 定位顶层评论编辑器（穿透 open shadow DOM） ----------
+    // 页面可能同时存在两个 .brt-editor：顶层(commentbox) 与隐藏的楼中楼(reply-commentbox)。
+    const hasAncestorId = (el, id) => {
+      let n = el;
+      while (n) {
+        if (n.id === id) return true;
+        n = n.parentElement || (n.getRootNode() && n.getRootNode().host) || null;
+      }
+      return false;
+    };
+    const allBrt = (root, out) => {
+      for (const el of Array.from(root.querySelectorAll ? root.querySelectorAll('*') : [])) {
+        if (el.classList && el.classList.contains('brt-editor')) out.push(el);
+        if (el.shadowRoot) allBrt(el.shadowRoot, out);
+      }
+      return out;
+    };
+    const findMainEditor = () =>
+      allBrt(document, []).find((e) => hasAncestorId(e, 'commentbox') && !hasAncestorId(e, 'reply-commentbox')) || null;
+
+    // 让评论区先渲染出来
+    const app = document.getElementById('commentapp');
+    if (app) {
+      try { app.scrollIntoView({ block: 'center' }); } catch (e) { /* 忽略 */ }
+    }
+
+    // 轮询等编辑器出现（≤6s）
+    const t0 = Date.now();
+    let ed = null;
+    while (Date.now() - t0 < 6000) {
+      ed = findMainEditor();
+      if (ed && ed.offsetParent !== null) break;
+      ed = null;
+      await sleep(300);
+    }
+
+    // ---------- 兜底路线 B：一直没编辑器 → 直连 API ----------
+    if (!ed) {
+      const body = new URLSearchParams({
+        plat: '1',
+        oid: String(aid),
+        type: '1',
+        message: msg,
+        at_name_to_mid: '{}',
+        csrf,
+        gaia_source: 'main_web',
+        statistics: '{"appId":100,"platform":5}',
+      }).toString();
+      try {
+        const resp = await fetch('https://api.bilibili.com/x/v2/reply/add', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+          body,
+        });
+        const j = await resp.json();
+        if (j.code !== 0) {
+          const need = j.data && j.data.need_captcha;
+          return fail('api', (j.message || j.code) + (need ? '（触发风控，请稍后再试）' : ''));
+        }
+        return { ok: true, method: 'api', rpid: j.data ? String(j.data.rpid || '') : '' };
+      } catch (err) {
+        return fail('api', '直连接口失败: ' + ((err && err.message) || err));
+      }
+    }
+
+    // ---------- 路线 A：填入编辑器 + 点发布 ----------
+    ed.focus();
+    ed.textContent = msg;
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(ed);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (e) { /* 光标可选，忽略 */ }
+    // 模拟真实键入的 input 事件：即使 isTrusted=false，B 站编辑器(Vue)照常同步模型（已实测）。
+    ed.dispatchEvent(new InputEvent('input', {
+      bubbles: true, composed: true, inputType: 'insertText', data: msg,
+    }));
+    await sleep(150);
+    if (!(ed.textContent || '').trim()) return fail('input', '写入编辑器后内容为空，未发送');
+
+    // 找「发布」按钮：编辑器所在 shadow（BILI-COMMENT-BOX 的根）里 #footer>#pub 的按钮。
+    // #footer 折叠时是 display:none，但 .click() 依然能触发提交（已实测）。
+    let region = ed;
+    while (region && region.id !== 'comment-area') {
+      region = region.parentElement || (region.getRootNode() && region.getRootNode().host) || null;
+    }
+    let pubBtn = null;
+    if (region && region.getRootNode && region.getRootNode().querySelector) {
+      const root = region.getRootNode();
+      pubBtn = root.querySelector('#pub button');
+      if (!pubBtn) {
+        pubBtn = Array.from(root.querySelectorAll('button')).find((b) => (b.textContent || '').trim() === '发布') || null;
+      }
+    }
+    if (!pubBtn) return fail('publish', '找不到“发布”按钮（评论区结构可能变了）');
+    pubBtn.click();
+    const clickedAt = Date.now();
+
+    // 成功判据：编辑器清空（或节点被重置）且评论区出现该段文本。UI 路线拿不到网络响应。
+    const msgInPage = (str) => {
+      let found = false;
+      const walk = (root, depth) => {
+        if (found || depth > 13) return;
+        let els = [];
+        try { els = Array.from(root.querySelectorAll('*')); } catch (e) { els = []; }
+        for (const el of els) {
+          if (!el.children.length) {
+            if (el === ed || ed.contains(el)) continue;          // 跳过编辑器自己（刚填进去的文本）
+            const t = el.textContent || '';
+            if (t.indexOf(str) >= 0) { found = true; return; }
+          }
+          if (el.shadowRoot) walk(el.shadowRoot, depth + 1);
+        }
+      };
+      walk(document, 0);
+      return found;
+    };
+    // 近处是否有风控/验证提示（编辑器迟迟不空且出现这些词 → 判定被拦）
+    const riskNoteNear = () => {
+      if (!region) return '';
+      let host = region;
+      const phrases = ['需要验证', '验证码', '发布太', '被风控', '请稍后再试', '发布失败'];
+      const collect = (root) => {
+        if (root.nodeType === 1 && root.textContent) {
+          for (const p of phrases) {
+            if (root.textContent.indexOf(p) >= 0) return p;
+          }
+        }
+        if (root.shadowRoot) { const s = collect(root.shadowRoot); if (s) return s; }
+        for (const c of Array.from(root.children || [])) { const s = collect(c); if (s) return s; }
+        return '';
+      };
+      return collect(host);
+    };
+
+    const deadline = Date.now() + 9000;
+    let cleared = false;
+    while (Date.now() < deadline) {
+      await sleep(500);
+      const live = ed.isConnected ? ed : null;
+      const emptyNow = !live || !(ed.textContent || '').trim();
+      if (msgInPage(msg)) return { ok: true, method: 'ui' };
+      if (emptyNow && !cleared) {
+        cleared = true;
+        await sleep(700); // 给列表渲染一点时间
+        if (msgInPage(msg)) return { ok: true, method: 'ui' };
+        return { ok: true, method: 'ui', uncertain: true, detail: '编辑器已清空，可能已发送成功，请回页面确认' };
+      }
+      // 内容没发出去且出现风控词
+      if (Date.now() - clickedAt > 4000) {
+        const note = riskNoteNear();
+        if (note) return fail('risk', '发布疑似被拦截：' + note);
+      }
+    }
+    return { ok: true, method: 'ui', uncertain: true, detail: '已点击“发布”，未确认到结果，请回页面查看' };
+  } catch (err) {
+    return fail('unknown', String((err && err.message) || err));
   }
 }
 
