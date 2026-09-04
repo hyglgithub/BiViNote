@@ -775,7 +775,11 @@ B站视频字幕：
           showToast('该结果是在其他视频下整理的，请切回原视频或重新整理后再发送');
           return;
         }
-        const plain = comment.toPlain(result.response);
+        let plain = comment.toPlain(result.response);
+        // 帮作者推广：开启时在评论末尾追加插件标记（空正文不加，避免只发一句推广）
+        if (window.BiViNote.state.settings.promoteComment !== false && plain) {
+          plain = plain + ' 【BiViNote插件辅助生成】';
+        }
         commentBtn.disabled = true;
         commentBtn.textContent = '发送中…';
         try {
