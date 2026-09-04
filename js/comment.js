@@ -59,7 +59,7 @@
     const resp = await new Promise((resolve) => {
       let settled = false;
       const finish = (v) => { if (!settled) { settled = true; clearTimeout(timer); resolve(v); } };
-      const timer = setTimeout(() => finish({ ok: false, error: '发送超时，请重试' }), 20000);
+      const timer = setTimeout(() => finish({ ok: false, error: '发送超时，请重试' }), 30000);
       try {
         chrome.runtime.sendMessage({ type: 'bn-send-comment', text: msg }, finish);
       } catch (e) {
@@ -67,10 +67,12 @@
       }
     });
     if (!resp) return { ok: false, error: '后台无响应，请刷新页面后重试' };
-    if (!resp.ok) return { ok: false, error: (resp.result && resp.result.error) || resp.error || '发送失败' };
-
     const r = resp.result || {};
-    if (!r.ok) return { ok: false, error: stepText(r.step, r.error || '') };
+    // background 把内层 result.ok 平铺成外层 ok（同 bn-note-save 分支）：
+    // 内层失败 → stepText 给出带前缀的中文（直连接口/风控/未登录等）；外层失败(注入异常等) → 用 resp.error。
+    if (r.ok === false) return { ok: false, error: stepText(r.step, r.error || '') };
+    if (!resp.ok) return { ok: false, error: resp.error || '发送失败' };
+
     // 成功：UI 路线拿不到网络响应，uncertain 时提示回页面确认
     if (r.method === 'ui') {
       if (r.uncertain) return { ok: true, uncertain: true, detail: r.detail || '已点击发布，请回页面确认' };

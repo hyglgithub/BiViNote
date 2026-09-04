@@ -789,7 +789,7 @@
         try {
           const out = await comment.send(plain);
           if (out.ok) {
-            showToast(out.uncertain ? ('评论已发送：' + (out.detail || '请回页面确认')) : '评论已发送');
+            showToast(out.uncertain ? (out.detail || '已点击发布，请回页面确认') : '评论已发送');
           } else {
             showToast('发评论失败：' + (out.error || '未知错误'));
           }
