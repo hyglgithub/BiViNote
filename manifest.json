@@ -19,7 +19,7 @@
         "*://*.bilibili.com/video/*",
         "*://*.bilibili.com/list/*"
       ],
-      "js": ["libs/jszip.min.js", "libs/cropper.min.js", "libs/wasm-solver.js", "libs/bili-markup.js", "js/state.js", "js/cache.js", "js/panel.js", "js/subtitle.js", "js/chapter.js", "js/video-info.js", "js/capture.js", "js/export.js", "js/settings.js", "js/crop-viewer.js", "js/deepseek.js", "js/bili-note.js", "content.js"],
+      "js": ["libs/jszip.min.js", "libs/cropper.min.js", "libs/wasm-solver.js", "libs/bili-markup.js", "js/state.js", "js/cache.js", "js/panel.js", "js/subtitle.js", "js/chapter.js", "js/video-info.js", "js/capture.js", "js/export.js", "js/settings.js", "js/crop-viewer.js", "js/deepseek.js", "js/bili-note.js", "js/comment.js", "content.js"],
       "css": ["libs/cropper.min.css", "css/panel.css"],
       "run_at": "document_idle"
     }
