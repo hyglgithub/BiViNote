@@ -2,10 +2,9 @@
 // 提示词管理功能
 
 const DEFAULT_PROMPTS = {
-  clear: { name: '文档清洗', prompt: `你是一个视频笔记整理助手，将视频导出的 Markdown 文档整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
+  clear: { name: '内容整理', prompt: `你是一个视频内容整理助手，请将提供的「B站视频字幕」整理为简洁、高质量、适合长期保存的 Markdown 学习笔记。
 
 要求：
-
 1. 删除口语化内容、重复内容、无意义过渡语句，例如：好的、然后、这里呢、兄弟、就是说等。
 2. 删除所有字幕时间戳，例如 \`00:12\`、\`05:30\`。
 3. 不要逐句输出字幕，将连续字幕整理为简洁、连贯、易阅读的知识内容。
@@ -17,14 +16,13 @@ const DEFAULT_PROMPTS = {
 9. 若存在 Frontmatter（文档开头 YAML），必须完整原样保留，禁止修改字段、字段值和字段顺序。
 10. 仅整理原文，禁止总结、解释、扩展原文不存在的信息或补充额外知识。
 11. 输出前必须进行一致性检查：最终文档中的图片 Markdown 数量必须与原文完全一致。若原文图片数量为 0，则输出图片数量也必须为 0，不得新增任何图片。
+12. 直接输出整理后的 Markdown 文档，不要输出任何额外内容。
 
-待整理文档：
+B站视频字幕：
 
-{markdown}
+{markdown}` },
 
-直接输出整理后的 Markdown 文档，不要输出任何额外内容。` },
-
-  summary: { name: '文档总结', prompt: `你是一个视频总结助手，请根据提供的视频字幕文档生成简洁、准确的视频总结。
+  summary: { name: '视频总结', prompt: `你是一个视频总结助手，请根据提供的「B站视频字幕」生成简洁、准确的视频总结。
 
 要求：
 1. 仅依据字幕内容进行总结，不得添加、猜测或推断原文未提及的信息。
@@ -34,49 +32,27 @@ const DEFAULT_PROMPTS = {
 5. 输出一段连续文本，不使用标题、列表、Markdown、引号或其他格式。
 6. 如果字幕内容不完整或存在缺失，仅总结能够确定的内容，不要补充或猜测。
 
-待总结文档：
+B站视频字幕：
 
 {markdown}
 
 直接输出总结，不要输出任何额外说明。` },
 
-  bili: { name: 'B站专属笔记', prompt: `你是一位深度笔记知识点分析整理专家。任务：把下面这份「B站视频字幕原文」整理成一份结构化学习笔记。不要调用任何搜索/联网工具。
+  bili: { name: 'B站专属笔记', prompt: `你是一位笔记知识点分析整理专家，请将提供的「B站视频字幕」整理成一份结构化学习笔记。
 
-**必守规则**
+要求：
+1. 完整保留与主题相关的知识内容。删除语气词、重复、客套和无意义过渡，不写主讲人、平台、课程等具体信息；按视频原始时间顺序和逻辑划分段落，不打乱内容。
+2. 自动修正明显的语音识别错误；术语首次出现时，在术语后用括号或行内方式简要解释，不单独建立术语表。涉及原理、机制时，整理讲者提到的原因、条件和底层逻辑，不凭空补充。
+3. 讲者提到"如图所示""看这里"等，但原文没有对应画面时，根据上下文用一句话描述其指向的内容；不得凭空生成具体画面或截图。
+4. 原生素材必须严格保留：原文中的时间戳按原样摘取，放在对应知识点开头，不得编造或修改；只有原文明确存在 \`![截图](assets/数字.png)\` 时才允许保留截图，且必须整行原样保留。原文没有任何截图时，禁止出现任何 \`![]()\` 图片语法。
+5. 第一行必须是：**一句话知识点概要**：<一句话概括本视频解决的问题/核心价值>。
+6. 每个逻辑段落以标题开头，最多使用 \`#\`、\`##\`、\`###\` 三级标题。正文可使用自然段、无序列表和有序列表。
+7. 只允许使用以下 Markdown：\`#\`、\`##\`、\`###\`、\`**文字**\`、\`==文字==\`、\`~~文字~~\`、\`- \`、\`1. \`、时间戳、截图。不得使用其他 Markdown 语法。
+8. 直接输出整理后的 Markdown 文档，不要输出任何额外内容。
 
-- 内容无遗漏：语气词、重复、客套可删，但任何与主题相关的句子都要覆盖。不写主讲人/平台/课程具体信息。
-- 逐段处理：按视频逻辑切成段落，每段完整覆盖，段落顺序即时间顺序。
-- 术语首次出现处，紧跟一句括号/行内解释；不单独立术语表或清单。
-- 讲者说"如图所示/看这里"但无画面时，依据上下文用一句话把画面内容写进笔记。
-- 提到原理/机制时，除讲者表述外，把讲者讲到的底层原因也写进去。
-- 语音识别明显不准的词，自动修正。
+B站视频字幕：
 
-**输入里两类"原生素材"必须原样保留——不要改写、不要发明新记号**
-
-1. 时间戳：字幕行首那种反引号写法 \`00:00\` \`00:43\` \`1:02:03\`。整理后，凡是某条要点能对上视频某个时刻，就在该要点开头原样放一个这种时间戳（直接从原文摘，别逐句堆时间）。一个段落若跨多个时刻，可放 1～3 个关键时间。
-2. 截图：仅当原始输入字幕中明确存在 ![截图](assets/数字.png) 这一行时，才将该行原样、一字不改地放到正文相关位置。如果原始输入里没有出现任何截图引用行，则整个笔记中绝对禁止出现 ![]() 格式的图片语法，严禁凭空编造或生成任何截图引用。
-
-**输出格式**（结果会被直接粘进 B站笔记插件。**只允许下面这 8 种写法；除此之外的任何 Markdown / HTML 一律不支持，不要使用**）
-
-支持清单（只准用这些）：
-
-- 标题：\`# \` / \`## \` / \`### \`（最多 3 级；\`####\` 及更深不支持）
-- 加粗：\`**文字**\`　下划线：\`==文字==\`　删除线：\`~~文字~~\`
-- 列表：行首 \`- \` 无序列表；行首按 \`1. \` \`2. \` \`3. \`… 逐条写数字（数字仅用于识别「这是有序列表」，实际显示的编号由平台自动生成）
-- 时间点：\`MM:SS\`（反引号包住，直接从原文摘），单独成一行
-- 截图：\`![截图](assets/数字.png)\`（整行原样保留，路径与文件名一字不改）
-
-写法要求：
-
-- 第一行写 \`**一句话知识点概要**：<一句话概括本视频解决的问题/核心价值>\`。
-- 每个逻辑段落以标题起头（建议 \`## 一、<段落标题>\`，需更细用 \`### \`）；时间点放对应要点/段落开头，截图行放正文相关位置。
-- 直接输出笔记正文，**不要**用 \`\`\` 代码块包裹、不要加正文以外的任何说明。
-
-待整理文档：
-
-{markdown}
-
-直接输出整理后的 Markdown 文档，不要输出任何额外内容。` }
+{markdown}` }
 };
 
 // ============ 工具函数 ============
@@ -210,8 +186,8 @@ async function getAllPrompts() {
   const packImagesMap = settings.promptPackImages || {};
 
   const list = [
-    { id: 'summary', name: settings.deepseekSummaryName || '文档总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true, packImages: packImagesMap.summary ?? false },
-    { id: 'clear', name: settings.deepseekPromptName || '文档清洗', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.clear.prompt, builtin: true, packImages: packImagesMap.clear ?? true },
+    { id: 'summary', name: settings.deepseekSummaryName || '视频总结', prompt: settings.deepseekSummary || DEFAULT_PROMPTS.summary.prompt, builtin: true, packImages: packImagesMap.summary ?? false },
+    { id: 'clear', name: settings.deepseekPromptName || '内容整理', prompt: settings.deepseekPrompt || DEFAULT_PROMPTS.clear.prompt, builtin: true, packImages: packImagesMap.clear ?? true },
     { id: 'bili', name: settings.deepseekBiliName || 'B站专属笔记', prompt: settings.deepseekBili || DEFAULT_PROMPTS.bili.prompt, builtin: true, packImages: packImagesMap.bili ?? true }
   ];
 
@@ -451,9 +427,9 @@ function getPromptName(promptType) {
     chrome.storage.local.get('bivinote_settings', (result) => {
       const settings = result.bivinote_settings || {};
       if (promptType === 'summary') {
-        resolve(settings.deepseekSummaryName || '文档总结');
+        resolve(settings.deepseekSummaryName || '视频总结');
       } else if (promptType === 'clear') {
-        resolve(settings.deepseekPromptName || '文档清洗');
+        resolve(settings.deepseekPromptName || '内容整理');
       } else if (promptType === 'bili') {
         resolve(settings.deepseekBiliName || 'B站专属笔记');
       } else {
