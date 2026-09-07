@@ -719,7 +719,8 @@ function renderFaqMarkdown(body) {
         .join('<br>');
       return `<blockquote>${inner}</blockquote>`;
     }
-    const paragraph = rawLines.map(l => inline(escapeHtml(l))).join('<br>');
+    const lines = rawLines.filter(l => l.trim() !== '');
+    const paragraph = lines.map(l => inline(escapeHtml(l))).join('<br>');
     return `<p>${paragraph}</p>`;
   }).join('');
 }
