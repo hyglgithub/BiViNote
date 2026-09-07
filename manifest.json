@@ -39,7 +39,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["icons/*", "CHANGELOG.md"],
+      "resources": ["icons/*", "CHANGELOG.md", "FAQ.md"],
       "matches": ["*://*.bilibili.com/*"]
     }
   ]
