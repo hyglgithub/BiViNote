@@ -657,6 +657,73 @@ function parseChangelog(text) {
   return versions;
 }
 
+// ============ 常见问题 ============
+
+async function renderFaq() {
+  const container = document.getElementById('faq-list');
+  if (!container) return;
+
+  try {
+    const response = await fetch(chrome.runtime.getURL('FAQ.md'));
+    const text = await response.text();
+    const items = parseFaq(text);
+
+    if (!items.length) {
+      container.innerHTML = '<div class="history-empty">暂无常见问题</div>';
+      return;
+    }
+
+    container.innerHTML = items.map(item => `
+      <div class="faq-item">
+        <div class="faq-question"><span class="faq-q-badge">Q</span>${escapeHtml(item.question)}</div>
+        <div class="faq-answer">${renderFaqMarkdown(item.body)}</div>
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = '<p style="color: #999; font-size: 14px;">无法加载常见问题</p>';
+  }
+}
+
+function parseFaq(text) {
+  const items = [];
+  const lines = text.split('\n');
+  let current = null;
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^##\s+(.+)/);
+    if (headingMatch) {
+      current = { question: headingMatch[1].trim(), body: [] };
+      items.push(current);
+      continue;
+    }
+    if (current) current.body.push(line);
+  }
+
+  return items;
+}
+
+function renderFaqMarkdown(body) {
+  const inline = (s) => s
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  const blocks = body.join('\n').split(/\n\s*\n/);
+  return blocks.map(block => {
+    const rawLines = block.split('\n');
+    const nonEmpty = rawLines.filter(l => l.trim() !== '');
+    if (!nonEmpty.length) return '';
+    const isQuote = nonEmpty.every(l => l.trim().startsWith('>'));
+    if (isQuote) {
+      const inner = nonEmpty
+        .map(l => inline(escapeHtml(l.trim().replace(/^>\s?/, ''))))
+        .join('<br>');
+      return `<blockquote>${inner}</blockquote>`;
+    }
+    const paragraph = rawLines.map(l => inline(escapeHtml(l))).join('<br>');
+    return `<p>${paragraph}</p>`;
+  }).join('');
+}
+
 // ============ 初始化 ============
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -673,6 +740,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('section-' + sectionId).classList.add('active');
       if (sectionId === 'history') {
         renderHistory();
+      }
+      if (sectionId === 'faq') {
+        renderFaq();
       }
     });
   });
