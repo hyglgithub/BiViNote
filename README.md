@@ -18,6 +18,7 @@
 - ✍️ **B站笔记保存** — 整理结果一键保存为 B站笔记，随时「查看笔记」回看
 - 💬 **发评论** — 整理结果一键发到当前视频的评论区，可开启「帮作者推广」自动附【BiViNote插件分享】
 - 🎛️ **全局模型配置** — Options 统一设置 DeepSeek 模型、联网搜索与深度思考，对所有整理任务生效
+- ❓ **Options 常见问题** — 内置 FAQ 文档（登录状态异常等），随扩展同步维护
 - 🔄 **自动刷新** — 视频切换时自动获取新字幕
 - 🎯 **字幕同步** — 播放时高亮当前字幕，支持自动滚动
 - 🌙 **夜间模式** — 日/夜两套配色全局切换
@@ -61,7 +62,7 @@ git clone https://github.com/hyglgithub/BiViNote.git
 ## 使用方法
 
 1. 打开 B 站视频页（支持 `/video/BV*` 和 `/list/*` 页面）
-2. 面板会自动显示在视频页（可折叠为可拖动的圆形悬浮图标）；工具栏图标亮起表示当前页面可用
+2. 面板会自动显示在视频页（可折叠为可拖动的圆形悬浮图标）；工具栏图标亮起表示当前页面可用，点击工具栏图标可打开 Options 设置页
 3. 面板自动获取当前视频字幕
 4. 为需要的字幕/章节添加截图
 5. 点击「下载（.md）」导出笔记
@@ -86,6 +87,12 @@ git clone https://github.com/hyglgithub/BiViNote.git
 4. 整理过程中可点击「停止整理」终止
 5. 整理完成后可下载 Markdown（含截图时打包 ZIP）、复制文本、继续在 DeepSeek 追问
 6. 整理结果自动缓存，同一视频无需重复整理
+
+> ⚠️ **保持 DeepSeek 页面活动**：插件通过后台 DeepSeek 页面判断登录状态。若已登录 DeepSeek 但插件仍显示「未登录」，请把 `chat.deepseek.com` 加入浏览器的「保持活动」名单，避免后台页面被浏览器休眠：
+> - **Edge**：设置 → 系统和性能 → 性能 →「使这些站点保持活动状态」→ 添加 `chat.deepseek.com`
+> - **Chrome**：设置 → 性能 →「始终让这些网站保持活动状态」→ 添加 `chat.deepseek.com`
+>
+> Edge 用户尤其建议添加该设置。更多排查见 Options 页「常见问题」。
 
 > B站笔记保存：整理完成后点击「记笔记」可将结果保存为 B站笔记（需开通 B站「记笔记」权限），保存成功后按钮切换为「查看笔记」，点击即跳转查看。
 
@@ -153,7 +160,8 @@ BiViNote/
 ├── manifest.json      # 扩展配置 (Manifest V3)
 ├── background.js      # Service Worker - API 代理、图标状态、SSE 处理、DeepSeek 通信
 ├── content.js         # 入口脚本 - 面板注入、路由监听、视频切换检测
-├── options.html       # 选项页面 - 提示词管理、模型设置、文档历史
+├── options.html       # 选项页面 - 提示词管理、模型设置、文档历史、常见问题
+├── FAQ.md             # 常见问题内容源（Options 常见问题 页运行时加载，随发布打包）
 ├── js/
 │   ├── state.js       # 全局状态管理
 │   ├── panel.js       # 面板 UI - 标签页、折叠、拖动、设置、提示词管理、文档整理
@@ -164,9 +172,10 @@ BiViNote/
 │   ├── crop-viewer.js # 截图浏览 - Cropper.js 裁剪、缩放、旋转、翻转
 │   ├── export.js      # 导出 - SRT、Markdown、ZIP
 │   ├── deepseek.js    # DeepSeek 通信模块 - 状态机、chunk 处理、请求生命周期
-│   ├── options.js     # Options 页面 - 提示词管理、模型设置、文档历史
+│   ├── options.js     # Options 页面 - 提示词管理、模型设置、文档历史、常见问题渲染
 │   ├── cache.js       # 文档整理缓存 - chrome.storage.local 持久化
 │   ├── bili-note.js   # B站笔记 - 笔记内容持久化与保存逻辑
+│   ├── comment.js     # 发评论 - 整理结果转纯文本发布到评论区
 │   └── settings.js    # 设置 - chrome.storage.local 持久化
 ├── css/
 │   └── panel.css      # 面板样式（含暗色主题）
