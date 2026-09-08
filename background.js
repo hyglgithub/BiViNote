@@ -286,9 +286,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// 扩展图标点击 → 无操作（面板自动显示）
+// 扩展图标点击 → 打开选项页
 chrome.action.onClicked.addListener((tab) => {
-  // 无操作
+  chrome.runtime.openOptionsPage();
 });
 
 /**
