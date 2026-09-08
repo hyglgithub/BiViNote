@@ -183,6 +183,8 @@
     if (langTrigger && langMenu) {
       langTrigger.addEventListener('click', (e) => {
         e.stopPropagation();
+        // 无可选语言时不弹出（菜单为空，避免出现空黑条）
+        if (langMenu.children.length === 0) return;
         langMenu.classList.toggle('show');
       });
       // 点击外部关闭菜单
@@ -775,15 +777,16 @@ B站视频字幕：
           showToast('该结果是在其他视频下整理的，请切回原视频或重新整理后再发送');
           return;
         }
-        let plain = comment.toPlain(result.response);
+        // 原文直发：AI 回复不做任何内容转换（保留换行与 Markdown 原文）
+        let text = String(result.response || '');
         // 帮作者推广：开启时在评论末尾追加插件标记（空正文不加，避免只发一句推广）
-        if (window.BiViNote.state.settings.promoteComment !== false && plain) {
-          plain = plain + ' 【BiViNote插件分享】';
+        if (window.BiViNote.state.settings.promoteComment !== false && text) {
+          text = text + ' 【BiViNote插件分享】';
         }
         commentBtn.disabled = true;
         commentBtn.textContent = '发送中…';
         try {
-          const out = await comment.send(plain);
+          const out = await comment.send(text);
           if (out.ok) {
             showToast(out.uncertain ? (out.detail || '已点击发布，请回页面确认') : '评论已发送');
           } else {
@@ -1456,13 +1459,18 @@ B站视频字幕：
   function updateSubtitleSelect(subtitles, selectedUrl) {
     const langLabel = panelEl?.querySelector('#bn-lang-label');
     const langMenu = panelEl?.querySelector('#bn-lang-menu');
+    const langTrigger = panelEl?.querySelector('#bn-lang-trigger');
     if (!langLabel || !langMenu) return;
 
     if (!subtitles || subtitles.length === 0) {
       langLabel.textContent = '暂无字幕';
       langMenu.innerHTML = '';
+      langMenu.classList.remove('show');
+      if (langTrigger) langTrigger.disabled = true;
       return;
     }
+
+    if (langTrigger) langTrigger.disabled = false;
 
     // 更新按钮文本
     const selected = subtitles.find(s => s.subtitleUrl === selectedUrl);

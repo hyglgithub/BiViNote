@@ -1138,7 +1138,19 @@ async function bnSendCommentMain(text) {
 
     // ---------- 路线 A：填入编辑器 + 点发布 ----------
     ed.focus();
-    ed.textContent = msg;
+    // 手动粘贴等价填充：contenteditable 逐行文本节点 + <br>，避免换行被折叠成空格；
+    // 若是 textarea/input 则直接写入 value（\n 原样保留在值里）。
+    const edTag = (ed.tagName || '').toLowerCase();
+    if (edTag === 'textarea' || edTag === 'input') {
+      ed.value = msg;
+    } else {
+      ed.textContent = '';
+      const lines = String(msg).split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        ed.appendChild(document.createTextNode(lines[i]));
+        if (i < lines.length - 1) ed.appendChild(document.createElement('br'));
+      }
+    }
     try {
       const range = document.createRange();
       range.selectNodeContents(ed);

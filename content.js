@@ -53,6 +53,7 @@
   let lastBvid = '';
   let lastPage = 1;
   let urlCheckTimer = null;
+  let navRefreshTimer = null; // 导航后的防抖刷新定时器
 
   const urlObserver = new MutationObserver(() => {
     if (urlCheckTimer) return;
@@ -66,27 +67,35 @@
   });
   urlObserver.observe(document.body, { childList: true, subtree: true });
 
+  // B站 SPA 导航途中同一条视频 URL 可能被改写多次（追加/清理 ?spm_id_from=、p 参数等
+  // pushState/replaceState）。这类"同视频"改写不能 reset 状态——否则会把正在进行的
+  // subtitle.refresh() 用 fetchRunId 静默取消，又因 bvid 没变不会调度新刷新，面板就
+  // 一直停在"正在获取字幕..."。只有 BVID 或分P 真正变化时才取消旧请求并防抖重刷一次。
   function onRouteChange() {
-    const oldBvid = lastBvid;
-    const oldPage = lastPage;
-    // 重置状态
+    const newBvid = BN.subtitle?.extractBvid(location.href) || '';
+    const newPage = BN.subtitle?.extractPageIndex(location.href) || 1;
+
+    // 非视频页 / 目标没变（同视频 URL 改写）：不动状态，让进行中的刷新正常完成
+    if (!newBvid || (newBvid === lastBvid && newPage === lastPage)) return;
+
+    lastBvid = newBvid;
+    lastPage = newPage;
+    // BVID/分P 真正变化：立即重置（作废旧视频的进行中请求），再防抖刷新最终 URL
     BN.state.reset();
-    // 如果面板可见，检测 BVID 或分P 变化则自动刷新
-    if (BN.state.panelVisible && BN.subtitle) {
-      const newBvid = BN.subtitle.extractBvid(location.href);
-      const newPage = BN.subtitle.extractPageIndex(location.href);
-      if (newBvid && (newBvid !== oldBvid || newPage !== oldPage)) {
-        lastBvid = newBvid;
-        lastPage = newPage;
-        setTimeout(async () => {
-          if (BN.state.panelVisible) {
-            await BN.subtitle.refresh();
-            BN.panel.resetDocAuto();
-            BN.panel.renderDoc();
-          }
-        }, 1000);
-      }
-    }
+    scheduleNavRefresh();
+  }
+
+  function scheduleNavRefresh() {
+    if (navRefreshTimer) clearTimeout(navRefreshTimer);
+    navRefreshTimer = setTimeout(async () => {
+      navRefreshTimer = null;
+      if (!BN.state.panelVisible || !BN.subtitle) return;
+      // 防抖期间又发生新导航时，上一定时器已被清掉并重新调度，这里按当前 URL 刷新即可
+      if (!BN.subtitle.extractBvid(location.href)) return;
+      await BN.subtitle.refresh();
+      BN.panel.resetDocAuto();
+      BN.panel.renderDoc();
+    }, 800);
   }
 
   // ── 启动 ──

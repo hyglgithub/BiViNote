@@ -1,6 +1,6 @@
 // js/comment.js - 发评论模块（「发评论」）
-// 把 DeepSeek 文档整理的 AI 结果(Markdown) 剥成纯文本，做 ≤950 字安全线/登录预检后，
-// 交由 background 注入视频页 MAIN world 自动填入评论区并发布（移植自 bilibili-comment-extension）。
+// 把 DeepSeek 文档整理的 AI 结果(Markdown) 原文直发：不做任何内容转换（保留换行与 Markdown 原文），
+// 仅做 ≤950 字安全线/登录预检后，交由 background 注入视频页 MAIN world 自动填入评论区并发布（移植自 bilibili-comment-extension）。
 (function () {
   'use strict';
   const BN = window.BiViNote;
@@ -11,25 +11,6 @@
   function getCookie(name) {
     const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : '';
-  }
-
-  // Markdown → 纯文本（评论不支持格式/图片；对本来就是纯文本的结果是无损 no-op）
-  function toPlain(md) {
-    let s = String(md || '');
-    // 整行图片 ![alt](assets/x.png) → 删除（图片发不进评论）
-    s = s.replace(/^\s*!\[[^\]]*\]\([^)]*\)\s*$/gm, '');
-    // 代码块围栏
-    s = s.replace(/```[\s\S]*?(```|$)/g, '');
-    // 行首标题符
-    s = s.replace(/^\s{0,3}#{1,6}\s+/gm, '');
-    // 链接保留文字
-    s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
-    // 行首列表符号
-    s = s.replace(/^\s*(?:[-*+]|\d+\.)\s+/gm, '');
-    // 强调/代码/删除线等残留符号
-    s = s.replace(/[*_`~#]/g, '');
-    // 折叠空白、换行转空格
-    return s.replace(/\s+/g, ' ').trim();
   }
 
   // 后台 step 码 → 中文提示（文案对齐独立扩展 popup）
@@ -82,5 +63,5 @@
     return { ok: true, uncertain: false, detail: 'rpid=' + (r.rpid || '?') };
   }
 
-  window.BiViNote.comment = { LIMIT, toPlain, send };
+  window.BiViNote.comment = { LIMIT, send };
 })();
