@@ -67,8 +67,6 @@ git clone https://github.com/hyglgithub/BiViNote.git
 
 ### 文档整理（AI）
 
-点击「文档整理」标签页，可选择不同提示词进行整理：
-
 1. 首次使用需登录 DeepSeek（点击「打开 DeepSeek 登录」跳转）
 2. 选择提示词类型（视频总结/内容整理/B站专属笔记/自定义）
 3. 点击「开始整理」，AI 自动处理，流式输出思考过程和整理结果
@@ -82,12 +80,11 @@ git clone https://github.com/hyglgithub/BiViNote.git
 >
 > Edge 用户尤其建议添加该设置。更多排查见 Options 页「常见问题」。
 
-> B站笔记保存：整理完成后点击「记笔记」可将结果保存为 B站笔记（需开通 B站「记笔记」权限），保存成功后按钮切换为「查看笔记」，点击即跳转查看。
+> ✍️ **B站笔记保存**：整理完成后点击「记笔记」可将结果保存为 B站笔记（需开通 B站「记笔记」权限），保存成功后按钮切换为「查看笔记」，点击即跳转查看。
 
-提示词可在 Options 页面自定义，支持新增自定义提示词。
-DeepSeek 的模型类型、联网搜索、深度思考可在 Options 页「模型设置」统一配置，对所有整理任务生效。
+提示词可在 Options 页面自定义，支持新增自定义提示词。DeepSeek 的模型类型、联网搜索、深度思考可在 Options 页「模型设置」统一配置，对所有整理任务生效。
 
-### 底部按钮
+### 截图与导出
 
 | 按钮 | 功能 |
 |------|------|
@@ -96,17 +93,15 @@ DeepSeek 的模型类型、联网搜索、深度思考可在 Options 页「模�
 | 导出（.srt） | 下载 SRT 格式字幕文件 |
 | 下载（.md） | 下载 Markdown 笔记（含截图时打包 ZIP） |
 
-### 截图功能
+**截图操作**
 
 - 点击字幕/章节行的「截图」按钮，自动跳转到对应时间点并截取当前帧
-- 点击缩略图打开截图浏览界面
-- 浏览界面支持：拖动图片、上一帧/下一帧、下载、复制到剪贴板
-- 点击「裁剪」进入裁剪模式：支持裁剪框调整、缩放、旋转、翻转
-- 点击「取消截图」可移除已添加的截图
+- 点击缩略图打开截图浏览界面，支持拖动图片、上一帧/下一帧、下载、复制到剪贴板
+- 浏览界面点「裁剪」进入裁剪模式（裁剪框调整、缩放、旋转、翻转）；点「取消截图」移除已添加的截图
 
-### 导出格式
+**导出格式**
 
-**纯 Markdown**（无截图时直接下载 .md 文件）
+无截图时直接下载 `.md` 文件：
 
 ```markdown
 ---
@@ -128,73 +123,33 @@ author: "作者名"
 字幕文本
 ```
 
-**含截图**（有截图时打包为 .zip）
-
-```
-note.zip
-├── note.md
-└── assets/
-    ├── 0009.png
-    ├── chapter-1.png
-    └── ...
-```
+有截图时打包为 `.zip`，笔记正文为 `note.md`，图片统一存放在 `assets/` 目录。
 
 > 章节/字幕时间戳可在「视频信息」页勾选控制，默认不带时间戳。
 
-## 项目结构
+## 技术栈
 
-```
-BiViNote/
-├── manifest.json      # 扩展配置 (Manifest V3)
-├── background.js      # Service Worker - API 代理、图标状态、SSE 处理、DeepSeek 通信
-├── content.js         # 入口脚本 - 面板注入、路由监听、视频切换检测
-├── options.html       # 选项页面 - 提示词管理、模型设置、文档历史、常见问题
-├── FAQ.md             # 常见问题内容源（Options 常见问题 页运行时加载，随发布打包）
-├── js/
-│   ├── state.js       # 全局状态管理
-│   ├── panel.js       # 面板 UI - 标签页、折叠、拖动、设置、提示词管理、文档整理
-│   ├── subtitle.js    # 字幕 - 获取、渲染、高亮同步、跳转
-│   ├── chapter.js     # 章节 - 获取、渲染、跳转
-│   ├── video-info.js  # 视频信息展示
-│   ├── capture.js     # 截图 - OffscreenCanvas、保存、剪贴板
-│   ├── crop-viewer.js # 截图浏览 - Cropper.js 裁剪、缩放、旋转、翻转
-│   ├── export.js      # 导出 - SRT、Markdown、ZIP
-│   ├── deepseek.js    # DeepSeek 通信模块 - 状态机、chunk 处理、请求生命周期
-│   ├── options.js     # Options 页面 - 提示词管理、模型设置、文档历史、常见问题渲染
-│   ├── cache.js       # 文档整理缓存 - chrome.storage.local 持久化
-│   ├── bili-note.js   # B站笔记 - 笔记内容持久化与保存逻辑
-│   ├── comment.js     # 发评论 - 整理结果转纯文本发布到评论区
-│   └── settings.js    # 设置 - chrome.storage.local 持久化
-├── css/
-│   └── panel.css      # 面板样式（含暗色主题）
-├── libs/
-│   ├── jszip.min.js       # ZIP 打包库
-│   ├── cropper.min.js     # Cropper.js 裁剪库
-│   ├── cropper.min.css
-│   ├── deepseek-api.js    # DeepSeek MAIN world - PoW、completion、stop_stream
-│   ├── deepseek-bridge.js # DeepSeek ISOLATED world - 消息桥接
-│   ├── bili-markup.js     # B站笔记 bili-markup 解析器
-│   └── wasm-solver.js     # DeepSeek PoW WASM 求解器
-└── icons/             # 扩展图标（正常 + 变暗状态）
-```
+<details>
+<summary>展开查看</summary>
 
-## 技术要点
+- **Manifest V3** — Chrome / Edge 扩展，无自建服务器，数据全部经由用户自己的浏览器获取
+- **DeepSeek 集成** — MAIN + ISOLATED 双世界脚本注入，SSE 流式解析（7 种事件格式），PoW 挑战求解，stop_stream 终止
+- **字幕获取** — 双源 API 策略（`player/wbi/v2` 优先，`player/v2` 回退），按语言优先级排序（中文 > 英文 > 其他）
+- **页面鲁棒性** — SPA 路由监听自动刷新，面板存活保护（应对 B站 `#app` 替换），请求 ID 过滤过期响应
+- **截图** — OffscreenCanvas 采集视频帧，Cropper.js 提供裁剪、缩放、旋转、翻转
+- **导出** — Markdown / SRT / ZIP，图片统一放入 `assets/`
 
-- **Manifest V3** Chrome 扩展
-- **双源 API 策略**：优先 `player/wbi/v2`（aid），回退 `player/v2`（bvid）
-- **字幕轨道排序**：按语言优先级稳定排序（中文 > 英文 > 其他）
-- **SPA 路由监听**：MutationObserver 检测 URL 变化，自动刷新
-- **CORS 处理**：CDN 域名使用 `credentials: 'omit'`
-- **图标状态**：根据页面类型动态切换正常/变暗图标
-- **事件委托**：单次绑定避免监听器泄漏
-- **请求取消**：fetchRunId 机制防止过期请求污染状态
-- **截图裁剪**：基于 Cropper.js，支持裁剪、缩放、旋转、翻转
-- **折叠面板**：可拖动圆形图标，点击展开，功能菜单快捷操作
-- **DeepSeek 集成**：多世界脚本注入（MAIN + ISOLATED）、SSE 流式解析（7 种事件格式）、PoW 挑战求解、stop_stream 终止、cookie 降级检测、官方客户端 v2.4.0 适配
-- **B站笔记保存**：bili-markup 解析、笔记内容持久化、MAIN world 保存 handler
-- **自动滚动控制**：用户上滑暂停自动滚动，回到底部恢复
-- **文档整理缓存**：按视频/页码缓存整理结果，Options 页面查看历史
-- **面板存活保护**：setInterval 监控 + Vue 组件树恢复，应对 B站 #app 替换
+模块职责：
+
+| 模块 | 职责 |
+|------|------|
+| `background.js` | Service Worker — API 代理、图标状态、SSE 流式中转 |
+| `content.js` | 入口脚本 — 面板注入、路由监听、视频切换检测 |
+| `js/panel.js` | 面板 UI — 标签页、折叠拖动、设置与整理交互 |
+| `js/subtitle.js` · `js/chapter.js` | 字幕/章节的获取、渲染与跳转 |
+| `js/deepseek.js` · `js/export.js` | AI 整理通信；SRT / Markdown / ZIP 导出 |
+
+</details>
 
 ## 兼容性
 
