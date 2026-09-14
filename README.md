@@ -1,4 +1,4 @@
-# BiViNote｜B站视频笔记 bilibili video note
+# BiViNote｜B站视频笔记工具
 
 [![GitHub all releases downloads](https://img.shields.io/github/downloads/hyglgithub/BiViNote/total?style=flat-square&logo=github&label=downloads)](https://github.com/hyglgithub/BiViNote/releases)
 [![GitHub release](https://img.shields.io/github/v/release/hyglgithub/BiViNote?style=flat-square&label=version)](https://github.com/hyglgithub/BiViNote/releases)
