@@ -135,7 +135,7 @@ author: "作者名"
 - **Manifest V3** — Chrome / Edge 扩展，无自建服务器，数据全部经由用户自己的浏览器获取
 - **DeepSeek 集成** — MAIN + ISOLATED 双世界脚本注入，SSE 流式解析（7 种事件格式），PoW 挑战求解，stop_stream 终止
 - **字幕获取** — 双源 API 策略（`player/wbi/v2` 优先，`player/v2` 回退），按语言优先级排序（中文 > 英文 > 其他）
-- **页面鲁棒性** — SPA 路由监听自动刷新，面板存活保护（应对 B站 `#app` 替换），请求 ID 过滤过期响应
+- **页面鲁棒性** — SPA 路由监听（MutationObserver）、面板存活保护（应对 B站 `#app` 替换）、请求 ID 过滤过期响应
 - **截图** — OffscreenCanvas 采集视频帧，Cropper.js 提供裁剪、缩放、旋转、翻转
 - **导出** — Markdown / SRT / ZIP，图片统一放入 `assets/`
 
