@@ -28,11 +28,11 @@
 
 ## 功能演示
 
-![字幕抓取功能](docs/screenshots/demo-subtitle.png)
+![字幕抓取功能](docs/screenshots/demo-subtitle.png?v=2)
 
 <br>
 
-![文档整理功能](docs/screenshots/demo-doc-organize.png)
+![文档整理功能](docs/screenshots/demo-doc-organize.png?v=2)
 
 ## 使用教程
 
