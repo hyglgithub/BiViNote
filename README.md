@@ -4,27 +4,20 @@
 [![GitHub release](https://img.shields.io/github/v/release/hyglgithub/BiViNote?style=flat-square&label=version)](https://github.com/hyglgithub/BiViNote/releases)
 [![License](https://img.shields.io/github/license/hyglgithub/BiViNote?style=flat-square)](LICENSE)
 
-在 B 站视频页抓取字幕、截取视频帧画面，生成带有截图的 Markdown 笔记。支持接入 DeepSeek AI 自动整理文档。
+在 B站视频页抓取字幕、截取视频帧画面，生成带有截图的 Markdown 笔记。支持接入 DeepSeek AI 自动整理文档。
 
-## 功能
+🌐 官网：<https://hyglgithub.github.io/BiViNote/>
 
-- 📝 **字幕抓取** — 自动获取 B 站视频字幕，支持多语言切换
-- 📷 **视频截图** — 为字幕/章节添加视频帧截图，支持上一帧/下一帧微调
-- ✂️ **截图裁剪** — 基于 Cropper.js 的图片裁剪、缩放、旋转、翻转
-- 📋 **章节支持** — 展示视频章节，按章节分段导出
+## 功能亮点
+
+- 📝 **字幕抓取** — 自动获取视频字幕，支持多语言切换
+- 📷 **视频截图与裁剪** — 一键截取视频帧，支持上一帧/下一帧微调；基于 Cropper.js 裁剪、缩放、旋转、翻转
 - 📄 **多格式导出** — SRT 字幕、Markdown 笔记（含截图时打包 ZIP）
 - 🤖 **AI 文档整理** — 接入 DeepSeek 自动整理字幕文档，流式输出思考过程和整理结果
-- 💾 **整理缓存** — 文档整理结果按视频缓存，无需重复整理
 - ✍️ **B站笔记保存** — 整理结果一键保存为 B站笔记，随时「查看笔记」回看
-- 💬 **发评论** — 整理结果一键发到当前视频的评论区，可开启「帮作者推广」自动附【BiViNote插件分享】
-- 🎛️ **全局模型配置** — Options 统一设置 DeepSeek 模型、联网搜索与深度思考，对所有整理任务生效
-- ❓ **Options 常见问题** — 内置 FAQ 文档（登录状态异常等），随扩展同步维护
-- 🔄 **自动刷新** — 视频切换时自动获取新字幕
-- 🎯 **字幕同步** — 播放时高亮当前字幕，支持自动滚动
-- 🌙 **夜间模式** — 日/夜两套配色全局切换
-- ⚙️ **自定义设置** — 字体大小、行高、帧步长、自动滚动等
-- 🖼️ **图标状态** — 视频页图标正常显示，非视频页图标变暗
-- 💬 **提示词管理** — 视频总结/内容整理/B站专属笔记/自定义提示词，Options 全屏编辑，支持恢复默认
+- 💬 **发评论** — 整理结果一键发到当前视频的评论区，可开启「帮作者推广」
+- 🎛️ **Options 统一配置** — 提示词、模型类型、联网搜索、深度思考集中管理，对所有整理任务生效
+- 🌙 **界面与设置** — 夜间模式、字体大小、行高、帧步长、自动滚动
 
 ## 功能演示
 
@@ -34,22 +27,17 @@
 
 ![文档整理功能](docs/screenshots/demo-doc-organize.png?v=2)
 
-## 使用教程
-
 📺 **视频教程**：[BiViNote 使用教程](https://www.bilibili.com/video/BV18HTj6mEPP)
 
-## 安装方式
+## 安装
 
 ### Chrome / Edge
 
-1. 在 GitHub 的 [Releases](https://github.com/hyglgithub/BiViNote/releases) 页面下载最新的 `bivinote-v*-chrome.zip` 包
+1. 在 [Releases](https://github.com/hyglgithub/BiViNote/releases) 页面下载最新的 `bivinote-v*-chrome.zip` 包
 2. 解压到任意本地目录
-3. 打开扩展管理页：
-   - Chrome：`chrome://extensions/`
-   - Edge：`edge://extensions/`
-4. 开启"开发者模式"
-5. 点击"加载已解压的扩展程序"
-6. 选择解压后的扩展目录（包含 `manifest.json` 的目录）
+3. 打开扩展管理页：Chrome 为 `chrome://extensions/`，Edge 为 `edge://extensions/`
+4. 开启「开发者模式」
+5. 点击「加载已解压的扩展程序」，选择解压后的目录（包含 `manifest.json` 的目录）
 
 ### 从源码安装
 
@@ -57,12 +45,12 @@
 git clone https://github.com/hyglgithub/BiViNote.git
 ```
 
-然后按照上述步骤 3-6 加载扩展。
+然后按上述步骤 3-5 加载扩展。
 
-## 使用方法
+## 使用
 
-1. 打开 B 站视频页（支持 `/video/BV*` 和 `/list/*` 页面）
-2. 面板会自动显示在视频页（可折叠为可拖动的圆形悬浮图标）；工具栏图标亮起表示当前页面可用，点击工具栏图标可打开 Options 设置页
+1. 打开 B站视频页（支持 `/video/BV*` 和 `/list/*` 页面）
+2. 面板自动显示在视频页（可折叠为可拖动的圆形悬浮图标）；工具栏图标亮起表示当前页面可用，点击工具栏图标可打开 Options 设置页
 3. 面板自动获取当前视频字幕
 4. 为需要的字幕/章节添加截图
 5. 点击「下载（.md）」导出笔记
@@ -71,10 +59,10 @@ git clone https://github.com/hyglgithub/BiViNote.git
 
 | 标签页 | 功能 |
 |--------|------|
-| 字幕 | 字幕列表、添加截图、复制、跳转、高亮同步 |
+| 字幕 | 字幕列表、添加截图、复制、跳转；跟随播放高亮，切换视频自动刷新 |
 | 章节 | 章节列表、添加截图、复制、跳转 |
 | 视频信息 | 勾选需要写入笔记的视频属性（标题/作者/日期/时长/地址/简介/时间戳） |
-| 文档整理 | DeepSeek AI 自动整理（流式输出思考+结果），一键下载/复制，多任务并行，可发到评论区/保存为 B站笔记 |
+| 文档整理 | DeepSeek AI 自动整理（详见下节） |
 | 设置 | 字体大小、行高、帧步长、自动滚动、夜间模式、悬浮功能条、默认展开面板 |
 
 ### 文档整理（AI）
